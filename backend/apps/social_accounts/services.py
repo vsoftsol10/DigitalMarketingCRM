@@ -17,15 +17,40 @@ def create_social_account(
     """
     Create a social account for a specific organization.
 
-    Ownership is always supplied by the server/service layer.
-    The client cannot choose the organization through the
-    social-account payload.
+    Only one active account per platform is allowed
+    for each organization.
     """
+
+    platform = validated_data["platform"]
+
+    # ---------------------------------------------------------
+    # ACTIVE PLATFORM DUPLICATE CHECK
+    # ---------------------------------------------------------
+
+    existing_account = SocialAccount.objects.filter(
+        organization=organization,
+        platform=platform,
+        is_deleted=False,
+    ).first()
+
+    if existing_account:
+        raise ValidationError(
+            {
+                "platform": (
+                    f"{platform.capitalize()} is already "
+                    "connected to this organization."
+                )
+            }
+        )
+
+    # ---------------------------------------------------------
+    # CREATE
+    # ---------------------------------------------------------
 
     try:
         social_account = SocialAccount.objects.create(
             organization=organization,
-            platform=validated_data["platform"],
+            platform=platform,
             platform_account_id=validated_data["platform_account_id"],
             account_name=validated_data.get(
                 "account_name",
@@ -39,16 +64,19 @@ def create_social_account(
                 "profile_image",
                 "",
             ),
-            status=(SocialAccountStatus.CONNECTED),
+            status=SocialAccountStatus.CONNECTED,
             is_valid=True,
             last_synced_at=timezone.now(),
         )
 
     except IntegrityError:
+        # Handles concurrent requests where another request
+        # connected the same platform at the same time.
         raise ValidationError(
             {
-                "platform_account_id": (
-                    "This social account is already " "connected to this organization."
+                "platform": (
+                    f"{platform.capitalize()} is already "
+                    "connected to this organization."
                 )
             }
         )

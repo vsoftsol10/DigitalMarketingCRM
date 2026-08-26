@@ -7,37 +7,19 @@ from apps.common.models import BaseModel
 
 
 class User(BaseModel, AbstractBaseUser, PermissionsMixin):
-    email = models.EmailField(
-        unique=True
-    )
+    email = models.EmailField(unique=True)
 
-    first_name = models.CharField(
-        max_length=100
-    )
+    first_name = models.CharField(max_length=100)
 
-    last_name = models.CharField(
-        max_length=100,
-        blank=True
-    )
+    last_name = models.CharField(max_length=100, blank=True)
 
-    phone = models.CharField(
-        max_length=20,
-        blank=True
-    )
+    phone = models.CharField(max_length=20, blank=True)
 
-    profile_image = models.ImageField(
-        upload_to="users/profile/",
-        blank=True,
-        null=True
-    )
+    profile_image = models.ImageField(upload_to="users/profile/", blank=True, null=True)
 
-    is_active = models.BooleanField(
-        default=True
-    )
+    is_active = models.BooleanField(default=True)
 
-    is_staff = models.BooleanField(
-        default=False
-    )
+    is_staff = models.BooleanField(default=False)
 
     objects = UserManager()
 

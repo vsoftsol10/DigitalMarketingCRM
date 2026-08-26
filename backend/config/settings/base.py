@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.ai",
     "apps.notifications",
     "apps.plans",
+    "apps.integrations.meta",
 ]
 
 CLOUDINARY_STORAGE = {
@@ -210,10 +211,19 @@ CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
 
 CELERY_BEAT_SCHEDULE = {
     "activate-scheduled-subscriptions": {
-        "task": (
-            "apps.organizations.tasks."
-            "activate_scheduled_subscriptions_task"
-        ),
+        "task": ("apps.organizations.tasks." "activate_scheduled_subscriptions_task"),
         "schedule": 60.0,
     },
 }
+
+# ============================================================
+# META
+# ============================================================
+
+META_APP_ID = config("META_APP_ID")
+
+META_APP_SECRET = config("META_APP_SECRET")
+
+META_OAUTH_REDIRECT_URI = config(
+    "META_OAUTH_REDIRECT_URI",
+)

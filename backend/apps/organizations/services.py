@@ -374,9 +374,18 @@ def update_organization(
     )
 
     if has_subscription_update:
-        subscription, _ = OrganizationSubscription.objects.get_or_create(
-            organization=organization
+        subscription = (
+            OrganizationSubscription.objects.select_for_update()
+            .filter(
+                organization=organization,
+                is_current=True,
+                is_deleted=False,
+            )
+            .first()
         )
+
+        if not subscription:
+            raise ValueError("No current subscription found for this organization.")
 
         field_mapping = {
             "subscription_plan": "plan",

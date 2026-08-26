@@ -1,159 +1,13 @@
-// import { Avatar, Box, Button, Chip, Stack, Typography } from "@mui/material";
-
-// import InstagramIcon from "@mui/icons-material/Instagram";
-// import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
-// import LinkedInIcon from "@mui/icons-material/LinkedIn";
-// import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
-// import YouTubeIcon from "@mui/icons-material/YouTube";
-// import XIcon from "@mui/icons-material/X";
-// import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-
-// const platformIcons = {
-//   instagram: InstagramIcon,
-//   facebook: FacebookRoundedIcon,
-//   linkedin: LinkedInIcon,
-//   threads: SmartToyOutlinedIcon,
-//   youtube: YouTubeIcon,
-//   x: XIcon,
-// };
-
-// export default function ConnectedAccountRow({ account }) {
-//   const Icon = platformIcons[account.platform];
-
-//   return (
-//     <Box
-//       sx={{
-//         mt: 2,
-
-//         px: 2.5,
-//         py: 2,
-
-//         border: "1px solid #E2E8F0",
-
-//         borderRadius: "18px",
-
-//         display: "flex",
-
-//         justifyContent: "space-between",
-
-//         alignItems: "center",
-
-//         transition: ".25s",
-
-//         "&:hover": {
-//           boxShadow: "0 8px 20px rgba(15,23,42,.05)",
-//         },
-//       }}
-//     >
-//       {/* LEFT */}
-
-//       <Stack direction="row" spacing={2} alignItems="center">
-//         <Avatar
-//           sx={{
-//             width: 50,
-//             height: 50,
-
-//             bgcolor: "#F8FAFC",
-//           }}
-//         >
-//           {Icon && (
-//             <Icon
-//               sx={{
-//                 color: "#111827",
-//               }}
-//             />
-//           )}
-//         </Avatar>
-
-//         <Box>
-//           <Typography
-//             sx={{
-//               fontSize: 16,
-//               fontWeight: 600,
-//               color: "#1E293B",
-//             }}
-//           >
-//             {account.pageName}
-//           </Typography>
-
-//           <Typography
-//             sx={{
-//               mt: 0.3,
-//               fontSize: 14,
-//               color: "#64748B",
-//             }}
-//           >
-//             {account.username} • {account.lastSync}
-//           </Typography>
-//         </Box>
-//       </Stack>
-
-//       {/* RIGHT */}
-
-//       <Stack direction="row" spacing={1.5} alignItems="center">
-//         <Chip
-//           label={account.connected ? "Connected" : "Disconnected"}
-//           size="small"
-//           sx={{
-//             bgcolor: account.connected ? "#ECFDF3" : "#F1F5F9",
-
-//             color: account.connected ? "#059669" : "#64748B",
-
-//             border: "1px solid",
-
-//             borderColor: account.connected ? "#A7F3D0" : "#CBD5E1",
-
-//             fontWeight: 600,
-//           }}
-//         />
-
-//         <Chip
-//           label={account.valid ? "Valid" : "Expired"}
-//           size="small"
-//           sx={{
-//             bgcolor: account.valid ? "#ECFDF3" : "#FEF2F2",
-
-//             color: account.valid ? "#059669" : "#DC2626",
-
-//             border: "1px solid",
-
-//             borderColor: account.valid ? "#A7F3D0" : "#FECACA",
-
-//             fontWeight: 600,
-//           }}
-//         />
-
-//         {account.connected ? (
-//           <Button
-//             startIcon={<CloseRoundedIcon />}
-//             sx={{
-//               color: "#475569",
-
-//               textTransform: "none",
-
-//               fontWeight: 500,
-//             }}
-//           >
-//             Disconnect
-//           </Button>
-//         ) : (
-//           <Button
-//             variant="outlined"
-//             sx={{
-//               borderRadius: "12px",
-
-//               textTransform: "none",
-//             }}
-//           >
-//             Reconnect
-//           </Button>
-//         )}
-//       </Stack>
-//     </Box>
-//   );
-// }
-
-import { Avatar, Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { memo, useState } from "react";
+import {
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
 
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
@@ -162,7 +16,11 @@ import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import XIcon from "@mui/icons-material/X";
 
-const platformIcons = {
+// ============================================================
+// PLATFORM ICONS
+// ============================================================
+
+const PLATFORM_ICONS = {
   instagram: InstagramIcon,
   facebook: FacebookRoundedIcon,
   linkedin: LinkedInIcon,
@@ -171,64 +29,147 @@ const platformIcons = {
   x: XIcon,
 };
 
-export default function ConnectedAccountRow({ account }) {
-  const Icon = platformIcons[account?.platform];
+// ============================================================
+// PLATFORM NAMES
+// ============================================================
+
+const PLATFORM_NAMES = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  linkedin: "LinkedIn",
+  threads: "Threads",
+  youtube: "YouTube",
+  x: "X",
+};
+
+// ============================================================
+// DATE FORMATTER
+// ============================================================
+
+function formatLastSync(value) {
+  if (!value) {
+    return "Not synced yet";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return `Last synced ${date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
+}
+
+// ============================================================
+// SHARED PILL STYLE — this is what keeps chips + button on
+// the exact same visual baseline. Every pill (chip or button)
+// uses the same height, same line-height:1, same flex-centering.
+// ============================================================
+
+const PILL_HEIGHT = 32;
+
+// ============================================================
+// COMPONENT
+// ============================================================
+
+function ConnectedAccountRow({
+  account,
+  onReconnect,
+  onDisconnect,
+  loading = false,
+}) {
+  const [imgError, setImgError] = useState(false);
+  const [actionError, setActionError] = useState("");
+
+  const platform = account?.platform;
+
+  const Icon = PLATFORM_ICONS[platform];
+
+  const platformName =
+    PLATFORM_NAMES[platform] ||
+    (platform
+      ? platform.charAt(0).toUpperCase() + platform.slice(1)
+      : "Social Account");
+
+  const accountName =
+    account?.accountName ||
+    account?.pageName ||
+    account?.name ||
+    platformName;
+
+  const username = account?.username || "";
+
+  const connected = Boolean(account?.connected);
+
+  const valid = account?.valid !== false;
+
+  const profileImage =
+    !imgError && account?.profileImage ? account.profileImage : "";
+
+  const lastSync = account?.lastSync || null;
 
   // ==========================================================
-  // LAST SYNC FORMATTER
+  // RECONNECT
   // ==========================================================
 
-  const formatLastSync = (value) => {
-    if (!value) {
-      return "Not synced yet";
+  const handleReconnect = async () => {
+    if (loading || typeof onReconnect !== "function") {
+      return;
     }
 
-    const date = new Date(value);
+    setActionError("");
 
-    if (Number.isNaN(date.getTime())) {
-      return value;
+    try {
+      await onReconnect(account);
+    } catch (err) {
+      setActionError("Reconnect failed. Try again.");
     }
-
-    return `Last synced ${date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    })}`;
   };
 
   // ==========================================================
-  // PLATFORM NAME
+  // DISCONNECT
   // ==========================================================
 
-  const platformName = account?.platform
-    ? account.platform.charAt(0).toUpperCase() + account.platform.slice(1)
-    : "Social Account";
+  const handleDisconnect = async () => {
+    if (loading || typeof onDisconnect !== "function") {
+      return;
+    }
+
+    setActionError("");
+
+    try {
+      await onDisconnect(account);
+    } catch (err) {
+      setActionError("Disconnect failed. Try again.");
+    }
+  };
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
     <Box
       sx={{
         mt: 2,
-
-        px: 2.5,
+        px: { xs: 2, sm: 2.5 },
         py: 2,
-
         border: "1px solid #E2E8F0",
-
         borderRadius: "18px",
-
         display: "flex",
-
         justifyContent: "space-between",
-
-        alignItems: "center",
-
+        alignItems: { xs: "flex-start", md: "center" },
         gap: 2,
-
-        transition: "box-shadow .2s ease",
-
+        flexDirection: { xs: "column", md: "row" },
+        transition: "border-color .2s ease, box-shadow .2s ease",
         "&:hover": {
+          borderColor: "#CBD5E1",
           boxShadow: "0 8px 20px rgba(15,23,42,.05)",
         },
       }}
@@ -237,125 +178,201 @@ export default function ConnectedAccountRow({ account }) {
           LEFT
       ====================================================== */}
 
-      <Stack direction="row" spacing={2} alignItems="center" minWidth={0}>
+      <Stack direction="row" spacing={2} alignItems="center" minWidth={0} width="100%">
         <Avatar
+          src={profileImage || undefined}
+          alt={accountName}
+          onError={() => setImgError(true)}
           sx={{
             width: 50,
             height: 50,
             bgcolor: "#F8FAFC",
+            color: "#111827",
+            border: "1px solid #E2E8F0",
             flexShrink: 0,
           }}
         >
-          {Icon && (
-            <Icon
-              sx={{
-                color: "#111827",
-              }}
-            />
+          {!profileImage && Icon && (
+            <Icon sx={{ color: "#111827", fontSize: 23 }} />
           )}
         </Avatar>
 
-        <Box minWidth={0}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography
             sx={{
               fontSize: 16,
               fontWeight: 600,
               color: "#1E293B",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
-            {account?.pageName || platformName}
+            {accountName}
           </Typography>
 
           <Typography
             sx={{
               mt: 0.3,
-              fontSize: 14,
+              fontSize: 13,
               color: "#64748B",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              maxWidth: {
-                xs: 180,
-                sm: 300,
-                md: 420,
-              },
             }}
           >
-            {account?.username ? `${account.username} • ` : ""}
-            {formatLastSync(account?.lastSync)}
+            {username ? `${username} • ${platformName}` : platformName}
           </Typography>
+
+          <Typography sx={{ mt: 0.3, fontSize: 12, color: "#94A3B8" }}>
+            {formatLastSync(lastSync)}
+          </Typography>
+
+          {actionError && (
+            <Typography sx={{ mt: 0.3, fontSize: 12, color: "#DC2626" }}>
+              {actionError}
+            </Typography>
+          )}
         </Box>
       </Stack>
 
       {/* ======================================================
-          RIGHT
+          RIGHT ACTION AREA
+          Every pill (chip, chip, button) shares: same height,
+          display:flex + alignItems:center + justifyContent:center,
+          lineHeight:1, and sits in ONE Stack with alignItems="center".
+          That's what removes the "not straight" look.
       ====================================================== */}
 
-      <Stack direction="row" spacing={1.5} alignItems="center" flexShrink={0}>
-        {/* Connection Status */}
-
+      <Stack
+        direction="row"
+        spacing={1.25}
+        alignItems="center"
+        justifyContent="flex-end"
+        flexShrink={0}
+        sx={{
+          width: { xs: "100%", md: "auto" },
+          ml: { md: 2 },
+        }}
+      >
         <Chip
-          label={account?.connected ? "Connected" : "Disconnected"}
+          label={connected ? "Connected" : "Disconnected"}
           size="small"
           sx={{
-            bgcolor: account?.connected ? "#ECFDF3" : "#F1F5F9",
-
-            color: account?.connected ? "#059669" : "#64748B",
-
+            height: PILL_HEIGHT,
+            display: "flex",
+            alignItems: "center",
+            bgcolor: connected ? "#ECFDF3" : "#F1F5F9",
+            color: connected ? "#059669" : "#64748B",
             border: "1px solid",
-
-            borderColor: account?.connected ? "#A7F3D0" : "#CBD5E1",
-
+            borderColor: connected ? "#A7F3D0" : "#CBD5E1",
             fontWeight: 600,
+            fontSize: 12,
+            "& .MuiChip-label": {
+              lineHeight: 1,
+              px: "10px",
+            },
           }}
         />
 
-        {/* Token / Account Validity */}
-
         <Chip
-          label={account?.valid ? "Valid" : "Expired"}
+          label={valid ? "Valid" : "Expired"}
           size="small"
           sx={{
-            bgcolor: account?.valid ? "#ECFDF3" : "#FEF2F2",
-
-            color: account?.valid ? "#059669" : "#DC2626",
-
+            height: PILL_HEIGHT,
+            display: "flex",
+            alignItems: "center",
+            bgcolor: valid ? "#ECFDF3" : "#FEF2F2",
+            color: valid ? "#059669" : "#DC2626",
             border: "1px solid",
-
-            borderColor: account?.valid ? "#A7F3D0" : "#FECACA",
-
+            borderColor: valid ? "#A7F3D0" : "#FECACA",
             fontWeight: 600,
+            fontSize: 12,
+            "& .MuiChip-label": {
+              lineHeight: 1,
+              px: "10px",
+            },
           }}
         />
 
-        {/* Action */}
+        <Box
+          sx={{
+            width: "1px",
+            height: 20,
+            bgcolor: "#E2E8F0",
+            display: { xs: "none", md: "block" },
+          }}
+        />
 
-        {account?.connected ? (
+        {!connected || !valid ? (
           <Button
-            variant="text"
-            disabled
+            type="button"
+            variant="outlined"
+            size="small"
+            onClick={handleReconnect}
+            disabled={loading || typeof onReconnect !== "function"}
+            aria-label={`Reconnect ${accountName}`}
+            startIcon={
+              loading ? <CircularProgress size={14} color="inherit" /> : null
+            }
             sx={{
-              textTransform: "none",
-              fontWeight: 500,
+              height: PILL_HEIGHT,
               minWidth: 92,
+              borderRadius: "10px",
+              borderColor: "#CBD5E1",
+              color: "#475569",
+              textTransform: "none",
+              fontSize: 13,
+              fontWeight: 600,
+              lineHeight: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "&:hover": {
+                borderColor: "#2563EB",
+                color: "#2563EB",
+                bgcolor: "#F8FBFF",
+              },
             }}
           >
-            Connected
+            {loading ? "Connecting..." : "Reconnect"}
           </Button>
         ) : (
           <Button
-            variant="outlined"
-            disabled
+            type="button"
+            variant="text"
+            size="small"
+            onClick={handleDisconnect}
+            disabled={loading || typeof onDisconnect !== "function"}
+            aria-label={`Disconnect ${accountName}`}
+            startIcon={
+              loading ? <CircularProgress size={14} color="inherit" /> : null
+            }
             sx={{
-              borderRadius: "12px",
-              textTransform: "none",
+              height: PILL_HEIGHT,
               minWidth: 92,
+              borderRadius: "10px",
+              color: "#64748B",
+              textTransform: "none",
+              fontSize: 13,
+              fontWeight: 600,
+              lineHeight: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              px: 1.5,
+              "&:hover": {
+                color: "#DC2626",
+                bgcolor: "#FEF2F2",
+              },
             }}
           >
-            Reconnect
+            {loading ? "Please wait..." : "Disconnect"}
           </Button>
         )}
       </Stack>
     </Box>
   );
 }
+
+export default memo(ConnectedAccountRow);

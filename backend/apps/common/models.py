@@ -5,28 +5,15 @@ from django.utils import timezone
 
 
 class BaseModel(models.Model):
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False
-    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    updated_at = models.DateTimeField(
-        auto_now=True
-    )
+    updated_at = models.DateTimeField(auto_now=True)
 
-    is_deleted = models.BooleanField(
-        default=False
-    )
+    is_deleted = models.BooleanField(default=False)
 
-    deleted_at = models.DateTimeField(
-        null=True,
-        blank=True
-    )
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -34,4 +21,4 @@ class BaseModel(models.Model):
     def soft_delete(self):
         self.is_deleted = True
         self.deleted_at = timezone.now()
-        self.save(update_fields=["is_deleted", "deleted_at","updated_at"])
+        self.save(update_fields=["is_deleted", "deleted_at", "updated_at"])

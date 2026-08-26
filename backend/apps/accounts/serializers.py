@@ -4,7 +4,6 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 
-
 # ============================================================
 # USER SERIALIZER
 # ============================================================
@@ -32,9 +31,7 @@ class UserSerializer(serializers.ModelSerializer):
 # ============================================================
 
 
-class UserProfileUpdateSerializer(
-    serializers.ModelSerializer
-):
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
 
@@ -49,9 +46,7 @@ class UserProfileUpdateSerializer(
         value = value.strip()
 
         if not value:
-            raise serializers.ValidationError(
-                "First name is required."
-            )
+            raise serializers.ValidationError("First name is required.")
 
         return value
 
@@ -91,9 +86,7 @@ class UserProfileUpdateSerializer(
 # ============================================================
 
 
-class ChangePasswordSerializer(
-    serializers.Serializer
-):
+class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(
         write_only=True,
         trim_whitespace=False,
@@ -116,46 +109,29 @@ class ChangePasswordSerializer(
         # CURRENT PASSWORD
         # ------------------------------------------
 
-        if not user.check_password(
-            attrs["current_password"]
-        ):
+        if not user.check_password(attrs["current_password"]):
             raise serializers.ValidationError(
-                {
-                    "current_password": (
-                        "Current password is incorrect."
-                    )
-                }
+                {"current_password": ("Current password is incorrect.")}
             )
 
         # ------------------------------------------
         # CONFIRM PASSWORD
         # ------------------------------------------
 
-        if (
-            attrs["new_password"]
-            != attrs["confirm_password"]
-        ):
+        if attrs["new_password"] != attrs["confirm_password"]:
             raise serializers.ValidationError(
-                {
-                    "confirm_password": (
-                        "Passwords do not match."
-                    )
-                }
+                {"confirm_password": ("Passwords do not match.")}
             )
 
         # ------------------------------------------
         # PREVENT SAME PASSWORD
         # ------------------------------------------
 
-        if (
-            attrs["current_password"]
-            == attrs["new_password"]
-        ):
+        if attrs["current_password"] == attrs["new_password"]:
             raise serializers.ValidationError(
                 {
                     "new_password": (
-                        "New password must be different "
-                        "from the current password."
+                        "New password must be different " "from the current password."
                     )
                 }
             )
@@ -177,9 +153,7 @@ class ChangePasswordSerializer(
 # ============================================================
 
 
-class LoginSerializer(
-    serializers.Serializer
-):
+class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     password = serializers.CharField(

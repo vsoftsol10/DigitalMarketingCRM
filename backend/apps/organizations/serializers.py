@@ -775,7 +775,14 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
         allow_blank=True,
     )
 
-    subscription_plan = serializers.CharField(
+    # subscription_plan = serializers.CharField(
+    #     required=False,
+    # )
+    subscription_plan = serializers.PrimaryKeyRelatedField(
+        queryset=Plan.objects.filter(
+            status="active",
+            is_deleted=False,
+        ),
         required=False,
     )
 
@@ -869,20 +876,6 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
 
         if value not in allowed_values:
             raise serializers.ValidationError("Invalid organization status.")
-
-        return value
-
-    def validate_subscription_plan(self, value):
-        value = value.strip().upper()
-
-        allowed_values = {
-            "BASIC",
-            "ADVANCE",
-            "CUSTOM",
-        }
-
-        if value not in allowed_values:
-            raise serializers.ValidationError("Invalid subscription plan.")
 
         return value
 

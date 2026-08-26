@@ -1,4 +1,11 @@
-// import { Box, Card, CardContent, Divider, Typography } from "@mui/material";
+// import {
+//   Box,
+//   Card,
+//   CardContent,
+//   Divider,
+//   Stack,
+//   Typography,
+// } from "@mui/material";
 
 // import { TYPOGRAPHY } from "../../../../theme/typography";
 
@@ -9,20 +16,45 @@
 // import ConnectedAccountRow from "../../social/ConnectedAccountRow";
 
 // export default function SocialAccountsCard({ organization }) {
-//   const connectedAccounts = organization?.social_accounts || [];
-//   const connectedPlatforms = connectedAccounts.map(
+//   // ============================================================
+//   // CONNECTED ACCOUNTS
+//   // ============================================================
+
+//   const connectedAccounts = Array.isArray(organization?.social_accounts)
+//     ? organization.social_accounts
+//     : [];
+
+//   const activeConnectedAccounts = connectedAccounts.filter(
+//     (account) => account.connected,
+//   );
+
+//   const connectedPlatforms = activeConnectedAccounts.map(
 //     (account) => account.platform,
 //   );
+
+//   const connectedCount = activeConnectedAccounts.length;
+
+//   // ============================================================
+//   // RENDER
+//   // ============================================================
+
 //   return (
 //     <Card
 //       elevation={0}
 //       sx={{
 //         border: "1px solid #E2E8F0",
-
 //         borderRadius: "20px",
 //       }}
 //     >
-//       <CardContent>
+//       <CardContent
+//         sx={{
+//           p: 3,
+//         }}
+//       >
+//         {/* ======================================================
+//             HEADER
+//         ====================================================== */}
+
 //         <Typography sx={TYPOGRAPHY.sectionTitle}>
 //           Connected Social Accounts
 //         </Typography>
@@ -30,53 +62,89 @@
 //         <Typography
 //           sx={{
 //             ...TYPOGRAPHY.sectionDescription,
-
 //             mb: 3,
 //           }}
 //         >
-//           {connectedAccounts.filter((x) => x.connected).length} of{" "}
-//           {connectedAccounts.length} connected
+//           {connectedCount} {connectedCount === 1 ? "account" : "accounts"}{" "}
+//           connected
 //         </Typography>
 
 //         <Divider />
 
-//         <Box
-//           sx={{
-//             mt: 1,
-//           }}
-//         >
-//           {/* {connectedAccounts.map((account) => (
-//             <ConnectedAccountRow key={account.id} account={account} />
-//           ))} */}
-//           {connectedAccounts.map((account) => (
-//             <ConnectedAccountRow
-//               key={account.platform}
-//               account={{
-//                 platform: account.platform,
+//         {/* ======================================================
+//             CONNECTED ACCOUNT LIST
+//         ====================================================== */}
 
-//                 pageName: account.page_name,
+//         {connectedAccounts.length > 0 && (
+//           <Box
+//             sx={{
+//               mt: 1,
+//             }}
+//           >
+//             {connectedAccounts.map((account) => (
+//               <ConnectedAccountRow
+//                 key={account.id}
+//                 account={{
+//                   platform: account.platform,
 
-//                 username: account.username,
+//                   pageName: account.page_name,
 
-//                 connected: account.connected,
+//                   username: account.username,
 
-//                 valid: account.valid ?? true,
+//                   connected: account.connected,
 
-//                 lastSync: account.last_sync ?? "Just now",
+//                   valid: account.valid ?? true,
+
+//                   lastSync: account.last_sync ?? "Not synced yet",
+//                 }}
+//               />
+//             ))}
+//           </Box>
+//         )}
+
+//         {/* ======================================================
+//             EMPTY STATE
+//         ====================================================== */}
+
+//         {connectedAccounts.length === 0 && (
+//           <Box
+//             sx={{
+//               py: 5,
+//               textAlign: "center",
+//             }}
+//           >
+//             <Typography
+//               sx={{
+//                 fontSize: 15,
+//                 fontWeight: 500,
+//                 color: "#64748B",
 //               }}
-//             />
-//           ))}
-//         </Box>
+//             >
+//               No social accounts connected yet.
+//             </Typography>
+
+//             <Typography
+//               sx={{
+//                 mt: 0.5,
+//                 fontSize: 13,
+//                 color: "#94A3B8",
+//               }}
+//             >
+//               Connect an account to manage social publishing and insights.
+//             </Typography>
+//           </Box>
+//         )}
+
+//         {/* ======================================================
+//             CONNECT NEW ACCOUNT
+//         ====================================================== */}
 
 //         <Typography
 //           sx={{
 //             mt: 4,
 //             mb: 2,
-
 //             fontSize: 15,
-
 //             fontWeight: 600,
-
 //             color: "#475569",
 //           }}
 //         >
@@ -85,19 +153,9 @@
 
 //         <Box
 //           sx={{
-//             display: "grid",
-
-//             // gridTemplateColumns: {
-//             //   xs: "repeat(2,1fr)",
-//             //   sm: "repeat(3,1fr)",
-//             //   md: "repeat(4,1fr)",
-//             //   lg: "repeat(6,1fr)",
-//             // },
 //             display: "flex",
 //             flexWrap: "wrap",
-//             justifyContent: "space-between",
 //             gap: 2,
-//             // gap: 2,
 //           }}
 //         >
 //           {SOCIAL_PLATFORMS.map((platform) => (
@@ -106,7 +164,10 @@
 //               {...platform}
 //               selected={false}
 //               disabled={connectedPlatforms.includes(platform.id)}
-//               onClick={() => console.log(platform.id)}
+//               onClick={() => {
+//                 // OAuth connection will be
+//                 // implemented here later.
+//               }}
 //             />
 //           ))}
 //         </Box>
@@ -115,206 +176,70 @@
 //   );
 // }
 
-import {
-  Box,
-  Card,
-  CardContent,
-  Divider,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box } from "@mui/material";
 
-import { TYPOGRAPHY } from "../../../../theme/typography";
+import SocialAccountsSection from "../../social/SocialAccountsSection";
 
-import { SOCIAL_PLATFORMS } from "../../../../constants/social/socialPlatforms";
+// ============================================================
+// SOCIAL ACCOUNTS CARD
+// ============================================================
+//
+// Organization Overview wrapper.
+//
+// IMPORTANT:
+//
+// The actual Social Accounts UI is owned by:
+//
+// components/organization/social/SocialAccountsSection.jsx
+//
+// This component only adapts the Overview page data into that
+// reusable component.
+//
+// No duplicated platform cards.
+// No duplicated connected-account rows.
+// No duplicated empty state.
+// No OAuth logic here.
+//
+// ============================================================
 
-import SocialPlatformCard from "../../../ui/SocialPlatformCard";
-
-import ConnectedAccountRow from "../../social/ConnectedAccountRow";
-
-export default function SocialAccountsCard({
-  organization,
-}) {
+export default function SocialAccountsCard({ organization }) {
   // ============================================================
-  // CONNECTED ACCOUNTS
+  // ORGANIZATION ID
   // ============================================================
 
-  const connectedAccounts = Array.isArray(
-    organization?.social_accounts,
-  )
+  const organizationId =
+    organization?.organization_id || organization?.id || null;
+
+  // ============================================================
+  // SOCIAL ACCOUNTS
+  // ============================================================
+  //
+  // If Overview API already returns social_accounts, we pass
+  // them directly.
+  //
+  // The reusable SocialAccountsSection handles presentation.
+  //
+  // ============================================================
+
+  const socialAccounts = Array.isArray(organization?.social_accounts)
     ? organization.social_accounts
     : [];
-
-  const activeConnectedAccounts =
-    connectedAccounts.filter(
-      (account) => account.connected,
-    );
-
-  const connectedPlatforms =
-    activeConnectedAccounts.map(
-      (account) => account.platform,
-    );
-
-  const connectedCount =
-    activeConnectedAccounts.length;
 
   // ============================================================
   // RENDER
   // ============================================================
 
   return (
-    <Card
-      elevation={0}
+    <Box
       sx={{
-        border: "1px solid #E2E8F0",
-        borderRadius: "20px",
+        width: "100%",
       }}
     >
-      <CardContent
-        sx={{
-          p: 3,
-        }}
-      >
-        {/* ======================================================
-            HEADER
-        ====================================================== */}
-
-        <Typography
-          sx={TYPOGRAPHY.sectionTitle}
-        >
-          Connected Social Accounts
-        </Typography>
-
-        <Typography
-          sx={{
-            ...TYPOGRAPHY.sectionDescription,
-            mb: 3,
-          }}
-        >
-          {connectedCount}{" "}
-          {connectedCount === 1
-            ? "account"
-            : "accounts"}{" "}
-          connected
-        </Typography>
-
-        <Divider />
-
-        {/* ======================================================
-            CONNECTED ACCOUNT LIST
-        ====================================================== */}
-
-        {connectedAccounts.length > 0 && (
-          <Box
-            sx={{
-              mt: 1,
-            }}
-          >
-            {connectedAccounts.map(
-              (account) => (
-                <ConnectedAccountRow
-                  key={account.id}
-                  account={{
-                    platform:
-                      account.platform,
-
-                    pageName:
-                      account.page_name,
-
-                    username:
-                      account.username,
-
-                    connected:
-                      account.connected,
-
-                    valid:
-                      account.valid ?? true,
-
-                    lastSync:
-                      account.last_sync ??
-                      "Not synced yet",
-                  }}
-                />
-              ),
-            )}
-          </Box>
-        )}
-
-        {/* ======================================================
-            EMPTY STATE
-        ====================================================== */}
-
-        {connectedAccounts.length === 0 && (
-          <Box
-            sx={{
-              py: 5,
-              textAlign: "center",
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: 15,
-                fontWeight: 500,
-                color: "#64748B",
-              }}
-            >
-              No social accounts connected yet.
-            </Typography>
-
-            <Typography
-              sx={{
-                mt: 0.5,
-                fontSize: 13,
-                color: "#94A3B8",
-              }}
-            >
-              Connect an account to manage
-              social publishing and insights.
-            </Typography>
-          </Box>
-        )}
-
-        {/* ======================================================
-            CONNECT NEW ACCOUNT
-        ====================================================== */}
-
-        <Typography
-          sx={{
-            mt: 4,
-            mb: 2,
-            fontSize: 15,
-            fontWeight: 600,
-            color: "#475569",
-          }}
-        >
-          Connect a new account
-        </Typography>
-
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 2,
-          }}
-        >
-          {SOCIAL_PLATFORMS.map(
-            (platform) => (
-              <SocialPlatformCard
-                key={platform.id}
-                {...platform}
-                selected={false}
-                disabled={connectedPlatforms.includes(
-                  platform.id,
-                )}
-                onClick={() => {
-                  // OAuth connection will be
-                  // implemented here later.
-                }}
-              />
-            ),
-          )}
-        </Box>
-      </CardContent>
-    </Card>
+      <SocialAccountsSection
+        mode="overview"
+        organizationId={organizationId}
+        accounts={socialAccounts}
+      />
+    </Box>
   );
 }

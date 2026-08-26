@@ -99,9 +99,9 @@ class SocialAccount(BaseModel):
                 fields=[
                     "organization",
                     "platform",
-                    "platform_account_id",
                 ],
-                name="unique_social_account_per_org_platform",
+                condition=models.Q(is_deleted=False),
+                name="unique_active_social_platform_per_org",
             ),
         ]
 
@@ -120,13 +120,6 @@ class SocialAccount(BaseModel):
         ]
 
     def __str__(self):
-        display_name = (
-            self.account_name
-            or self.username
-            or self.platform_account_id
-        )
+        display_name = self.account_name or self.username or self.platform_account_id
 
-        return (
-            f"{self.organization.name} - "
-            f"{self.platform} - {display_name}"
-        )
+        return f"{self.organization.name} - " f"{self.platform} - {display_name}"

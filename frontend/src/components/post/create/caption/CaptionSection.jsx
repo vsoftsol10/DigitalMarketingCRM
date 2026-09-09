@@ -1,3 +1,26 @@
+// import SectionCard from "../SectionCard";
+
+// import CaptionEditor from "./CaptionEditor";
+// import CaptionToolbar from "./CaptionToolbar";
+// import CaptionStats from "./CaptionStats";
+
+// export default function CaptionSection() {
+//   return (
+//     <SectionCard
+//       title="Caption"
+//       description="Write and refine the caption for your social media post."
+//     >
+//       <CaptionEditor />
+
+//       <CaptionToolbar />
+
+//       <CaptionStats />
+//     </SectionCard>
+//   );
+// }
+
+import Stack from "@mui/material/Stack";
+
 import SectionCard from "../SectionCard";
 
 import CaptionEditor from "./CaptionEditor";
@@ -8,13 +31,15 @@ export default function CaptionSection() {
   return (
     <SectionCard
       title="Caption"
-      description="Write and refine the caption for your social media post."
+      description="Write, edit or refine the caption for your post."
     >
-      <CaptionEditor />
+      <Stack spacing={1.25}>
+        <CaptionEditor />
 
-      <CaptionToolbar />
+        <CaptionToolbar />
 
-      <CaptionStats />
+        <CaptionStats />
+      </Stack>
     </SectionCard>
   );
 }

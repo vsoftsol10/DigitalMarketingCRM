@@ -1,11 +1,10 @@
-// import { Box, Button, Typography } from "@mui/material";
+// import { Box, Button, CircularProgress, Typography } from "@mui/material";
 
 // import InstagramIcon from "@mui/icons-material/Instagram";
 // import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
 // import LinkedInIcon from "@mui/icons-material/LinkedIn";
-// import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 // import YouTubeIcon from "@mui/icons-material/YouTube";
-// import XIcon from "@mui/icons-material/X";
+// import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 
 // // ============================================================
 // // PLATFORM ICONS
@@ -15,78 +14,126 @@
 //   instagram: InstagramIcon,
 //   facebook: FacebookRoundedIcon,
 //   linkedin: LinkedInIcon,
-//   threads: SmartToyOutlinedIcon,
 //   youtube: YouTubeIcon,
-//   x: XIcon,
 // };
 
 // // ============================================================
 // // COMPONENT
 // // ============================================================
 // //
-// // Reusable single-platform connection card.
+// // Reusable platform connection card.
 // //
-// // This component is intentionally UI-only.
+// // `platform` must be the complete platform configuration object:
 // //
-// // It does NOT:
-// // - call the backend
-// // - start OAuth
-// // - know API endpoints
-// // - contain organization logic
+// // {
+// //   id: "facebook",
+// //   name: "Facebook",
+// //   icon: ...,
+// //   backgroundColor: "...",
+// //   iconColor: "..."
+// // }
 // //
-// // Parent component owns the connection action.
-// //
-// // Example:
-// //
-// // <ConnectSocialAccountCard
-// //   platform={platform}
-// //   connected={false}
-// //   onConnect={handleConnect}
-// // />
-// //
-// // Later:
-// //
-// // UI
-// //   ↓
-// // onConnect(platform)
-// //   ↓
-// // OAuth service
-// //   ↓
-// // Backend
+// // The component renders the platform's individual properties,
+// // never the complete object.
 // //
 // // ============================================================
 
 // export default function ConnectSocialAccountCard({
 //   platform,
+
+//   // ==========================================================
+//   // BACKWARD-COMPATIBLE OPTIONAL PROPS
+//   // ==========================================================
+
 //   name,
 //   backgroundColor,
 //   iconColor,
 
+//   // ==========================================================
+//   // STATE
+//   // ==========================================================
+
 //   connected = false,
-
 //   disabled = false,
-
 //   loading = false,
+
+//   // ==========================================================
+//   // ACTION
+//   // ==========================================================
 
 //   onConnect,
 // }) {
 //   // ============================================================
+//   // NORMALIZE PLATFORM
+//   // ============================================================
+//   //
+//   // The preferred contract is:
+//   //
+//   // platform = {
+//   //   id,
+//   //   name,
+//   //   backgroundColor,
+//   //   iconColor
+//   // }
+//   //
+//   // We still safely handle an invalid/missing value so that
+//   // the component itself never crashes the entire page.
+//   //
+//   // ============================================================
+
+//   const platformId =
+//     typeof platform === "string" ? platform : platform?.id || "";
+
+//   const platformName =
+//     name ||
+//     (typeof platform === "object" ? platform?.name : "") ||
+//     platformId ||
+//     "Social account";
+
+//   const platformBackgroundColor =
+//     backgroundColor ||
+//     (typeof platform === "object" ? platform?.backgroundColor : "") ||
+//     "#F1F5F9";
+
+//   const platformIconColor =
+//     iconColor ||
+//     (typeof platform === "object" ? platform?.iconColor : "") ||
+//     "#475569";
+
+//   // ============================================================
 //   // PLATFORM ICON
 //   // ============================================================
 
-//   const Icon = PLATFORM_ICONS[platform];
+//   const Icon = PLATFORM_ICONS[platformId] || ApartmentRoundedIcon;
 
 //   // ============================================================
 //   // CONNECT HANDLER
 //   // ============================================================
+//   //
+//   // Important:
+//   //
+//   // `connected` does NOT prevent another connection.
+//   //
+//   // An organization can have:
+//   //
+//   // Facebook
+//   //   ├── Page A
+//   //   └── Page B
+//   //
+//   // Instagram
+//   //   ├── Account A
+//   //   └── Account B
+//   //
+//   // Therefore backend/provider layer owns duplicate-account
+//   // validation.
+//   //
+//   // We send the platform object back to the parent because the
+//   // parent may need the complete platform configuration.
+//   //
+//   // ============================================================
 
 //   const handleConnect = () => {
-//     if (
-//       disabled ||
-//       connected ||
-//       loading ||
-//       typeof onConnect !== "function"
-//     ) {
+//     if (disabled || loading || typeof onConnect !== "function") {
 //       return;
 //     }
 
@@ -115,13 +162,9 @@
 
 //         borderRadius: "16px",
 
-//         border: connected
-//           ? "1px solid #A7F3D0"
-//           : "1px solid #E2E8F0",
+//         border: "1px solid #E2E8F0",
 
-//         bgcolor: connected
-//           ? "#F0FDF4"
-//           : "#FFFFFF",
+//         bgcolor: "#FFFFFF",
 
 //         display: "flex",
 
@@ -136,21 +179,19 @@
 //         transition:
 //           "border-color .2s ease, box-shadow .2s ease, transform .2s ease",
 
-//         opacity: disabled && !connected ? 0.55 : 1,
+//         opacity: disabled ? 0.55 : 1,
 
-//         "&:hover":
-//           disabled || connected
-//             ? {}
-//             : {
-//                 borderColor: "#2563EB",
+//         "&:hover": disabled
+//           ? {}
+//           : {
+//               borderColor: "#2563EB",
 
-//                 bgcolor: "#F8FBFF",
+//               bgcolor: "#F8FBFF",
 
-//                 transform: "translateY(-2px)",
+//               transform: "translateY(-2px)",
 
-//                 boxShadow:
-//                   "0 8px 20px rgba(15,23,42,.06)",
-//               },
+//               boxShadow: "0 8px 20px rgba(15,23,42,.06)",
+//             },
 //       }}
 //     >
 //       {/* ======================================================
@@ -165,8 +206,7 @@
 
 //           borderRadius: "12px",
 
-//           bgcolor:
-//             backgroundColor || "#F1F5F9",
+//           bgcolor: platformBackgroundColor,
 
 //           display: "flex",
 
@@ -177,16 +217,13 @@
 //           mb: 1.25,
 //         }}
 //       >
-//         {Icon && (
-//           <Icon
-//             sx={{
-//               fontSize: 23,
+//         <Icon
+//           sx={{
+//             fontSize: 23,
 
-//               color:
-//                 iconColor || "#475569",
-//             }}
-//           />
-//         )}
+//             color: platformIconColor,
+//           }}
+//         />
 //       </Box>
 
 //       {/* ======================================================
@@ -194,6 +231,7 @@
 //       ====================================================== */}
 
 //       <Typography
+//         component="p"
 //         sx={{
 //           fontSize: 14,
 
@@ -206,7 +244,7 @@
 //           mb: 1.25,
 //         }}
 //       >
-//         {name}
+//         {platformName}
 //       </Typography>
 
 //       {/* ======================================================
@@ -215,14 +253,13 @@
 
 //       <Button
 //         type="button"
-//         variant={connected ? "text" : "outlined"}
+//         variant="outlined"
 //         size="small"
 //         onClick={handleConnect}
-//         disabled={
-//           disabled ||
-//           connected ||
-//           loading ||
-//           typeof onConnect !== "function"
+//         disabled={disabled || loading || typeof onConnect !== "function"}
+//         aria-label={`Connect another ${platformName} account`}
+//         startIcon={
+//           loading ? <CircularProgress size={14} color="inherit" /> : null
 //         }
 //         sx={{
 //           minWidth: 100,
@@ -235,9 +272,7 @@
 
 //           borderColor: "#CBD5E1",
 
-//           color: connected
-//             ? "#059669"
-//             : "#475569",
+//           color: "#475569",
 
 //           textTransform: "none",
 
@@ -258,25 +293,15 @@
 //           },
 
 //           "&.Mui-disabled": {
-//             borderColor: connected
-//               ? "#A7F3D0"
-//               : "#E2E8F0",
+//             borderColor: "#E2E8F0",
 
-//             color: connected
-//               ? "#059669"
-//               : "#94A3B8",
+//             color: "#94A3B8",
 
-//             bgcolor: connected
-//               ? "transparent"
-//               : "transparent",
+//             bgcolor: "transparent",
 //           },
 //         }}
 //       >
-//         {loading
-//           ? "Connecting..."
-//           : connected
-//             ? "Connected"
-//             : "Connect"}
+//         {loading ? "Connecting..." : "Connect"}
 //       </Button>
 //     </Box>
 //   );
@@ -287,9 +312,7 @@ import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
-import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import YouTubeIcon from "@mui/icons-material/YouTube";
-import XIcon from "@mui/icons-material/X";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 
 // ============================================================
@@ -297,111 +320,86 @@ import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 // ============================================================
 
 const PLATFORM_ICONS = {
+  meta: FacebookRoundedIcon,
   instagram: InstagramIcon,
   facebook: FacebookRoundedIcon,
   linkedin: LinkedInIcon,
-  threads: SmartToyOutlinedIcon,
   youtube: YouTubeIcon,
-  x: XIcon,
 };
 
 // ============================================================
 // COMPONENT
 // ============================================================
-//
-// Reusable single-platform connection card.
-//
-// This component is intentionally UI-only.
-//
-// It does NOT:
-// - call the backend
-// - start OAuth
-// - know API endpoints
-// - contain organization logic
-//
-// Parent component owns the connection action.
-//
-// Example:
-//
-// <ConnectSocialAccountCard
-//   platform={platform}
-//   connected={false}
-//   onConnect={handleConnect}
-// />
-//
-// Later:
-//
-// UI
-//   ↓
-// onConnect(platform)
-//   ↓
-// OAuth service
-//   ↓
-// Backend
-//
-// ============================================================
 
 export default function ConnectSocialAccountCard({
   platform,
+
   name,
   backgroundColor,
   iconColor,
 
   connected = false,
-
   disabled = false,
-
   loading = false,
 
   onConnect,
 }) {
-  // ============================================================
-  // PLATFORM ICON
-  // ============================================================
-  // Falls back to a generic icon so a new/unmapped platform never
-  // renders an empty box.
+  const platformId =
+    typeof platform === "string" ? platform : platform?.id || "";
 
-  const Icon = PLATFORM_ICONS[platform] || ApartmentRoundedIcon;
+  const platformName =
+    name ||
+    (typeof platform === "object" ? platform?.name : "") ||
+    platformId ||
+    "Social account";
 
-  const displayName = name || platform || "Social account";
+  const platformDescription =
+    typeof platform === "object" ? platform?.description || "" : "";
 
-  // ============================================================
-  // CONNECT HANDLER
-  // ============================================================
+  const platformBackgroundColor =
+    backgroundColor ||
+    (typeof platform === "object" ? platform?.backgroundColor : "") ||
+    "#F1F5F9";
+
+  const platformIconColor =
+    iconColor ||
+    (typeof platform === "object" ? platform?.iconColor : "") ||
+    "#475569";
+
+  const comingSoon =
+    typeof platform === "object" && Boolean(platform?.comingSoon);
+
+  const Icon = PLATFORM_ICONS[platformId] || ApartmentRoundedIcon;
 
   const handleConnect = () => {
-    if (disabled || connected || loading || typeof onConnect !== "function") {
+    if (disabled || loading || typeof onConnect !== "function") {
       return;
     }
 
     onConnect(platform);
   };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
-
   return (
     <Box
       sx={{
-        flex: "1 1 150px",
+        flex: "1 1 180px",
 
         minWidth: {
-          xs: 140,
-          sm: 150,
+          xs: 160,
+          sm: 180,
         },
 
-        maxWidth: 170,
+        maxWidth: 210,
 
-        minHeight: 132,
+        minHeight: 150,
 
         p: 2,
 
         borderRadius: "16px",
 
-        border: connected ? "1px solid #A7F3D0" : "1px solid #E2E8F0",
+        border: "1px solid #E2E8F0",
 
-        bgcolor: connected ? "#F0FDF4" : "#FFFFFF",
+        bgcolor: "#FFFFFF",
 
         display: "flex",
 
@@ -416,133 +414,104 @@ export default function ConnectSocialAccountCard({
         transition:
           "border-color .2s ease, box-shadow .2s ease, transform .2s ease",
 
-        opacity: disabled && !connected ? 0.55 : 1,
+        opacity: disabled ? 0.55 : 1,
 
-        "&:hover":
-          disabled || connected
-            ? {}
-            : {
-                borderColor: "#2563EB",
-
-                bgcolor: "#F8FBFF",
-
-                transform: "translateY(-2px)",
-
-                boxShadow: "0 8px 20px rgba(15,23,42,.06)",
-              },
+        "&:hover": disabled
+          ? {}
+          : {
+              borderColor: "#2563EB",
+              bgcolor: "#F8FBFF",
+              transform: "translateY(-2px)",
+              boxShadow: "0 8px 20px rgba(15,23,42,.06)",
+            },
       }}
     >
-      {/* ======================================================
-          PLATFORM ICON
-      ====================================================== */}
-
       <Box
         sx={{
           width: 44,
-
           height: 44,
-
           borderRadius: "12px",
-
-          bgcolor: backgroundColor || "#F1F5F9",
-
+          bgcolor: platformBackgroundColor,
           display: "flex",
-
           alignItems: "center",
-
           justifyContent: "center",
-
           mb: 1.25,
         }}
       >
         <Icon
           sx={{
             fontSize: 23,
-
-            color: iconColor || "#475569",
+            color: platformIconColor,
           }}
         />
       </Box>
 
-      {/* ======================================================
-          PLATFORM NAME
-      ====================================================== */}
-
       <Typography
+        component="p"
         sx={{
           fontSize: 14,
-
           fontWeight: 600,
-
           color: "#334155",
-
           lineHeight: 1.4,
-
-          mb: 1.25,
+          mb: 0.35,
         }}
       >
-        {displayName}
+        {platformName}
       </Typography>
 
-      {/* ======================================================
-          ACTION
-      ====================================================== */}
+      {platformDescription && (
+        <Typography
+          component="p"
+          sx={{
+            fontSize: 12,
+            color: "#94A3B8",
+            lineHeight: 1.4,
+            mb: 1.25,
+          }}
+        >
+          {platformDescription}
+        </Typography>
+      )}
 
       <Button
         type="button"
-        variant={connected ? "text" : "outlined"}
+        variant="outlined"
         size="small"
         onClick={handleConnect}
-        disabled={
-          disabled || connected || loading || typeof onConnect !== "function"
-        }
+        disabled={disabled || loading || typeof onConnect !== "function"}
         aria-label={
-          connected ? `${displayName} connected` : `Connect ${displayName}`
+          comingSoon ? `${platformName} coming soon` : `Connect ${platformName}`
         }
         startIcon={
           loading ? <CircularProgress size={14} color="inherit" /> : null
         }
         sx={{
-          minWidth: 100,
-
+          minWidth: 105,
           height: 34,
-
           px: 1.5,
-
           borderRadius: "10px",
-
           borderColor: "#CBD5E1",
-
-          color: connected ? "#059669" : "#475569",
-
+          color: "#475569",
           textTransform: "none",
-
           fontSize: 13,
-
           fontWeight: 600,
-
           boxShadow: "none",
 
           "&:hover": {
             borderColor: "#2563EB",
-
             color: "#2563EB",
-
             bgcolor: "#F8FBFF",
-
             boxShadow: "none",
           },
 
           "&.Mui-disabled": {
-            borderColor: connected ? "#A7F3D0" : "#E2E8F0",
-
-            color: connected ? "#059669" : "#94A3B8",
-
-            bgcolor: connected ? "transparent" : "transparent",
+            borderColor: "#E2E8F0",
+            color: "#94A3B8",
+            bgcolor: "transparent",
           },
         }}
       >
-        {loading ? "Connecting..." : connected ? "Connected" : "Connect"}
+        {loading ? "Connecting..." : comingSoon ? "Coming soon" : "Connect"}
       </Button>
     </Box>
   );

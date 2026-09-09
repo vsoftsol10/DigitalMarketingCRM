@@ -1,11 +1,16 @@
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+
 from rest_framework.exceptions import ValidationError
 
 from .models import (
     SocialAccount,
     SocialAccountStatus,
 )
+
+# ============================================================
+# CREATE SOCIAL ACCOUNT
+# ============================================================
 
 
 @transaction.atomic
@@ -15,43 +20,67 @@ def create_social_account(
     validated_data,
 ):
     """
-    Create a social account for a specific organization.
+    Create a social account for an organization.
 
-    Only one active account per platform is allowed
-    for each organization.
+    Multiple accounts on the same platform are allowed.
+
+    Example:
+
+        Organization
+            ├── Instagram Account 1
+            ├── Instagram Account 2
+            └── Facebook Page 1
+
+    The same external provider account cannot be connected
+    more than once to the same organization.
+
+    Provider-specific OAuth handling is intentionally kept
+    outside this service.
     """
 
     platform = validated_data["platform"]
 
-    # ---------------------------------------------------------
-    # ACTIVE PLATFORM DUPLICATE CHECK
-    # ---------------------------------------------------------
+    platform_account_id = validated_data["platform_account_id"]
+
+    # =========================================================
+    # DUPLICATE EXACT ACCOUNT CHECK
+    # =========================================================
+    #
+    # Same platform is allowed multiple times.
+    #
+    # Only this combination must be unique:
+    #
+    # organization
+    # + platform
+    # + platform_account_id
+    #
+    # =========================================================
 
     existing_account = SocialAccount.objects.filter(
         organization=organization,
         platform=platform,
+        platform_account_id=platform_account_id,
         is_deleted=False,
     ).first()
 
     if existing_account:
         raise ValidationError(
             {
-                "platform": (
-                    f"{platform.capitalize()} is already "
-                    "connected to this organization."
+                "platform_account_id": (
+                    "This social account is already " "connected to this organization."
                 )
             }
         )
 
-    # ---------------------------------------------------------
-    # CREATE
-    # ---------------------------------------------------------
+    # =========================================================
+    # CREATE ACCOUNT
+    # =========================================================
 
     try:
         social_account = SocialAccount.objects.create(
             organization=organization,
             platform=platform,
-            platform_account_id=validated_data["platform_account_id"],
+            platform_account_id=platform_account_id,
             account_name=validated_data.get(
                 "account_name",
                 "",
@@ -70,18 +99,25 @@ def create_social_account(
         )
 
     except IntegrityError:
-        # Handles concurrent requests where another request
-        # connected the same platform at the same time.
+        # -----------------------------------------------------
+        # Handles concurrent requests attempting to create the
+        # same external account.
+        # -----------------------------------------------------
+
         raise ValidationError(
             {
-                "platform": (
-                    f"{platform.capitalize()} is already "
-                    "connected to this organization."
+                "platform_account_id": (
+                    "This social account is already " "connected to this organization."
                 )
             }
         )
 
     return social_account
+
+
+# ============================================================
+# UPDATE SOCIAL ACCOUNT
+# ============================================================
 
 
 @transaction.atomic
@@ -91,11 +127,11 @@ def update_social_account(
     validated_data,
 ):
     """
-    Update non-sensitive social account metadata.
+    Update non-sensitive display metadata.
 
-    OAuth tokens, connection status and validity are
-    controlled by the integration layer and should not
-    be modified through normal CRUD updates.
+    OAuth credentials, provider identity, connection state,
+    validity and synchronization fields are not editable through
+    the normal social-account CRUD API.
     """
 
     allowed_fields = {
@@ -112,9 +148,21 @@ def update_social_account(
                 value,
             )
 
-    social_account.save()
+    social_account.save(
+        update_fields=[
+            "account_name",
+            "username",
+            "profile_image",
+            "updated_at",
+        ]
+    )
 
     return social_account
+
+
+# ============================================================
+# MARK ACCOUNT AS CONNECTED
+# ============================================================
 
 
 @transaction.atomic
@@ -123,12 +171,16 @@ def mark_social_account_connected(
     social_account,
 ):
     """
-    Mark an account as successfully connected.
+    Mark a social account as successfully connected.
+
+    This will be used by the integration layer after a provider
+    authorization/account sync succeeds.
     """
 
     social_account.status = SocialAccountStatus.CONNECTED
 
     social_account.is_valid = True
+
     social_account.last_synced_at = timezone.now()
 
     social_account.save(
@@ -143,29 +195,9 @@ def mark_social_account_connected(
     return social_account
 
 
-@transaction.atomic
-def mark_social_account_expired(
-    *,
-    social_account,
-):
-    """
-    Mark an account whose provider token/session
-    is no longer valid.
-    """
-
-    social_account.status = SocialAccountStatus.EXPIRED
-
-    social_account.is_valid = False
-
-    social_account.save(
-        update_fields=[
-            "status",
-            "is_valid",
-            "updated_at",
-        ]
-    )
-
-    return social_account
+# ============================================================
+# MARK ACCOUNT AS DISCONNECTED
+# ============================================================
 
 
 @transaction.atomic
@@ -174,11 +206,10 @@ def disconnect_social_account(
     social_account,
 ):
     """
-    Disconnect a social account without deleting its
-    historical record.
+    Disconnect a social account without deleting its historical
+    record.
 
-    This is preferable to hard deletion because the CRM
-    may need the connection history later.
+    Historical references can therefore remain intact.
     """
 
     social_account.status = SocialAccountStatus.DISCONNECTED
@@ -196,6 +227,103 @@ def disconnect_social_account(
     return social_account
 
 
+# ============================================================
+# MARK ACCOUNT AS EXPIRED
+# ============================================================
+
+
+@transaction.atomic
+def mark_social_account_expired(
+    *,
+    social_account,
+):
+    """
+    Mark a social account as expired when the provider
+    authorization/token is no longer usable.
+    """
+
+    social_account.status = SocialAccountStatus.EXPIRED
+
+    social_account.is_valid = False
+
+    social_account.save(
+        update_fields=[
+            "status",
+            "is_valid",
+            "updated_at",
+        ]
+    )
+
+    return social_account
+
+
+# ============================================================
+# MARK ACCOUNT AS ERROR
+# ============================================================
+
+
+@transaction.atomic
+def mark_social_account_error(
+    *,
+    social_account,
+):
+    """
+    Mark a social account as being in an integration error state.
+
+    This is useful when provider synchronization or publishing
+    fails in a way that makes the account temporarily unusable.
+    """
+
+    social_account.status = SocialAccountStatus.ERROR
+
+    social_account.is_valid = False
+
+    social_account.save(
+        update_fields=[
+            "status",
+            "is_valid",
+            "updated_at",
+        ]
+    )
+
+    return social_account
+
+
+# ============================================================
+# REFRESH SOCIAL ACCOUNT SYNC STATE
+# ============================================================
+
+
+@transaction.atomic
+def mark_social_account_synced(
+    *,
+    social_account,
+):
+    """
+    Update the last successful synchronization timestamp.
+
+    Provider-specific synchronization logic should happen in the
+    integration layer; this function only updates the persisted
+    account state.
+    """
+
+    social_account.last_synced_at = timezone.now()
+
+    social_account.save(
+        update_fields=[
+            "last_synced_at",
+            "updated_at",
+        ]
+    )
+
+    return social_account
+
+
+# ============================================================
+# SOFT DELETE SOCIAL ACCOUNT
+# ============================================================
+
+
 @transaction.atomic
 def delete_social_account(
     *,
@@ -203,6 +331,9 @@ def delete_social_account(
 ):
     """
     Soft-delete a social account.
+
+    Historical records remain in the database and can still be
+    referenced by historical reporting/audit workflows.
     """
 
     social_account.soft_delete()

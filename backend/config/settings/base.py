@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "cloudinary",
     "cloudinary_storage",
+    "django_extensions",
     # Local Apps
     "apps.common",
     "apps.accounts",
@@ -42,7 +43,8 @@ INSTALLED_APPS = [
     "apps.ai",
     "apps.notifications",
     "apps.plans",
-    "apps.integrations.meta",
+    # "apps.integrations.meta",
+    "apps.integrations.meta.apps.MetaIntegrationConfig",
 ]
 
 CLOUDINARY_STORAGE = {
@@ -214,16 +216,143 @@ CELERY_BEAT_SCHEDULE = {
         "task": ("apps.organizations.tasks." "activate_scheduled_subscriptions_task"),
         "schedule": 60.0,
     },
+    "send-plan-expiry-reminders": {
+        "task": ("apps.organizations.tasks." "send_plan_expiry_reminders_task"),
+        "schedule": 3600.0,
+    },
+    "expire-due-subscriptions": {
+        "task": ("apps.organizations.tasks." "expire_due_subscriptions_task"),
+        "schedule": 3600.0,
+    },
 }
 
+
+# ============================================================
+# DJANGO CACHE
+# ============================================================
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": config(
+            "DJANGO_CACHE_REDIS_URL",
+        ),
+        "OPTIONS": {
+            "db": 2,
+        },
+    },
+}
 # ============================================================
 # META
 # ============================================================
 
-META_APP_ID = config("META_APP_ID")
+META_APP_ID = config(
+    "META_APP_ID",
+)
 
-META_APP_SECRET = config("META_APP_SECRET")
+META_APP_SECRET = config(
+    "META_APP_SECRET",
+)
+
+META_GRAPH_API_VERSION = config(
+    "META_GRAPH_API_VERSION",
+    default="v26.0",
+)
 
 META_OAUTH_REDIRECT_URI = config(
     "META_OAUTH_REDIRECT_URI",
+    default="",
+)
+
+# Facebook Login for Business configuration.
+#
+# Current Meta configuration:
+#   - General login variation
+#   - System-user access token
+#   - Never expiration
+#   - Pages asset
+#   - Instagram accounts asset
+#   - Business Portfolio based authorization
+#
+# Keep this configuration ID aligned with the Meta Developer
+# Dashboard configuration.
+META_BUSINESS_LOGIN_CONFIG_ID = config(
+    "META_BUSINESS_LOGIN_CONFIG_ID",
+    default="",
+)
+
+# Fernet key used to encrypt Meta access tokens before
+# persisting them in the database.
+META_CREDENTIAL_ENCRYPTION_KEY = config(
+    "META_CREDENTIAL_ENCRYPTION_KEY",
+)
+
+# HTTP timeout for Meta Graph API requests.
+META_HTTP_TIMEOUT_SECONDS = config(
+    "META_HTTP_TIMEOUT_SECONDS",
+    default=30,
+    cast=int,
+)
+
+FRONTEND_URL = config(
+    "FRONTEND_URL",
+    default="http://localhost:5173",
+)
+# ============================================================
+# GROQ AI
+# ============================================================
+
+GROQ_API_KEY = config("GROQ_API_KEY")
+GROQ_MODEL = config("GROQ_MODEL")
+
+
+# ============================================================
+# BREVO
+# ============================================================
+
+BREVO_API_KEY = config(
+    "BREVO_API_KEY",
+)
+
+BREVO_SENDER_EMAIL = config(
+    "BREVO_SENDER_EMAIL",
+)
+
+BREVO_SENDER_NAME = config(
+    "BREVO_SENDER_NAME",
+    default="Digital Marketing Platform",
+)
+
+# ------------------------------------------------------------
+# Transactional Email Templates
+# ------------------------------------------------------------
+
+BREVO_TEMPLATE_WELCOME = config(
+    "BREVO_TEMPLATE_WELCOME",
+    cast=int,
+)
+
+BREVO_TEMPLATE_EXPIRY_REMINDER = config(
+    "BREVO_TEMPLATE_EXPIRY_REMINDER",
+    cast=int,
+)
+
+BREVO_TEMPLATE_EXPIRED = config(
+    "BREVO_TEMPLATE_EXPIRED",
+    cast=int,
+)
+
+BREVO_TEMPLATE_RENEWED = config(
+    "BREVO_TEMPLATE_RENEWED",
+    cast=int,
+)
+
+BREVO_TEMPLATE_ACTIVATED = config(
+    "BREVO_TEMPLATE_ACTIVATED",
+    cast=int,
+)
+
+BREVO_TEMPLATE_CANCELLED = config(
+    "BREVO_TEMPLATE_CANCELLED",
+    cast=int,
 )

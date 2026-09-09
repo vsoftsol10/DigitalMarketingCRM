@@ -1,9 +1,5 @@
-import { Avatar, Box, Divider, Stack, Typography } from "@mui/material";
-import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
-import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
-import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import BookmarkBorderRoundedIcon from "@mui/icons-material/BookmarkBorderRounded";
-import { TYPOGRAPHY } from "../../../../theme/typography";
+import { Box, Divider } from "@mui/material";
+
 import PreviewMedia from "./PreviewMedia";
 import PreviewHeader from "./PreviewHeader";
 import PreviewActions from "./PreviewActions";
@@ -11,14 +7,17 @@ import PreviewCaption from "./PreviewCaption";
 
 export default function PreviewPostCard({
   organization,
-  caption,
-  media,
   platform,
+  accounts = [],
+  contentType = "",
+  caption = "",
+  media = [],
 }) {
   return (
     <Box
       sx={{
         maxWidth: 420,
+
         mx: "auto",
 
         border: "1px solid #E2E8F0",
@@ -30,21 +29,37 @@ export default function PreviewPostCard({
         overflow: "hidden",
       }}
     >
-      {/* Header */}
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
-      <PreviewHeader organization={organization} platform={platform} />
+      <PreviewHeader
+        organization={organization}
+        platform={platform}
+        accounts={accounts}
+      />
 
       <Divider />
 
-      {/* Media */}
+      {/* =====================================================
+          MEDIA
+      ===================================================== */}
 
-      <PreviewMedia media={media} />
+      <PreviewMedia
+        media={Array.isArray(media) ? media : []}
+        platform={platform?.id || ""}
+        contentType={contentType}
+      />
 
-      {/* Actions */}
+      {/* =====================================================
+          ACTIONS
+      ===================================================== */}
 
       <PreviewActions />
 
-      {/* Caption */}
+      {/* =====================================================
+          CAPTION
+      ===================================================== */}
 
       <PreviewCaption caption={caption} />
     </Box>

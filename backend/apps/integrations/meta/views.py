@@ -1,55 +1,128 @@
+import logging
 from urllib.parse import urlencode
 
 from django.conf import settings
-from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import redirect
+from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.exceptions import ResourceNotFoundException
-from apps.organizations.selectors import get_organization_by_id
+from apps.organizations.models import Organization
 
-from .constants import META_OAUTH_AUTHORIZE_URL
-from .oauth import create_oauth_state
-
-from django.core import signing
-
-from rest_framework.permissions import AllowAny
-from rest_framework import status
-
-from apps.accounts.models import User
-
-from .client import MetaAPIClient
-from .constants import META_OAUTH_STATE_MAX_AGE_SECONDS
+from .client import MetaAPIError
+from .constants import (
+    META_OAUTH_AUTHORIZE_URL,
+    META_OAUTH_STATE_MAX_AGE_SECONDS,
+)
 from .exceptions import (
-    MetaIntegrationError,
+    MetaOAuthConfigurationError,
     MetaOAuthStateError,
 )
-from .oauth import validate_oauth_state
+from .oauth import (
+    create_oauth_state,
+    validate_oauth_state,
+)
+from .services import MetaOAuthService
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# FRONTEND REDIRECT
+# ============================================================
+
+
+def _frontend_redirect(
+    path: str,
+    params=None,
+):
+    base_url = settings.FRONTEND_URL.rstrip("/")
+
+    url = f"{base_url}/" f"{path.lstrip('/')}"
+
+    if params:
+        url = f"{url}?" f"{urlencode(params)}"
+
+    return redirect(url)
+
+
+# ============================================================
+# OAUTH START
+# ============================================================
 
 
 class MetaOAuthStartAPIView(APIView):
     """
-    Start Meta OAuth flow for a selected organization.
+    Start Meta Facebook Login for Business OAuth.
+
+    The organization is supplied by the frontend, but the
+    organization ID is signed into OAuth state so the callback
+    cannot safely substitute another organization.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
-    def get(self, request):
-        organization_id = request.query_params.get("organization_id")
+    def get(
+        self,
+        request,
+    ):
+        organization_id = (
+            request.query_params.get(
+                "organization_id",
+            )
+            or ""
+        ).strip()
 
         if not organization_id:
             return Response(
-                {"message": "Organization ID is required."},
-                status=400,
+                {
+                    "success": False,
+                    "message": ("organization_id is required."),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        organization = get_organization_by_id(organization_id)
+        organization = Organization.objects.filter(
+            organization_id=organization_id,
+            is_deleted=False,
+        ).first()
 
         if not organization:
-            raise ResourceNotFoundException("Organization not found.")
+            return Response(
+                {
+                    "success": False,
+                    "message": "Organization not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not settings.META_APP_ID:
+            raise MetaOAuthConfigurationError(
+                "Meta App ID is not configured.",
+            )
+
+        if not settings.META_APP_SECRET:
+            raise MetaOAuthConfigurationError(
+                "Meta App Secret is not configured.",
+            )
+
+        if not settings.META_BUSINESS_LOGIN_CONFIG_ID:
+            raise MetaOAuthConfigurationError(
+                "Meta Business Login configuration ID " "is not configured.",
+            )
+
+        redirect_uri = (settings.META_OAUTH_REDIRECT_URI or "").strip()
+
+        if not redirect_uri:
+            raise MetaOAuthConfigurationError(
+                "Meta OAuth redirect URI is not configured.",
+            )
 
         # ----------------------------------------------------
-        # Create secure OAuth state
+        # SIGNED STATE
         # ----------------------------------------------------
 
         state = create_oauth_state(
@@ -58,83 +131,69 @@ class MetaOAuthStartAPIView(APIView):
         )
 
         # ----------------------------------------------------
-        # OAuth parameters
+        # META AUTHORIZATION URL
         # ----------------------------------------------------
 
         params = {
             "client_id": settings.META_APP_ID,
-            "redirect_uri": settings.META_OAUTH_REDIRECT_URI,
+            "redirect_uri": redirect_uri,
             "state": state,
             "response_type": "code",
+            "config_id": (settings.META_BUSINESS_LOGIN_CONFIG_ID),
         }
 
         authorization_url = f"{META_OAUTH_AUTHORIZE_URL}" f"?{urlencode(params)}"
 
         return Response(
             {
+                "success": True,
                 "authorization_url": authorization_url,
-            }
+            },
+            status=status.HTTP_200_OK,
         )
+
+
+# ============================================================
+# OAUTH CALLBACK
+# ============================================================
 
 
 class MetaOAuthCallbackAPIView(APIView):
     """
-    Handle the callback returned by Meta OAuth.
+    Meta OAuth callback.
 
-    This endpoint is intentionally public because Meta redirects
-    the user's browser here. The signed state is used to restore
-    and validate the authenticated OAuth context.
+    This endpoint is intentionally AllowAny because the browser
+    returns from Meta without the application's JWT.
+
+    The signed OAuth state authenticates the flow context.
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [
+        AllowAny,
+    ]
 
     def get(self, request):
-        # ====================================================
-        # META ERROR
-        # ====================================================
+        # ========================================================
+        # CODE + STATE
+        # ========================================================
 
-        error = request.query_params.get("error")
+        code = (request.query_params.get("code") or "").strip()
 
-        if error:
-            error_description = request.query_params.get(
-                "error_description",
-                "Meta authorization was cancelled or denied.",
-            )
-
-            return Response(
-                {
-                    "message": error_description,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # ====================================================
-        # AUTHORIZATION CODE
-        # ====================================================
-
-        code = request.query_params.get("code")
-
-        if not code:
-            return Response(
-                {
-                    "message": ("Authorization code was not provided."),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # ====================================================
-        # STATE
-        # ====================================================
-
-        state = request.query_params.get("state")
+        state = (request.query_params.get("state") or "").strip()
 
         if not state:
-            return Response(
+            return _frontend_redirect(
+                "/organizations",
                 {
-                    "message": "OAuth state is required.",
+                    "social_connect": "error",
+                    "platform": "meta",
+                    "reason": "Invalid Meta OAuth callback.",
                 },
-                status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # ========================================================
+        # VALIDATE SIGNED STATE
+        # ========================================================
 
         try:
             state_data = validate_oauth_state(
@@ -142,26 +201,92 @@ class MetaOAuthCallbackAPIView(APIView):
                 max_age=META_OAUTH_STATE_MAX_AGE_SECONDS,
             )
 
-        except (
-            signing.BadSignature,
-            signing.SignatureExpired,
-        ) as exc:
-            raise MetaOAuthStateError("Invalid or expired OAuth state.") from exc
+        except MetaOAuthStateError as exc:
+            logger.warning(
+                "Invalid Meta OAuth state.",
+                exc_info=True,
+            )
 
-        # ====================================================
-        # STATE DATA
-        # ====================================================
+            return _frontend_redirect(
+                "/organizations",
+                {
+                    "social_connect": "error",
+                    "platform": "meta",
+                    "reason": str(exc),
+                },
+            )
 
-        organization_id = state_data.get("organization_id")
+        organization_id = str(
+            state_data.get("organization_id") or "",
+        ).strip()
 
         user_id = state_data.get("user_id")
 
-        if not organization_id or not user_id:
-            raise MetaOAuthStateError("OAuth state is incomplete.")
+        # ========================================================
+        # ORGANIZATION
+        # ========================================================
 
-        # ====================================================
-        # USER VALIDATION
-        # ====================================================
+        organization = Organization.objects.filter(
+            organization_id=organization_id,
+            is_deleted=False,
+        ).first()
+
+        if not organization:
+            return _frontend_redirect(
+                "/organizations",
+                {
+                    "social_connect": "error",
+                    "platform": "meta",
+                    "reason": "Organization not found.",
+                },
+            )
+
+        overview_path = f"/organizations/{organization_id}/overview"
+
+        # ========================================================
+        # PROVIDER ERROR
+        # ========================================================
+
+        error = (request.query_params.get("error") or "").strip()
+
+        if error:
+            error_description = (
+                request.query_params.get(
+                    "error_description",
+                )
+                or "Meta authorization was cancelled."
+            )
+
+            return _frontend_redirect(
+                overview_path,
+                {
+                    "social_connect": "error",
+                    "platform": "meta",
+                    "reason": error_description,
+                },
+            )
+
+        # ========================================================
+        # AUTHORIZATION CODE
+        # ========================================================
+
+        if not code:
+            return _frontend_redirect(
+                overview_path,
+                {
+                    "social_connect": "error",
+                    "platform": "meta",
+                    "reason": "Meta authorization code is missing.",
+                },
+            )
+
+        # ========================================================
+        # USER
+        # ========================================================
+
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
 
         user = User.objects.filter(
             id=user_id,
@@ -170,60 +295,78 @@ class MetaOAuthCallbackAPIView(APIView):
         ).first()
 
         if not user:
-            return Response(
+            return _frontend_redirect(
+                overview_path,
                 {
-                    "message": (
-                        "The user who started the OAuth " "flow is no longer available."
-                    ),
+                    "social_connect": "error",
+                    "platform": "meta",
+                    "reason": "User is no longer available.",
                 },
-                status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # ====================================================
-        # ORGANIZATION VALIDATION
-        # ====================================================
-
-        organization = get_organization_by_id(organization_id)
-
-        if not organization:
-            return Response(
-                {
-                    "message": "Organization not found.",
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        # ====================================================
-        # CODE → ACCESS TOKEN
-        # ====================================================
-
-        client = MetaAPIClient()
+        # ========================================================
+        # COMPLETE OAUTH
+        # ========================================================
 
         try:
-            token_data = client.exchange_code_for_access_token(
-                app_id=settings.META_APP_ID,
-                app_secret=settings.META_APP_SECRET,
-                redirect_uri=(settings.META_OAUTH_REDIRECT_URI),
+            result = MetaOAuthService().prepare_oauth(
                 code=code,
+                organization=organization,
+                user=user,
             )
 
-        except MetaIntegrationError as exc:
-            return Response(
+            accounts = result.get("accounts") or []
+
+            facebook_count = sum(
+                1
+                for account in accounts
+                if getattr(account, "platform", None) == "facebook"
+            )
+
+            instagram_count = sum(
+                1
+                for account in accounts
+                if getattr(account, "platform", None) == "instagram"
+            )
+
+            return _frontend_redirect(
+                overview_path,
                 {
-                    "message": str(exc),
+                    "social_connect": "success",
+                    "platform": "meta",
+                    "accounts_connected": len(accounts),
+                    "facebook_connected": facebook_count,
+                    "instagram_connected": instagram_count,
+                    "organization_id": organization_id,
                 },
-                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ====================================================
-        # TEMPORARY SUCCESS RESPONSE
-        # ====================================================
+        except MetaAPIError as exc:
+            logger.exception(
+                "Meta OAuth API failure for organization=%s",
+                organization_id,
+            )
 
-        return Response(
-            {
-                "message": ("Meta OAuth authorization succeeded."),
-                "organization_id": (organization.organization_id),
-                "token_received": bool(token_data.get("access_token")),
-            },
-            status=status.HTTP_200_OK,
-        )
+            return _frontend_redirect(
+                overview_path,
+                {
+                    "social_connect": "error",
+                    "platform": "meta",
+                    "reason": str(exc),
+                },
+            )
+
+        except Exception:
+            logger.exception(
+                "Unexpected Meta OAuth failure for organization=%s",
+                organization_id,
+            )
+
+            return _frontend_redirect(
+                overview_path,
+                {
+                    "social_connect": "error",
+                    "platform": "meta",
+                    "reason": "Unable to connect Meta accounts.",
+                },
+            )

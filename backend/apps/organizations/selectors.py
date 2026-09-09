@@ -1,4 +1,11 @@
-from django.db.models import Count, Exists, OuterRef, Prefetch, Q
+from django.db.models import (
+    Count,
+    Exists,
+    OuterRef,
+    Prefetch,
+    Q,
+)
+from django.utils import timezone
 
 from .models import (
     Organization,
@@ -15,15 +22,24 @@ def organization_queryset():
     The list/detail serializers use prefetched data to avoid
     N+1 database queries.
 
-    Only data required by the organization representation is
-    prefetched. Historical subscription records are not loaded
-    for the organization list page.
+    Prefetched subscription data is intentionally limited to:
+        - current subscription
+        - upcoming scheduled subscription
+        - most recent relevant historical subscription
     """
+
+    # =========================================================
+    # CURRENT SUBSCRIPTION
+    # =========================================================
 
     current_subscription_queryset = OrganizationSubscription.objects.filter(
         is_deleted=False,
         is_current=True,
     ).select_related("plan")
+
+    # =========================================================
+    # UPCOMING SCHEDULED SUBSCRIPTION
+    # =========================================================
 
     upcoming_subscription_queryset = (
         OrganizationSubscription.objects.filter(
@@ -38,12 +54,59 @@ def organization_queryset():
         )
     )
 
+    # =========================================================
+    # LAST RELEVANT HISTORICAL SUBSCRIPTION
+    # =========================================================
+    #
+    # Expired subscriptions:
+    #   Only records whose expiry date has actually passed
+    #   are considered.
+    #
+    # Cancelled subscriptions:
+    #   Cancellation date is not represented separately in the
+    #   current schema, so cancelled records remain eligible.
+    #
+    # This prevents a future-dated historical/test record from
+    # being incorrectly selected as the "last expired" plan.
+    # =========================================================
+
+    today = timezone.localdate()
+
+    last_subscription_queryset = (
+        OrganizationSubscription.objects.filter(
+            is_deleted=False,
+            is_current=False,
+        )
+        .filter(
+            Q(
+                status=SubscriptionStatus.EXPIRED,
+                expiry_date__lt=today,
+            )
+            | Q(
+                status=SubscriptionStatus.CANCELLED,
+            )
+        )
+        .select_related("plan")
+        .order_by(
+            "-expiry_date",
+            "-created_at",
+        )
+    )
+
+    # =========================================================
+    # CONTACTS
+    # =========================================================
+
     contact_queryset = OrganizationContact.objects.filter(
         is_deleted=False,
     ).order_by(
         "-is_primary",
         "name",
     )
+
+    # =========================================================
+    # SOCIAL ACCOUNTS
+    # =========================================================
 
     social_account_queryset = (
         Organization.social_accounts.rel.related_model.objects.filter(
@@ -54,28 +117,52 @@ def organization_queryset():
         )
     )
 
+    # =========================================================
+    # ORGANIZATION QUERYSET
+    # =========================================================
+
     return Organization.objects.filter(
         is_deleted=False,
     ).prefetch_related(
+        # -------------------------------------------------
+        # CONTACTS
+        # -------------------------------------------------
         Prefetch(
             "contacts",
             queryset=contact_queryset,
             to_attr="prefetched_contacts",
         ),
+        # -------------------------------------------------
+        # SOCIAL ACCOUNTS
+        # -------------------------------------------------
         Prefetch(
             "social_accounts",
             queryset=social_account_queryset,
             to_attr="prefetched_social_accounts",
         ),
+        # -------------------------------------------------
+        # CURRENT SUBSCRIPTION
+        # -------------------------------------------------
         Prefetch(
             "subscriptions",
             queryset=current_subscription_queryset,
             to_attr="prefetched_current_subscriptions",
         ),
+        # -------------------------------------------------
+        # UPCOMING SUBSCRIPTION
+        # -------------------------------------------------
         Prefetch(
             "subscriptions",
             queryset=upcoming_subscription_queryset,
             to_attr="prefetched_upcoming_subscriptions",
+        ),
+        # -------------------------------------------------
+        # LAST HISTORICAL SUBSCRIPTION
+        # -------------------------------------------------
+        Prefetch(
+            "subscriptions",
+            queryset=last_subscription_queryset,
+            to_attr="prefetched_last_subscriptions",
         ),
     )
 
@@ -195,6 +282,10 @@ def get_organization_summary():
         is_deleted=False,
     )
 
+    # =========================================================
+    # ORGANIZATION COUNTS
+    # =========================================================
+
     total_clients = queryset.count()
 
     active_organizations = queryset.filter(
@@ -204,6 +295,10 @@ def get_organization_summary():
     inactive_organizations = queryset.filter(
         status="INACTIVE",
     ).count()
+
+    # =========================================================
+    # CONNECTED SOCIAL ACCOUNTS
+    # =========================================================
 
     connected_accounts = (
         queryset.filter(
@@ -219,6 +314,10 @@ def get_organization_summary():
         ]
         or 0
     )
+
+    # =========================================================
+    # ACTIVE SUBSCRIPTIONS
+    # =========================================================
 
     active_subscriptions = (
         queryset.filter(

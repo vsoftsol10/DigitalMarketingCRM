@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import socialAccountService from "../../services/social/socialAccount.service";
-import { mapSocialAccounts } from "../../services/social/socialAccount.mapper";
+
 export default function useSocialAccounts(
   organizationId,
   { enabled = true } = {},
@@ -33,7 +33,9 @@ export default function useSocialAccounts(
         throw new Error(response?.message || "Unable to load social accounts.");
       }
 
-      setAccounts(mapSocialAccounts(response.data));
+      const accountsData = Array.isArray(response.data) ? response.data : [];
+
+      setAccounts(accountsData);
     } catch (error) {
       console.error("Failed to load social accounts:", error);
 

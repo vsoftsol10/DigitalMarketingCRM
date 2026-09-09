@@ -2,9 +2,7 @@ import { Box, Typography } from "@mui/material";
 
 import { TYPOGRAPHY } from "../../../../theme/typography";
 
-export default function PreviewCaption({
-  caption,
-}) {
+export default function PreviewCaption({ caption }) {
   return (
     <Box
       sx={{
@@ -20,8 +18,7 @@ export default function PreviewCaption({
           wordBreak: "break-word",
         }}
       >
-        {caption ||
-          "Your caption will appear here..."}
+        {caption || "Your caption will appear here..."}
       </Typography>
     </Box>
   );

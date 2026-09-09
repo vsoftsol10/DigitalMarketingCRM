@@ -28,6 +28,11 @@ class SubscriptionStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
 
 
+class SubscriptionScheduleType(models.TextChoices):
+    RENEWAL = "renewal", "Renewal"
+    PLAN_CHANGE = "plan_change", "Plan Change"
+
+
 class Organization(BaseModel):
     """
     Core organization/client entity.
@@ -237,6 +242,15 @@ class OrganizationSubscription(BaseModel):
         max_length=20,
         choices=SubscriptionStatus.choices,
         default=SubscriptionStatus.ACTIVE,
+        db_index=True,
+    )
+
+    schedule_type = models.CharField(
+        max_length=20,
+        choices=SubscriptionScheduleType.choices,
+        null=True,
+        blank=True,
+        default=None,
         db_index=True,
     )
 

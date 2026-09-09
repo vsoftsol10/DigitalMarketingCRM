@@ -35,3 +35,6 @@ backend/celerybeat-schedule.*
 frontend/node_modules/
 frontend/dist/
 frontend/build/
+
+*.crt
+*.key

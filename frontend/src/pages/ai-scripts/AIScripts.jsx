@@ -1,3 +1,9 @@
-export default function AIScripts() {
-  return <div>AI Scripts</div>;
+import React from 'react'
+
+function AIScripts() {
+  return (
+    <div>AIScripts</div>
+  )
 }
+
+export default AIScripts

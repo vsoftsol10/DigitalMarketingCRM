@@ -1,18 +1,32 @@
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.utils import timezone
-
+from datetime import timedelta
 from .models import (
     BillingCycle,
     Organization,
     OrganizationContact,
     OrganizationSubscription,
     SubscriptionStatus,
+    SubscriptionScheduleType,
 )
 
 from apps.plans.models import Plan
 
 from .utils import generate_unique_slug
+from apps.notifications.models import EmailEventType
+from apps.notifications.services import queue_email_event
+from apps.notifications.models import (
+    EmailEventType,
+)
+
+from apps.notifications.services import (
+    queue_email_event,
+)
+
+from apps.notifications.recipients import (
+    get_organization_billing_recipient,
+)
 
 
 def generate_organization_id():
@@ -81,6 +95,155 @@ def build_location_data(location):
         "state": parts[1],
         "country": parts[2],
     }
+
+
+# @transaction.atomic
+# def create_organization(
+#     *,
+#     validated_data,
+#     created_by=None,
+# ):
+#     """
+#     Create Organization + primary contact + initial subscription
+#     in a single transaction.
+
+#     Subscription rules:
+#         - Plan is selected from active plans only by the serializer.
+#         - Billing cycle is monthly or yearly.
+#         - Start date is controlled by the server.
+#         - Monthly expiry = start date + 1 month.
+#         - Yearly expiry = start date + 1 year.
+#         - New subscriptions always start as ACTIVE.
+#         - New subscriptions are marked as current.
+#     """
+
+#     data = dict(validated_data)
+
+#     # ---------------------------------------------------------
+#     # Extract frontend-composite fields
+#     # ---------------------------------------------------------
+
+#     contact_name = data.pop(
+#         "contact_name",
+#         "",
+#     )
+
+#     contact_email = data.pop(
+#         "contact_email",
+#         "",
+#     )
+
+#     contact_phone = data.pop(
+#         "contact_phone",
+#         "",
+#     )
+
+#     subscription_plan = data.pop(
+#         "subscription_plan",
+#     )
+
+#     billing_cycle = data.pop(
+#         "billing_cycle",
+#     )
+
+#     location = data.pop(
+#         "location",
+#         "",
+#     )
+
+#     # ---------------------------------------------------------
+#     # Server-controlled subscription fields
+#     # ---------------------------------------------------------
+
+#     # Do not accept subscription status/date values
+#     # from the frontend.
+#     data.pop(
+#         "subscription_status",
+#         None,
+#     )
+
+#     data.pop(
+#         "subscription_start",
+#         None,
+#     )
+
+#     data.pop(
+#         "subscription_expiry",
+#         None,
+#     )
+
+#     # Social accounts are managed through the
+#     # dedicated social account flow.
+#     data.pop(
+#         "social_accounts",
+#         None,
+#     )
+
+#     # ---------------------------------------------------------
+#     # Location mapping
+#     # ---------------------------------------------------------
+
+#     location_data = build_location_data(location)
+
+#     data.update(location_data)
+
+#     # ---------------------------------------------------------
+#     # Organization
+#     # ---------------------------------------------------------
+
+#     organization = Organization.objects.create(
+#         organization_id=generate_organization_id(),
+#         slug=generate_unique_slug(data["name"]),
+#         created_by=created_by,
+#         **data,
+#     )
+
+#     # ---------------------------------------------------------
+#     # Primary Contact
+#     # ---------------------------------------------------------
+
+#     if contact_name or contact_email:
+#         OrganizationContact.objects.create(
+#             organization=organization,
+#             name=contact_name,
+#             email=contact_email,
+#             phone=contact_phone,
+#             is_primary=True,
+#         )
+
+#     # ---------------------------------------------------------
+#     # Subscription Dates
+#     # ---------------------------------------------------------
+
+#     subscription_start = timezone.localdate()
+
+#     if billing_cycle == BillingCycle.MONTHLY:
+#         subscription_expiry = subscription_start + relativedelta(months=1)
+
+#     elif billing_cycle == BillingCycle.YEARLY:
+#         subscription_expiry = subscription_start + relativedelta(years=1)
+
+#     else:
+#         # Defensive check.
+#         # Serializer ChoiceField should normally prevent this.
+#         raise ValueError("Unsupported billing cycle.")
+
+#     # ---------------------------------------------------------
+#     # Initial Subscription
+#     # ---------------------------------------------------------
+
+#     OrganizationSubscription.objects.create(
+#         organization=organization,
+#         plan=subscription_plan,
+#         billing_cycle=billing_cycle,
+#         status=SubscriptionStatus.ACTIVE,
+#         start_date=subscription_start,
+#         expiry_date=subscription_expiry,
+#         is_current=True,
+#     )
+
+
+#     return organization
 
 
 @transaction.atomic
@@ -218,7 +381,7 @@ def create_organization(
     # Initial Subscription
     # ---------------------------------------------------------
 
-    OrganizationSubscription.objects.create(
+    subscription = OrganizationSubscription.objects.create(
         organization=organization,
         plan=subscription_plan,
         billing_cycle=billing_cycle,
@@ -227,6 +390,15 @@ def create_organization(
         expiry_date=subscription_expiry,
         is_current=True,
     )
+
+    if contact_email:
+        queue_email_event(
+            organization=organization,
+            subscription=subscription,
+            event_type=EmailEventType.ORGANIZATION_PLAN_WELCOME,
+            recipient_email=contact_email,
+            recipient_name=contact_name,
+        )
 
     return organization
 
@@ -430,18 +602,39 @@ def renew_subscription(
     billing_cycle=None,
 ):
     """
-    Renew the organization's current subscription.
+    Renew an organization's subscription.
 
-    Rules:
-    - If the current subscription is still active, the renewal is
-      scheduled to start on the current subscription's expiry date.
-    - If the current subscription has already expired, the renewal
-      starts immediately.
-    - The current subscription remains active until its expiry date.
-    - Only one subscription can be current.
-    - Future renewals are activated by the scheduled-subscription
-      Celery task.
+    Business rules:
+
+    1. Active subscription:
+       - Keep the current subscription active.
+       - Create the same plan as SCHEDULED.
+       - Scheduled start date = current expiry date.
+       - No email is sent immediately.
+       - Renewal email is sent when the scheduled subscription becomes ACTIVE.
+
+    2. Expired subscription within 20 days:
+       - Find the most recent expired subscription.
+       - Renew the same plan.
+       - New subscription becomes ACTIVE immediately.
+       - Send PLAN_RENEWED email immediately.
+
+    3. Expired subscription older than 20 days:
+       - Renewal is not allowed.
+       - User must use Start Subscription.
+
+    4. Cancelled subscriptions:
+       - Cannot be renewed.
+       - User must use Start Subscription.
     """
+
+    today = timezone.localdate()
+
+    renewal_window = timedelta(days=20)
+
+    # =========================================================
+    # FIND CURRENT SUBSCRIPTION
+    # =========================================================
 
     current_subscription = (
         organization.subscriptions.select_for_update()
@@ -453,11 +646,119 @@ def renew_subscription(
         .first()
     )
 
-    if not current_subscription:
-        raise ValueError("No current subscription found.")
+    # =========================================================
+    # CASE 1 — ACTIVE SUBSCRIPTION
+    # =========================================================
+
+    if (
+        current_subscription
+        and current_subscription.status == SubscriptionStatus.ACTIVE
+        and current_subscription.expiry_date >= today
+    ):
+        if billing_cycle is None:
+            billing_cycle = current_subscription.billing_cycle
+
+        if billing_cycle not in {
+            BillingCycle.MONTHLY,
+            BillingCycle.YEARLY,
+        }:
+            raise ValueError("Invalid billing cycle.")
+
+        # -----------------------------------------------------
+        # PREVENT DUPLICATE SCHEDULED RENEWAL
+        # -----------------------------------------------------
+
+        existing_scheduled = (
+            OrganizationSubscription.objects.select_for_update()
+            .filter(
+                organization=organization,
+                status=SubscriptionStatus.SCHEDULED,
+                is_current=False,
+                is_deleted=False,
+            )
+            .first()
+        )
+
+        if existing_scheduled:
+            raise ValueError("A subscription change is already scheduled.")
+
+        # -----------------------------------------------------
+        # SCHEDULE SAME PLAN
+        # -----------------------------------------------------
+
+        start_date = current_subscription.expiry_date
+
+        if billing_cycle == BillingCycle.MONTHLY:
+            expiry_date = start_date + relativedelta(
+                months=1,
+            )
+        else:
+            expiry_date = start_date + relativedelta(
+                years=1,
+            )
+
+        new_subscription = OrganizationSubscription.objects.create(
+            organization=organization,
+            plan=current_subscription.plan,
+            billing_cycle=billing_cycle,
+            status=SubscriptionStatus.SCHEDULED,
+            schedule_type=SubscriptionScheduleType.RENEWAL,
+            start_date=start_date,
+            expiry_date=expiry_date,
+            is_current=False,
+        )
+
+        # No email here.
+        # Email will be sent only when this subscription
+        # actually becomes ACTIVE.
+
+        return new_subscription
+
+    # =========================================================
+    # CASE 2 — EXPIRED SUBSCRIPTION
+    # =========================================================
+
+    expired_subscription = (
+        OrganizationSubscription.objects.select_for_update()
+        .select_related("plan")
+        .filter(
+            organization=organization,
+            is_deleted=False,
+            is_current=False,
+            status=SubscriptionStatus.EXPIRED,
+            expiry_date__lt=today,
+        )
+        .order_by(
+            "-expiry_date",
+            "-created_at",
+        )
+        .first()
+    )
+
+    if not expired_subscription:
+        raise ValueError(
+            "No eligible expired subscription found. "
+            "Please start a new subscription."
+        )
+
+    # =========================================================
+    # 20-DAY RENEWAL WINDOW
+    # =========================================================
+
+    days_since_expiry = today - expired_subscription.expiry_date
+
+    if days_since_expiry > renewal_window:
+        raise ValueError(
+            "The expired subscription can no longer be renewed. "
+            "Please start a new subscription."
+        )
+
+    # =========================================================
+    # BILLING CYCLE
+    # =========================================================
 
     if billing_cycle is None:
-        billing_cycle = current_subscription.billing_cycle
+        billing_cycle = expired_subscription.billing_cycle
 
     if billing_cycle not in {
         BillingCycle.MONTHLY,
@@ -465,74 +766,47 @@ def renew_subscription(
     }:
         raise ValueError("Invalid billing cycle.")
 
-    today = timezone.localdate()
-
     # =========================================================
-    # DETERMINE START DATE AND STATUS
+    # IMMEDIATE RENEWAL
     # =========================================================
 
-    current_is_active = (
-        current_subscription.status == SubscriptionStatus.ACTIVE
-        and current_subscription.expiry_date >= today
-    )
-
-    if current_is_active:
-        # Current subscription continues until its expiry.
-        start_date = current_subscription.expiry_date
-
-        new_status = SubscriptionStatus.SCHEDULED
-        new_is_current = False
-
-    else:
-        # No active subscription period remains.
-        start_date = today
-
-        new_status = SubscriptionStatus.ACTIVE
-        new_is_current = True
-
-    # =========================================================
-    # CALCULATE EXPIRY DATE
-    # =========================================================
+    start_date = today
 
     if billing_cycle == BillingCycle.MONTHLY:
-        expiry_date = start_date + relativedelta(months=1)
-
-    elif billing_cycle == BillingCycle.YEARLY:
-        expiry_date = start_date + relativedelta(years=1)
-
-    else:
-        raise ValueError("Invalid billing cycle.")
-
-    # =========================================================
-    # CLOSE OLD SUBSCRIPTION ONLY IF IT IS ALREADY EXPIRED
-    # =========================================================
-
-    if not current_is_active:
-        current_subscription.is_current = False
-
-        if current_subscription.status == SubscriptionStatus.ACTIVE:
-            current_subscription.status = SubscriptionStatus.EXPIRED
-
-        current_subscription.save(
-            update_fields=[
-                "is_current",
-                "status",
-            ]
+        expiry_date = start_date + relativedelta(
+            months=1,
         )
-
-    # =========================================================
-    # CREATE RENEWAL
-    # =========================================================
+    else:
+        expiry_date = start_date + relativedelta(
+            years=1,
+        )
 
     new_subscription = OrganizationSubscription.objects.create(
         organization=organization,
-        plan=current_subscription.plan,
+        plan=expired_subscription.plan,
         billing_cycle=billing_cycle,
-        status=new_status,
+        status=SubscriptionStatus.ACTIVE,
         start_date=start_date,
         expiry_date=expiry_date,
-        is_current=new_is_current,
+        is_current=True,
     )
+
+    # =========================================================
+    # IMMEDIATE RENEWAL EMAIL
+    # =========================================================
+
+    recipient_email, recipient_name = get_organization_billing_recipient(
+        organization,
+    )
+
+    if recipient_email:
+        queue_email_event(
+            organization=organization,
+            subscription=new_subscription,
+            event_type=EmailEventType.PLAN_RENEWED,
+            recipient_email=recipient_email,
+            recipient_name=recipient_name,
+        )
 
     return new_subscription
 
@@ -549,19 +823,19 @@ def change_subscription_plan(
 
     Rules:
 
-    1. If the current subscription is active and has not expired:
-       - Keep the current subscription active.
-       - Create the requested plan as scheduled.
+    1. Active current subscription:
+       - Keep current subscription active.
+       - Create the selected plan as SCHEDULED.
        - Scheduled plan starts when the current subscription expires.
+       - No email is sent while scheduling.
 
-    2. If the current subscription is expired or does not exist:
-       - Create the requested plan immediately as active.
-       - Start date is today.
+    2. No active/current subscription:
+       - Change Plan is not allowed.
+       - User must use Start Subscription instead.
 
     3. Historical subscriptions are never overwritten.
 
-    4. Concurrent subscription changes are serialized at the
-       organization subscription level.
+    4. Concurrent subscription changes are serialized.
     """
 
     # =========================================================
@@ -602,8 +876,7 @@ def change_subscription_plan(
     )
 
     # =========================================================
-    # CASE 1
-    # CURRENT SUBSCRIPTION IS STILL ACTIVE
+    # ACTIVE SUBSCRIPTION
     # =========================================================
 
     if (
@@ -625,7 +898,7 @@ def change_subscription_plan(
             )
 
         # -----------------------------------------------------
-        # PREVENT DUPLICATE SCHEDULED PLAN CHANGE
+        # PREVENT DUPLICATE SCHEDULED CHANGE
         # -----------------------------------------------------
 
         existing_scheduled = (
@@ -643,7 +916,7 @@ def change_subscription_plan(
             raise ValueError("A plan change is already scheduled.")
 
         # -----------------------------------------------------
-        # CREATE SCHEDULED SUBSCRIPTION
+        # CREATE SCHEDULED PLAN CHANGE
         # -----------------------------------------------------
 
         start_date = current_subscription.expiry_date
@@ -662,54 +935,19 @@ def change_subscription_plan(
             plan=plan,
             billing_cycle=billing_cycle,
             status=SubscriptionStatus.SCHEDULED,
+            schedule_type=(SubscriptionScheduleType.PLAN_CHANGE),
             start_date=start_date,
             expiry_date=expiry_date,
             is_current=False,
         )
 
     # =========================================================
-    # CASE 2
-    # NO CURRENT ACTIVE SUBSCRIPTION
+    # NO ACTIVE CURRENT SUBSCRIPTION
     # =========================================================
 
-    if current_subscription:
-
-        current_subscription.is_current = False
-
-        if current_subscription.status == SubscriptionStatus.ACTIVE:
-            current_subscription.status = SubscriptionStatus.EXPIRED
-
-        current_subscription.save(
-            update_fields=[
-                "is_current",
-                "status",
-                "updated_at",
-            ]
-        )
-
-    # =========================================================
-    # CREATE IMMEDIATE ACTIVE SUBSCRIPTION
-    # =========================================================
-
-    start_date = today
-
-    if billing_cycle == BillingCycle.MONTHLY:
-        expiry_date = start_date + relativedelta(
-            months=1,
-        )
-    else:
-        expiry_date = start_date + relativedelta(
-            years=1,
-        )
-
-    return OrganizationSubscription.objects.create(
-        organization=organization,
-        plan=plan,
-        billing_cycle=billing_cycle,
-        status=SubscriptionStatus.ACTIVE,
-        start_date=start_date,
-        expiry_date=expiry_date,
-        is_current=True,
+    raise ValueError(
+        "Plan change is only available for an active subscription. "
+        "Please start a new subscription instead."
     )
 
 
@@ -768,13 +1006,6 @@ def activate_due_scheduled_subscriptions(
     for scheduled_subscription in scheduled_subscriptions:
 
         organization = scheduled_subscription.organization
-
-        # -----------------------------------------------------
-        # Lock the current subscription for this organization.
-        #
-        # This prevents concurrent Celery workers from changing
-        # the same organization's subscription state at once.
-        # -----------------------------------------------------
 
         current_subscription = (
             OrganizationSubscription.objects.select_for_update()
@@ -843,7 +1074,20 @@ def activate_due_scheduled_subscriptions(
         # Activate scheduled subscription.
         # -----------------------------------------------------
 
+        # scheduled_subscription.status = SubscriptionStatus.ACTIVE
+        # scheduled_subscription.is_current = True
+
+        # scheduled_subscription.save(
+        #     update_fields=[
+        #         "status",
+        #         "is_current",
+        #         "updated_at",
+        #     ]
+        # )
+
+        # activated_count += 1
         scheduled_subscription.status = SubscriptionStatus.ACTIVE
+
         scheduled_subscription.is_current = True
 
         scheduled_subscription.save(
@@ -853,6 +1097,43 @@ def activate_due_scheduled_subscriptions(
                 "updated_at",
             ]
         )
+
+        # =========================================================
+        # SCHEDULED PLAN ACTIVATED
+        # =========================================================
+        #
+        # The subscription was previously scheduled.
+        # No email was sent when it was scheduled.
+        #
+        # Now that it has actually become ACTIVE,
+        # send the renewal/activation email.
+        #
+
+        recipient_email, recipient_name = get_organization_billing_recipient(
+            organization,
+        )
+
+        if recipient_email:
+            if scheduled_subscription.schedule_type == SubscriptionScheduleType.RENEWAL:
+                event_type = EmailEventType.PLAN_RENEWED
+
+            elif (
+                scheduled_subscription.schedule_type
+                == SubscriptionScheduleType.PLAN_CHANGE
+            ):
+                event_type = EmailEventType.PLAN_ACTIVATED
+
+            else:
+                event_type = None
+
+            if event_type:
+                queue_email_event(
+                    organization=organization,
+                    subscription=scheduled_subscription,
+                    event_type=event_type,
+                    recipient_email=recipient_email,
+                    recipient_name=recipient_name,
+                )
 
         activated_count += 1
 
@@ -875,6 +1156,8 @@ def cancel_subscription(
     - Historical records are preserved.
     - Cancelled scheduled subscriptions must never be activated
       by the scheduled-subscription worker.
+    - PLAN_CANCELLED email is queued only after the transaction
+      successfully commits.
     """
 
     # =========================================================
@@ -883,6 +1166,10 @@ def cancel_subscription(
 
     current_subscription = (
         OrganizationSubscription.objects.select_for_update()
+        .select_related(
+            "organization",
+            "plan",
+        )
         .filter(
             organization=organization,
             is_current=True,
@@ -938,6 +1225,28 @@ def cancel_subscription(
         )
     )
 
+    # =========================================================
+    # CANCELLATION EMAIL
+    # =========================================================
+    #
+    # queue_email_event() uses transaction.on_commit(),
+    # so the email task is queued only after the cancellation
+    # transaction commits successfully.
+    # =========================================================
+
+    recipient_email, recipient_name = get_organization_billing_recipient(
+        organization,
+    )
+
+    if recipient_email:
+        queue_email_event(
+            organization=organization,
+            subscription=current_subscription,
+            event_type=EmailEventType.PLAN_CANCELLED,
+            recipient_email=recipient_email,
+            recipient_name=recipient_name,
+        )
+
     return current_subscription
 
 
@@ -990,5 +1299,18 @@ def start_new_subscription(
         expiry_date=expiry_date,
         is_current=True,
     )
+
+    recipient_email, recipient_name = get_organization_billing_recipient(
+        organization,
+    )
+
+    if recipient_email:
+        queue_email_event(
+            organization=organization,
+            subscription=new_subscription,
+            event_type=EmailEventType.PLAN_ACTIVATED,
+            recipient_email=recipient_email,
+            recipient_name=recipient_name,
+        )
 
     return new_subscription

@@ -1,19 +1,19 @@
 // import { useRef } from "react";
+
 // import { useFormContext } from "react-hook-form";
 
 // import {
 //   createMediaObject,
+//   getFileKey,
+//   revokePreviewUrl,
 //   validateFileSize,
 //   validateFileType,
 // } from "../../utils/post/media.utils";
 
-// export default function useMediaUpload({
-//   config,
-// }) {
+// export default function useMediaUpload({ config }) {
 //   const inputRef = useRef(null);
 
-//   const { watch, setValue } =
-//     useFormContext();
+//   const { watch, setValue } = useFormContext();
 
 //   const media = watch("media") || [];
 
@@ -22,42 +22,77 @@
 //   }
 
 //   function appendFiles(files) {
-//     const uploadedMedia = [];
+//     const selectedFiles = Array.from(files || []);
 
-//     Array.from(files).forEach((file) => {
-//       if (
-//         !validateFileType(
+//     if (!selectedFiles.length) {
+//       return;
+//     }
+
+//     const existingKeys = new Set(media.map((item) => getFileKey(item.file)));
+
+//     const newMedia = [];
+//     const rejectedFiles = [];
+
+//     for (const file of selectedFiles) {
+//       const fileKey = getFileKey(file);
+
+//       // Duplicate protection
+//       if (existingKeys.has(fileKey)) {
+//         rejectedFiles.push({
 //           file,
-//           config.accepted_types,
-//         )
-//       ) {
-//         return;
+//           reason: "DUPLICATE",
+//         });
+
+//         continue;
 //       }
 
-//       if (
-//         !validateFileSize(
+//       // Maximum file count
+//       if (media.length + newMedia.length >= config.max_files) {
+//         rejectedFiles.push({
 //           file,
-//           config.max_file_size_mb,
-//         )
-//       ) {
-//         return;
+//           reason: "MAX_FILES",
+//         });
+
+//         continue;
 //       }
 
-//       uploadedMedia.push(
+//       // File type validation
+//       if (!validateFileType(file, config.accepted_types)) {
+//         rejectedFiles.push({
+//           file,
+//           reason: "INVALID_TYPE",
+//         });
+
+//         continue;
+//       }
+
+//       // File size validation
+//       if (!validateFileSize(file, config.max_file_size_mb)) {
+//         rejectedFiles.push({
+//           file,
+//           reason: "FILE_TOO_LARGE",
+//         });
+
+//         continue;
+//       }
+
+//       newMedia.push(
 //         createMediaObject({
 //           file,
 //         }),
 //       );
-//     });
 
-//     setValue(
-//       "media",
-//       [...media, ...uploadedMedia],
-//       {
+//       existingKeys.add(fileKey);
+//     }
+
+//     if (newMedia.length) {
+//       setValue("media", [...media, ...newMedia], {
 //         shouldDirty: true,
 //         shouldValidate: true,
-//       },
-//     );
+//       });
+//     }
+
+//     return rejectedFiles;
 //   }
 
 //   function handleInputChange(event) {
@@ -74,23 +109,48 @@
 
 //   function handleDragOver(event) {
 //     event.preventDefault();
+
+//     if (event.dataTransfer) {
+//       event.dataTransfer.dropEffect = "copy";
+//     }
 //   }
 
 //   function removeMedia(id) {
+//     const target = media.find((item) => item.id === id);
+
+//     if (target) {
+//       revokePreviewUrl(target);
+//     }
+
 //     setValue(
 //       "media",
-//       media.filter(
-//         (item) => item.id !== id,
-//       ),
+//       media.filter((item) => item.id !== id),
 //       {
 //         shouldDirty: true,
+//         shouldValidate: true,
 //       },
 //     );
 //   }
 
 //   function clearMedia() {
-//     setValue("media", []);
+//     media.forEach(revokePreviewUrl);
+
+//     setValue("media", [], {
+//       shouldDirty: true,
+//       shouldValidate: true,
+//     });
 //   }
+
+//   // Cleanup local blob URLs
+//   // when component unmounts.
+
+//   // useEffect(() => {
+//   //   return () => {
+//   //     media.forEach(
+//   //       revokePreviewUrl,
+//   //     );
+//   //   };
+//   // }, []);
 
 //   return {
 //     media,
@@ -108,6 +168,8 @@
 //     removeMedia,
 
 //     clearMedia,
+
+//     appendFiles,
 //   };
 // }
 
@@ -123,34 +185,153 @@ import {
   validateFileType,
 } from "../../utils/post/media.utils";
 
-export default function useMediaUpload({ config }) {
+const IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+const VIDEO_TYPES = [
+  "video/mp4",
+];
+
+export default function useMediaUpload({
+  config,
+}) {
   const inputRef = useRef(null);
 
-  const { watch, setValue } = useFormContext();
+  const uploadModeRef = useRef("ALL");
 
-  const media = watch("media") || [];
+  const { watch, setValue } =
+    useFormContext();
 
-  function handleBrowse() {
-    inputRef.current?.click();
-  }
+  const media =
+    watch("media") || [];
 
-  function appendFiles(files) {
-    const selectedFiles = Array.from(files || []);
+  // ============================================================
+  // BROWSE
+  // ============================================================
 
-    if (!selectedFiles.length) {
+  function handleBrowse(mode = "ALL") {
+    const input = inputRef.current;
+
+    if (!input) {
       return;
     }
 
-    const existingKeys = new Set(media.map((item) => getFileKey(item.file)));
+    uploadModeRef.current = mode;
+
+    // ==========================================================
+    // IMAGE
+    // ==========================================================
+
+    if (mode === "IMAGE") {
+      input.accept =
+        IMAGE_TYPES.join(",");
+
+      input.multiple = false;
+    }
+
+    // ==========================================================
+    // VIDEO
+    // ==========================================================
+
+    else if (mode === "VIDEO") {
+      input.accept =
+        VIDEO_TYPES.join(",");
+
+      input.multiple = false;
+    }
+
+    // ==========================================================
+    // CAROUSEL
+    // ==========================================================
+
+    else if (mode === "CAROUSEL") {
+      input.accept =
+        config.accepted_types.join(",");
+
+      input.multiple = true;
+    }
+
+    // ==========================================================
+    // ALL / ADD MORE
+    // ==========================================================
+
+    else {
+      input.accept =
+        config.accepted_types.join(",");
+
+      input.multiple =
+        Boolean(
+          config.allow_multiple,
+        );
+    }
+
+    input.click();
+  }
+
+  // ============================================================
+  // APPEND FILES
+  // ============================================================
+
+  function appendFiles(files) {
+    const selectedFiles =
+      Array.from(files || []);
+
+    if (!selectedFiles.length) {
+      return [];
+    }
+
+    const mode =
+      uploadModeRef.current;
+
+    let allowedTypes =
+      config.accepted_types;
+
+    // ==========================================================
+    // MODE VALIDATION
+    // ==========================================================
+
+    if (mode === "IMAGE") {
+      allowedTypes = IMAGE_TYPES;
+    }
+
+    if (mode === "VIDEO") {
+      allowedTypes = VIDEO_TYPES;
+    }
+
+    // CAROUSEL + ALL already use config.accepted_types.
+
+    // ==========================================================
+    // DUPLICATE LOOKUP
+    // ==========================================================
+
+    const existingKeys =
+      new Set(
+        media.map((item) =>
+          getFileKey(item.file),
+        ),
+      );
 
     const newMedia = [];
     const rejectedFiles = [];
 
-    for (const file of selectedFiles) {
-      const fileKey = getFileKey(file);
+    // ==========================================================
+    // PROCESS FILES
+    // ==========================================================
 
-      // Duplicate protection
-      if (existingKeys.has(fileKey)) {
+    for (const file of selectedFiles) {
+      const fileKey =
+        getFileKey(file);
+
+      // --------------------------------------------------------
+      // DUPLICATE
+      // --------------------------------------------------------
+
+      if (
+        existingKeys.has(fileKey)
+      ) {
         rejectedFiles.push({
           file,
           reason: "DUPLICATE",
@@ -159,8 +340,15 @@ export default function useMediaUpload({ config }) {
         continue;
       }
 
-      // Maximum file count
-      if (media.length + newMedia.length >= config.max_files) {
+      // --------------------------------------------------------
+      // MAX FILE COUNT
+      // --------------------------------------------------------
+
+      if (
+        media.length +
+          newMedia.length >=
+        config.max_files
+      ) {
         rejectedFiles.push({
           file,
           reason: "MAX_FILES",
@@ -169,8 +357,16 @@ export default function useMediaUpload({ config }) {
         continue;
       }
 
-      // File type validation
-      if (!validateFileType(file, config.accepted_types)) {
+      // --------------------------------------------------------
+      // FILE TYPE
+      // --------------------------------------------------------
+
+      if (
+        !validateFileType(
+          file,
+          allowedTypes,
+        )
+      ) {
         rejectedFiles.push({
           file,
           reason: "INVALID_TYPE",
@@ -179,8 +375,16 @@ export default function useMediaUpload({ config }) {
         continue;
       }
 
-      // File size validation
-      if (!validateFileSize(file, config.max_file_size_mb)) {
+      // --------------------------------------------------------
+      // FILE SIZE
+      // --------------------------------------------------------
+
+      if (
+        !validateFileSize(
+          file,
+          config.max_file_size_mb,
+        )
+      ) {
         rejectedFiles.push({
           file,
           reason: "FILE_TOO_LARGE",
@@ -189,47 +393,112 @@ export default function useMediaUpload({ config }) {
         continue;
       }
 
-      newMedia.push(
+      // --------------------------------------------------------
+      // CREATE MEDIA OBJECT
+      // --------------------------------------------------------
+
+      const mediaObject =
         createMediaObject({
           file,
-        }),
+        });
+
+      newMedia.push(
+        mediaObject,
       );
 
-      existingKeys.add(fileKey);
+      existingKeys.add(
+        fileKey,
+      );
     }
 
+    // ==========================================================
+    // UPDATE FORM
+    // ==========================================================
+
     if (newMedia.length) {
-      setValue("media", [...media, ...newMedia], {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
+      setValue(
+        "media",
+        [
+          ...media,
+          ...newMedia,
+        ],
+        {
+          shouldDirty: true,
+          shouldValidate: true,
+        },
+      );
     }
 
     return rejectedFiles;
   }
 
-  function handleInputChange(event) {
-    appendFiles(event.target.files);
+  // ============================================================
+  // FILE INPUT CHANGE
+  // ============================================================
+
+  function handleInputChange(
+    event,
+  ) {
+    const files =
+      event.target.files;
+
+    const rejectedFiles =
+      appendFiles(files);
+
+    /*
+     * Reset the native file input.
+     *
+     * This is important because the user should
+     * be able to select the same file again after
+     * removing it.
+     */
 
     event.target.value = "";
+
+    return rejectedFiles;
   }
+
+  // ============================================================
+  // DRAG & DROP
+  // ============================================================
 
   function handleDrop(event) {
     event.preventDefault();
 
-    appendFiles(event.dataTransfer.files);
+    /*
+     * Drag/drop is treated as generic media upload.
+     * Platform/content compatibility is handled separately.
+     */
+
+    uploadModeRef.current = "ALL";
+
+    return appendFiles(
+      event.dataTransfer?.files,
+    );
   }
+
+  // ============================================================
+  // DRAG OVER
+  // ============================================================
 
   function handleDragOver(event) {
     event.preventDefault();
 
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "copy";
+      event.dataTransfer.dropEffect =
+        "copy";
     }
   }
 
+  // ============================================================
+  // REMOVE MEDIA
+  // ============================================================
+
   function removeMedia(id) {
-    const target = media.find((item) => item.id === id);
+    const target =
+      media.find(
+        (item) => item.id === id,
+      );
 
     if (target) {
       revokePreviewUrl(target);
@@ -237,7 +506,9 @@ export default function useMediaUpload({ config }) {
 
     setValue(
       "media",
-      media.filter((item) => item.id !== id),
+      media.filter(
+        (item) => item.id !== id,
+      ),
       {
         shouldDirty: true,
         shouldValidate: true,
@@ -245,25 +516,28 @@ export default function useMediaUpload({ config }) {
     );
   }
 
-  function clearMedia() {
-    media.forEach(revokePreviewUrl);
+  // ============================================================
+  // CLEAR ALL
+  // ============================================================
 
-    setValue("media", [], {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+  function clearMedia() {
+    media.forEach(
+      revokePreviewUrl,
+    );
+
+    setValue(
+      "media",
+      [],
+      {
+        shouldDirty: true,
+        shouldValidate: true,
+      },
+    );
   }
 
-  // Cleanup local blob URLs
-  // when component unmounts.
-
-  // useEffect(() => {
-  //   return () => {
-  //     media.forEach(
-  //       revokePreviewUrl,
-  //     );
-  //   };
-  // }, []);
+  // ============================================================
+  // RETURN
+  // ============================================================
 
   return {
     media,

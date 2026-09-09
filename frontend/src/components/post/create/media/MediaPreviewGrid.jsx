@@ -1,44 +1,73 @@
-import { Grid, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 
 import MediaPreviewItem from "./MediaPreviewItem";
-import { TYPOGRAPHY } from "../../../../theme/typography";
 
-export default function MediaPreviewGrid({
-  media = [],
-  onRemove,
-}) {
+export default function MediaPreviewGrid({ media = [], onRemove }) {
   if (!media.length) {
     return null;
   }
 
   return (
-    <>
-      <Typography
+    <Box>
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
+      <Box
         sx={{
-          ...TYPOGRAPHY.inputLabel,
-          mb: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+
+          mb: 1.5,
         }}
       >
-        Uploaded Media ({media.length})
-      </Typography>
+        <Typography
+          sx={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "text.primary",
+          }}
+        >
+          Uploaded Media
+        </Typography>
 
-      <Grid container spacing={2}>
-        {media.map((item) => (
-          <Grid
+        <Typography
+          sx={{
+            fontSize: 12,
+            color: "text.secondary",
+          }}
+        >
+          {media.length} {media.length === 1 ? "file" : "files"}
+        </Typography>
+      </Box>
+
+      {/* =====================================================
+          MEDIA GRID
+      ===================================================== */}
+
+      <Box
+        sx={{
+          display: "grid",
+
+          gridTemplateColumns: {
+            xs: "repeat(2, minmax(0, 1fr))",
+            sm: "repeat(3, minmax(0, 1fr))",
+            md: "repeat(4, minmax(0, 1fr))",
+          },
+
+          gap: 1.5,
+        }}
+      >
+        {media.map((item, index) => (
+          <MediaPreviewItem
             key={item.id}
-            size={{
-              xs: 12,
-              sm: 6,
-              md: 4,
-            }}
-          >
-            <MediaPreviewItem
-              media={item}
-              onRemove={onRemove}
-            />
-          </Grid>
+            media={item}
+            index={index}
+            onRemove={onRemove}
+          />
         ))}
-      </Grid>
-    </>
+      </Box>
+    </Box>
   );
 }

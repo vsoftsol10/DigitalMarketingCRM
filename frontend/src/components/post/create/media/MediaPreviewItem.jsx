@@ -1,304 +1,207 @@
-// import {
-//   Box,
-//   IconButton,
-//   Typography,
-// } from "@mui/material";
+import { Box, IconButton, Typography } from "@mui/material";
 
-// import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-// import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
-// import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
-
-// import { TYPOGRAPHY } from "../../../../theme/typography";
-
-// export default function MediaPreviewItem({
-//   media,
-//   onRemove,
-// }) {
-//   return (
-//     <Box
-//       sx={{
-//         position: "relative",
-//         border: "1px solid #E2E8F0",
-//         borderRadius: "16px",
-//         overflow: "hidden",
-//         bgcolor: "#FFFFFF",
-//       }}
-//     >
-//       {/* Preview */}
-
-//       <Box
-//         sx={{
-//           height: 180,
-//           bgcolor: "#F8FAFC",
-//           display: "flex",
-//           alignItems: "center",
-//           justifyContent: "center",
-//         }}
-//       >
-//         {media.type === "IMAGE" ? (
-//           <Box
-//             component="img"
-//             src={media.preview}
-//             alt={media.name}
-//             sx={{
-//               width: "100%",
-//               height: "100%",
-//               objectFit: "cover",
-//             }}
-//           />
-//         ) : (
-//           <Box
-//             sx={{
-//               display: "flex",
-//               flexDirection: "column",
-//               alignItems: "center",
-//               gap: 1,
-//             }}
-//           >
-//             <VideocamOutlinedIcon
-//               sx={{
-//                 fontSize: 42,
-//                 color: "#2563EB",
-//               }}
-//             />
-
-//             <Typography sx={TYPOGRAPHY.bodySmall}>
-//               Video Preview
-//             </Typography>
-//           </Box>
-//         )}
-//       </Box>
-
-//       {/* Delete */}
-
-//       <IconButton
-//         onClick={() => onRemove(media.id)}
-//         size="small"
-//         sx={{
-//           position: "absolute",
-//           top: 8,
-//           right: 8,
-//           bgcolor: "#FFFFFF",
-
-//           "&:hover": {
-//             bgcolor: "#F8FAFC",
-//           },
-//         }}
-//       >
-//         <DeleteOutlineRoundedIcon
-//           fontSize="small"
-//         />
-//       </IconButton>
-
-//       {/* Footer */}
-
-//       <Box
-//         sx={{
-//           p: 2,
-//         }}
-//       >
-//         <Box
-//           sx={{
-//             display: "flex",
-//             alignItems: "center",
-//             gap: 1,
-//           }}
-//         >
-//           {media.type === "IMAGE" ? (
-//             <ImageOutlinedIcon
-//               fontSize="small"
-//             />
-//           ) : (
-//             <VideocamOutlinedIcon
-//               fontSize="small"
-//             />
-//           )}
-
-//           <Typography
-//             noWrap
-//             sx={TYPOGRAPHY.bodySmall}
-//           >
-//             {media.name}
-//           </Typography>
-//         </Box>
-//       </Box>
-//     </Box>
-//   );
-// }
-
-import {
-  Box,
-  IconButton,
-  Typography,
-} from "@mui/material";
-
-import {
-  useTheme,
-} from "@mui/material/styles";
-
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
-import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
 
-import { TYPOGRAPHY } from "../../../../theme/typography";
+export default function MediaPreviewItem({ media, index = 0, onRemove }) {
+  const isImage = media?.type === "IMAGE";
 
-export default function MediaPreviewItem({
-  media,
-  onRemove,
-}) {
-  const theme = useTheme();
-
-  const isImage =
-    media.type === "IMAGE";
+  const isVideo = media?.type === "VIDEO";
 
   return (
     <Box
       sx={{
         position: "relative",
 
-        border: "1px solid",
-        borderColor:
-          theme.palette.divider,
+        width: "100%",
+        aspectRatio: "1 / 1",
 
-        borderRadius: 2,
+        borderRadius: "14px",
 
         overflow: "hidden",
 
-        bgcolor:
-          theme.palette.background
-            .paper,
+        bgcolor: "#E9EDF3",
+
+        border: "1px solid",
+        borderColor: "#DCE2EB",
       }}
     >
-      {/* Preview */}
+      {/* =====================================================
+          MEDIA PREVIEW
+      ===================================================== */}
 
-      <Box
-        sx={{
-          height: 180,
+      {isImage && media.preview ? (
+        <Box
+          component="img"
+          src={media.preview}
+          alt={media.name || `Media ${index + 1}`}
+          sx={{
+            width: "100%",
+            height: "100%",
 
-          bgcolor:
-            theme.palette.background
-              .default,
+            display: "block",
 
-          display: "flex",
+            objectFit: "cover",
+          }}
+        />
+      ) : isVideo && media.preview ? (
+        <Box
+          component="video"
+          src={media.preview}
+          muted
+          playsInline
+          preload="metadata"
+          sx={{
+            width: "100%",
+            height: "100%",
 
-          alignItems: "center",
+            display: "block",
 
-          justifyContent: "center",
-        }}
-      >
-        {isImage ? (
-          <Box
-            component="img"
-            src={media.preview}
-            alt={media.name}
-            sx={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-        ) : (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection:
-                "column",
-              alignItems:
-                "center",
-              gap: 1,
-            }}
-          >
-            <VideocamOutlinedIcon
+            objectFit: "cover",
+
+            bgcolor: "#111827",
+          }}
+        />
+      ) : (
+        <Box
+          sx={{
+            width: "100%",
+            height: "100%",
+
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {isVideo ? (
+            <PlayArrowRoundedIcon
               sx={{
-                fontSize: 42,
-                color:
-                  theme.palette
-                    .primary.main,
+                fontSize: 38,
+                color: "#718096",
               }}
             />
+          ) : (
+            <ImageOutlinedIcon
+              sx={{
+                fontSize: 38,
+                color: "#8795AC",
+              }}
+            />
+          )}
+        </Box>
+      )}
 
-            <Typography
-              sx={
-                TYPOGRAPHY.bodySmall
-              }
-            >
-              Video Preview
-            </Typography>
-          </Box>
-        )}
-      </Box>
+      {/* =====================================================
+          INDEX
+      ===================================================== */}
 
-      {/* Remove */}
-
-      <IconButton
-        aria-label={`Remove ${media.name}`}
-        onClick={() =>
-          onRemove(media.id)
-        }
-        size="small"
+      <Box
         sx={{
           position: "absolute",
 
-          top: 8,
-          right: 8,
+          top: 9,
+          left: 9,
 
-          bgcolor:
-            theme.palette
-              .background.paper,
+          minWidth: 22,
+          height: 22,
 
-          border: "1px solid",
-          borderColor:
-            theme.palette.divider,
+          px: 0.5,
+
+          borderRadius: "6px",
+
+          bgcolor: "rgba(51, 61, 78, 0.72)",
+
+          color: "#FFFFFF",
+
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: 11,
+            fontWeight: 600,
+            lineHeight: 1,
+          }}
+        >
+          {index + 1}
+        </Typography>
+      </Box>
+
+      {/* =====================================================
+          REMOVE
+      ===================================================== */}
+
+      <IconButton
+        size="small"
+        aria-label={`Remove ${media?.name || `media ${index + 1}`}`}
+        onClick={() => onRemove?.(media.id)}
+        sx={{
+          position: "absolute",
+
+          top: 7,
+          right: 7,
+
+          width: 26,
+          height: 26,
+
+          bgcolor: "rgba(255,255,255,0.95)",
+
+          color: "#475569",
+
+          border: "1px solid rgba(203, 213, 225, 0.9)",
 
           "&:hover": {
-            bgcolor:
-              theme.palette
-                .action.hover,
+            bgcolor: "#FFFFFF",
+            color: "error.main",
           },
         }}
       >
-        <DeleteOutlineRoundedIcon
-          fontSize="small"
+        <CloseRoundedIcon
+          sx={{
+            fontSize: 15,
+          }}
         />
       </IconButton>
 
-      {/* Footer */}
+      {/* =====================================================
+          FILE NAME
+      ===================================================== */}
 
       <Box
         sx={{
-          p: 2,
+          position: "absolute",
+
+          left: 8,
+          right: 8,
+          bottom: 8,
+
+          px: 1,
+
+          py: 0.55,
+
+          borderRadius: "6px",
+
+          bgcolor: "rgba(55, 63, 78, 0.72)",
+
+          backdropFilter: "blur(3px)",
         }}
       >
-        <Box
+        <Typography
+          noWrap
+          title={media?.name || ""}
           sx={{
-            display: "flex",
-            alignItems:
-              "center",
-            gap: 1,
-            minWidth: 0,
+            fontSize: 11,
+
+            lineHeight: 1.3,
+
+            color: "#FFFFFF",
           }}
         >
-          {isImage ? (
-            <ImageOutlinedIcon
-              fontSize="small"
-            />
-          ) : (
-            <VideocamOutlinedIcon
-              fontSize="small"
-            />
-          )}
-
-          <Typography
-            noWrap
-            title={media.name}
-            sx={
-              TYPOGRAPHY.bodySmall
-            }
-          >
-            {media.name}
-          </Typography>
-        </Box>
+          {media?.name || `Media ${index + 1}`}
+        </Typography>
       </Box>
     </Box>
   );

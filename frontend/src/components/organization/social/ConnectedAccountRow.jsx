@@ -1,4 +1,5 @@
 import { memo, useState } from "react";
+
 import {
   Avatar,
   Box,
@@ -12,9 +13,7 @@ import {
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
-import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import YouTubeIcon from "@mui/icons-material/YouTube";
-import XIcon from "@mui/icons-material/X";
 
 // ============================================================
 // PLATFORM ICONS
@@ -24,9 +23,7 @@ const PLATFORM_ICONS = {
   instagram: InstagramIcon,
   facebook: FacebookRoundedIcon,
   linkedin: LinkedInIcon,
-  threads: SmartToyOutlinedIcon,
   youtube: YouTubeIcon,
-  x: XIcon,
 };
 
 // ============================================================
@@ -37,9 +34,23 @@ const PLATFORM_NAMES = {
   instagram: "Instagram",
   facebook: "Facebook",
   linkedin: "LinkedIn",
-  threads: "Threads",
   youtube: "YouTube",
-  x: "X",
+};
+
+// ============================================================
+// ACCOUNT TYPES
+// ============================================================
+//
+// These describe what the connected account represents.
+// They are derived from the platform, not from account data.
+//
+// ============================================================
+
+const ACCOUNT_TYPES = {
+  facebook: "Facebook Page",
+  instagram: "Instagram Professional Account",
+  linkedin: "LinkedIn Account",
+  youtube: "YouTube Channel",
 };
 
 // ============================================================
@@ -67,9 +78,7 @@ function formatLastSync(value) {
 }
 
 // ============================================================
-// SHARED PILL STYLE — this is what keeps chips + button on
-// the exact same visual baseline. Every pill (chip or button)
-// uses the same height, same line-height:1, same flex-centering.
+// SHARED PILL HEIGHT
 // ============================================================
 
 const PILL_HEIGHT = 32;
@@ -87,7 +96,11 @@ function ConnectedAccountRow({
   const [imgError, setImgError] = useState(false);
   const [actionError, setActionError] = useState("");
 
-  const platform = account?.platform;
+  // ==========================================================
+  // ACCOUNT DATA
+  // ==========================================================
+
+  const platform = account?.platform || "";
 
   const Icon = PLATFORM_ICONS[platform];
 
@@ -97,11 +110,25 @@ function ConnectedAccountRow({
       ? platform.charAt(0).toUpperCase() + platform.slice(1)
       : "Social Account");
 
+  const accountType = ACCOUNT_TYPES[platform] || "Social Media Account";
+
+  // ==========================================================
+  // DISPLAY IDENTITY
+  // ==========================================================
+  //
+  // Facebook:
+  //     accountName = Page name
+  //
+  // Instagram:
+  //     accountName = Instagram profile name
+  //     username    = Instagram username
+  //
+  // No actual account name is hardcoded here.
+  //
+  // ==========================================================
+
   const accountName =
-    account?.accountName ||
-    account?.pageName ||
-    account?.name ||
-    platformName;
+    account?.accountName || account?.pageName || account?.name || platformName;
 
   const username = account?.username || "";
 
@@ -158,15 +185,24 @@ function ConnectedAccountRow({
     <Box
       sx={{
         mt: 2,
-        px: { xs: 2, sm: 2.5 },
+        px: {
+          xs: 2,
+          sm: 2.5,
+        },
         py: 2,
         border: "1px solid #E2E8F0",
         borderRadius: "18px",
         display: "flex",
         justifyContent: "space-between",
-        alignItems: { xs: "flex-start", md: "center" },
+        alignItems: {
+          xs: "flex-start",
+          md: "center",
+        },
         gap: 2,
-        flexDirection: { xs: "column", md: "row" },
+        flexDirection: {
+          xs: "column",
+          md: "row",
+        },
         transition: "border-color .2s ease, box-shadow .2s ease",
         "&:hover": {
           borderColor: "#CBD5E1",
@@ -178,7 +214,17 @@ function ConnectedAccountRow({
           LEFT
       ====================================================== */}
 
-      <Stack direction="row" spacing={2} alignItems="center" minWidth={0} width="100%">
+      <Stack
+        direction="row"
+        spacing={2}
+        alignItems="center"
+        minWidth={0}
+        width="100%"
+      >
+        {/* ==================================================
+            PROFILE / PLATFORM AVATAR
+        ================================================== */}
+
         <Avatar
           src={profileImage || undefined}
           alt={accountName}
@@ -193,12 +239,31 @@ function ConnectedAccountRow({
           }}
         >
           {!profileImage && Icon && (
-            <Icon sx={{ color: "#111827", fontSize: 23 }} />
+            <Icon
+              sx={{
+                color: "#111827",
+                fontSize: 23,
+              }}
+            />
           )}
         </Avatar>
 
-        <Box sx={{ minWidth: 0, flex: 1 }}>
+        {/* ==================================================
+            ACCOUNT INFORMATION
+        ================================================== */}
+
+        <Box
+          sx={{
+            minWidth: 0,
+            flex: 1,
+          }}
+        >
+          {/* ================================================
+              ACCOUNT NAME
+          ================================================= */}
+
           <Typography
+            component="h4"
             sx={{
               fontSize: 16,
               fontWeight: 600,
@@ -206,14 +271,19 @@ function ConnectedAccountRow({
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              m: 0,
             }}
           >
             {accountName}
           </Typography>
 
+          {/* ================================================
+              USERNAME / PLATFORM
+          ================================================= */}
+
           <Typography
             sx={{
-              mt: 0.3,
+              mt: 0.35,
               fontSize: 13,
               color: "#64748B",
               overflow: "hidden",
@@ -221,15 +291,54 @@ function ConnectedAccountRow({
               whiteSpace: "nowrap",
             }}
           >
-            {username ? `${username} • ${platformName}` : platformName}
+            {username
+              ? platform === "instagram"
+                ? `@${username}`
+                : username
+              : platformName}
           </Typography>
 
-          <Typography sx={{ mt: 0.3, fontSize: 12, color: "#94A3B8" }}>
+          {/* ================================================
+              ACCOUNT TYPE
+          ================================================= */}
+
+          <Typography
+            sx={{
+              mt: 0.25,
+              fontSize: 12,
+              fontWeight: 500,
+              color: "#94A3B8",
+            }}
+          >
+            {accountType}
+          </Typography>
+
+          {/* ================================================
+              LAST SYNC
+          ================================================= */}
+
+          <Typography
+            sx={{
+              mt: 0.25,
+              fontSize: 12,
+              color: "#94A3B8",
+            }}
+          >
             {formatLastSync(lastSync)}
           </Typography>
 
+          {/* ================================================
+              ACTION ERROR
+          ================================================= */}
+
           {actionError && (
-            <Typography sx={{ mt: 0.3, fontSize: 12, color: "#DC2626" }}>
+            <Typography
+              sx={{
+                mt: 0.4,
+                fontSize: 12,
+                color: "#DC2626",
+              }}
+            >
               {actionError}
             </Typography>
           )}
@@ -238,10 +347,6 @@ function ConnectedAccountRow({
 
       {/* ======================================================
           RIGHT ACTION AREA
-          Every pill (chip, chip, button) shares: same height,
-          display:flex + alignItems:center + justifyContent:center,
-          lineHeight:1, and sits in ONE Stack with alignItems="center".
-          That's what removes the "not straight" look.
       ====================================================== */}
 
       <Stack
@@ -251,10 +356,19 @@ function ConnectedAccountRow({
         justifyContent="flex-end"
         flexShrink={0}
         sx={{
-          width: { xs: "100%", md: "auto" },
-          ml: { md: 2 },
+          width: {
+            xs: "100%",
+            md: "auto",
+          },
+          ml: {
+            md: 2,
+          },
         }}
       >
+        {/* ==================================================
+            CONNECTION STATUS
+        ================================================== */}
+
         <Chip
           label={connected ? "Connected" : "Disconnected"}
           size="small"
@@ -274,6 +388,10 @@ function ConnectedAccountRow({
             },
           }}
         />
+
+        {/* ==================================================
+            VALIDITY STATUS
+        ================================================== */}
 
         <Chip
           label={valid ? "Valid" : "Expired"}
@@ -295,14 +413,25 @@ function ConnectedAccountRow({
           }}
         />
 
+        {/* ==================================================
+            SEPARATOR
+        ================================================== */}
+
         <Box
           sx={{
             width: "1px",
             height: 20,
             bgcolor: "#E2E8F0",
-            display: { xs: "none", md: "block" },
+            display: {
+              xs: "none",
+              md: "block",
+            },
           }}
         />
+
+        {/* ==================================================
+            RECONNECT / DISCONNECT
+        ================================================== */}
 
         {!connected || !valid ? (
           <Button

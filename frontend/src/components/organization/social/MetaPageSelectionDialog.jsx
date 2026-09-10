@@ -3,527 +3,194 @@ import {
   Avatar,
   Box,
   Button,
-  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
-  Stack,
+  List,
+  ListItemButton,
+  ListItemText,
+  Radio,
   Typography,
 } from "@mui/material";
 
-import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
-import InstagramIcon from "@mui/icons-material/Instagram";
-
-import { useEffect, useMemo, useState } from "react";
-
-// ============================================================
-// COMPONENT
-// ============================================================
-//
-// Page-first Meta connection:
-//
-// Facebook Page
-//      ↓
-// linked Instagram Professional Account
-//
-// User selects Facebook Pages only.
-// Linked Instagram accounts are automatically included.
-//
-// ============================================================
+import { useEffect, useState } from "react";
 
 export default function MetaPageSelectionDialog({
   open,
-  data,
+  pages = [],
   loading = false,
+  submitting = false,
   error = "",
-  confirming = false,
   onClose,
   onConfirm,
 }) {
-  const [selectedPageIds, setSelectedPageIds] =
-    useState([]);
-
-  // ==========================================================
-  // RESET SELECTION
-  // ==========================================================
+  const [selectedPageId, setSelectedPageId] = useState("");
 
   useEffect(() => {
     if (!open) {
-      setSelectedPageIds([]);
+      setSelectedPageId("");
+    }
+  }, [open]);
+
+  const handleConfirm = async () => {
+    if (!selectedPageId || submitting) {
       return;
     }
 
-    const pages = Array.isArray(data?.pages)
-      ? data.pages
-      : [];
-
-    setSelectedPageIds(
-      pages.map((page) =>
-        String(
-          page.platform_account_id,
-        ),
-      ),
-    );
-  }, [open, data]);
-
-  // ==========================================================
-  // DATA
-  // ==========================================================
-
-  const pages = Array.isArray(data?.pages)
-    ? data.pages
-    : [];
-
-  const instagramAccounts =
-    Array.isArray(data?.instagram_accounts)
-      ? data.instagram_accounts
-      : [];
-
-  // ==========================================================
-  // INSTAGRAM LOOKUP
-  // ==========================================================
-
-  const instagramByPage = useMemo(() => {
-    const map = new Map();
-
-    instagramAccounts.forEach((instagram) => {
-      const pageId = String(
-        instagram.linked_facebook_page_platform_account_id ||
-          "",
-      );
-
-      if (!pageId) {
-        return;
-      }
-
-      if (!map.has(pageId)) {
-        map.set(pageId, []);
-      }
-
-      map.get(pageId).push(
-        instagram,
-      );
-    });
-
-    return map;
-  }, [instagramAccounts]);
-
-  // ==========================================================
-  // TOGGLE PAGE
-  // ==========================================================
-
-  const handleTogglePage = (
-    pageId,
-  ) => {
-    const normalizedPageId =
-      String(pageId);
-
-    setSelectedPageIds((current) => {
-      if (
-        current.includes(
-          normalizedPageId,
-        )
-      ) {
-        return current.filter(
-          (id) =>
-            id !== normalizedPageId,
-        );
-      }
-
-      return [
-        ...current,
-        normalizedPageId,
-      ];
-    });
+    await onConfirm(selectedPageId);
   };
-
-  // ==========================================================
-  // CONFIRM
-  // ==========================================================
-
-  const handleConfirm = () => {
-    if (
-      selectedPageIds.length === 0 ||
-      typeof onConfirm !== "function"
-    ) {
-      return;
-    }
-
-    onConfirm(
-      selectedPageIds,
-    );
-  };
-
-  // ==========================================================
-  // RENDER
-  // ==========================================================
 
   return (
     <Dialog
       open={open}
-      onClose={
-        confirming
-          ? undefined
-          : onClose
-      }
+      onClose={() => {
+        if (!submitting) {
+          onClose();
+        }
+      }}
       fullWidth
       maxWidth="sm"
     >
-      <DialogTitle
-        sx={{
-          pb: 1,
-          fontWeight: 700,
-        }}
-      >
-        Select Facebook Pages
-      </DialogTitle>
+      <DialogTitle>Select a Facebook Page</DialogTitle>
 
-      <DialogContent>
-        {/* ==================================================
-            LOADING
-        ================================================== */}
+      <DialogContent dividers>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{
+            mb: 2,
+          }}
+        >
+          Select the Facebook Page you want to connect. Its linked Instagram
+          account will be connected automatically.
+        </Typography>
 
         {loading && (
           <Box
             sx={{
-              py: 6,
+              minHeight: 180,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <CircularProgress size={28} />
+            <CircularProgress size={30} />
           </Box>
         )}
-
-        {/* ==================================================
-            ERROR
-        ================================================== */}
 
         {!loading && error && (
           <Alert
             severity="error"
             sx={{
-              mt: 1,
+              mb: 2,
             }}
           >
             {error}
           </Alert>
         )}
 
-        {/* ==================================================
-            CONTENT
-        ================================================== */}
+        {!loading && !error && pages.length === 0 && (
+          <Alert severity="warning">
+            No Facebook Pages are available for this Meta authorization.
+          </Alert>
+        )}
 
-        {!loading &&
-          !error &&
-          pages.length === 0 && (
-            <Alert
-              severity="info"
-              sx={{
-                mt: 1,
-              }}
-            >
-              No Facebook Pages are available
-              for this Meta account.
-            </Alert>
-          )}
+        {!loading && !error && pages.length > 0 && (
+          <List
+            disablePadding
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 1,
+            }}
+          >
+            {pages.map((page) => {
+              const isSelected = selectedPageId === String(page.id);
 
-        {!loading &&
-          !error &&
-          pages.length > 0 && (
-            <Stack
-              spacing={1.5}
-              sx={{
-                mt: 1,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: 14,
-                  color: "#64748B",
-                  lineHeight: 1.5,
-                  mb: 1,
-                }}
-              >
-                Select the Facebook Page(s)
-                you want to connect. Any linked
-                Instagram Professional account
-                will be connected automatically.
-              </Typography>
+              const instagram = page.instagram;
 
-              {pages.map((page) => {
-                const pageId = String(
-                  page.platform_account_id,
-                );
-
-                const selected =
-                  selectedPageIds.includes(
-                    pageId,
-                  );
-
-                const linkedInstagram =
-                  instagramByPage.get(
-                    pageId,
-                  ) || [];
-
-                return (
-                  <Box
-                    key={pageId}
-                    onClick={() =>
-                      !confirming &&
-                      handleTogglePage(
-                        pageId,
-                      )
-                    }
+              return (
+                <ListItemButton
+                  key={page.id}
+                  selected={isSelected}
+                  disabled={submitting}
+                  onClick={() => setSelectedPageId(String(page.id))}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: isSelected ? "primary.main" : "divider",
+                    borderRadius: "12px",
+                    alignItems: "flex-start",
+                    px: 2,
+                    py: 1.5,
+                  }}
+                >
+                  <Radio
+                    checked={isSelected}
+                    value={page.id}
+                    tabIndex={-1}
+                    disableRipple
                     sx={{
-                      border: "1px solid",
-                      borderColor: selected
-                        ? "#2563EB"
-                        : "#E2E8F0",
-                      borderRadius: "14px",
-                      px: 1.5,
-                      py: 1.5,
-                      cursor: confirming
-                        ? "default"
-                        : "pointer",
-                      bgcolor: selected
-                        ? "#F8FBFF"
-                        : "#FFFFFF",
-                      transition:
-                        "border-color .2s ease, background-color .2s ease",
+                      mt: -0.25,
+                    }}
+                  />
+
+                  <Avatar
+                    src={instagram?.profile_image || undefined}
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      mr: 1.5,
                     }}
                   >
-                    {/* ======================================
-                        FACEBOOK PAGE
-                    ====================================== */}
+                    {String(page.name || "P")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </Avatar>
 
-                    <Stack
-                      direction="row"
-                      spacing={1.5}
-                      alignItems="center"
-                    >
-                      <Checkbox
-                        checked={selected}
-                        disabled={
-                          confirming
-                        }
-                        onChange={() =>
-                          handleTogglePage(
-                            pageId,
-                          )
-                        }
-                        onClick={(event) =>
-                          event.stopPropagation()
-                        }
-                      />
-
-                      <Avatar
-                        sx={{
-                          width: 42,
-                          height: 42,
-                          bgcolor:
-                            "#EFF6FF",
-                          color:
-                            "#2563EB",
-                        }}
-                      >
-                        <FacebookRoundedIcon />
-                      </Avatar>
-
-                      <Box
-                        sx={{
-                          minWidth: 0,
-                          flex: 1,
-                        }}
-                      >
-                        <Typography
-                          sx={{
-                            fontSize: 15,
-                            fontWeight: 600,
-                            color:
-                              "#1E293B",
-                          }}
-                        >
-                          {page.name ||
-                            "Facebook Page"}
-                        </Typography>
-
-                        <Typography
-                          sx={{
-                            mt: 0.25,
-                            fontSize: 12,
-                            color:
-                              "#94A3B8",
-                          }}
-                        >
-                          Facebook Page
-                        </Typography>
-                      </Box>
-                    </Stack>
-
-                    {/* ====================================
-                        LINKED INSTAGRAM
-                    ==================================== */}
-
-                    {linkedInstagram.length >
-                      0 && (
-                      <>
-                        <Divider
-                          sx={{
-                            my: 1.5,
-                          }}
-                        />
-
-                        <Stack
-                          spacing={1}
-                          sx={{
-                            pl: 7,
-                          }}
-                        >
-                          {linkedInstagram.map(
-                            (instagram) => (
-                              <Stack
-                                key={
-                                  instagram.platform_account_id
-                                }
-                                direction="row"
-                                spacing={1}
-                                alignItems="center"
-                              >
-                                <InstagramIcon
-                                  sx={{
-                                    fontSize: 20,
-                                    color:
-                                      "#C13584",
-                                  }}
-                                />
-
-                                <Box>
-                                  <Typography
-                                    sx={{
-                                      fontSize: 13,
-                                      fontWeight: 600,
-                                      color:
-                                        "#334155",
-                                    }}
-                                  >
-                                    {instagram.name ||
-                                      instagram.account_name ||
-                                      "Instagram"}
-                                  </Typography>
-
-                                  {instagram.username && (
-                                    <Typography
-                                      sx={{
-                                        fontSize: 12,
-                                        color:
-                                          "#64748B",
-                                      }}
-                                    >
-                                      @
-                                      {
-                                        instagram.username
-                                      }
-                                    </Typography>
-                                  )}
-                                </Box>
-
-                                <Typography
-                                  sx={{
-                                    ml: "auto",
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    color:
-                                      "#059669",
-                                  }}
-                                >
-                                  Linked
-                                </Typography>
-                              </Stack>
-                            ),
-                          )}
-                        </Stack>
-                      </>
-                    )}
-
-                    {/* ====================================
-                        NO INSTAGRAM
-                    ==================================== */}
-
-                    {linkedInstagram.length ===
-                      0 && (
-                      <Typography
-                        sx={{
-                          pl: 7,
-                          mt: 1,
-                          fontSize: 12,
-                          color:
-                            "#94A3B8",
-                        }}
-                      >
-                        No linked Instagram
-                        Professional account
-                        found.
+                  <ListItemText
+                    primary={
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        {page.name || page.id}
                       </Typography>
-                    )}
-                  </Box>
-                );
-              })}
-            </Stack>
-          )}
+                    }
+                    secondary={
+                      instagram
+                        ? `Instagram: ${
+                            instagram.username
+                              ? `@${instagram.username}`
+                              : instagram.name || instagram.id
+                          }`
+                        : "No linked Instagram account"
+                    }
+                  />
+                </ListItemButton>
+              );
+            })}
+          </List>
+        )}
       </DialogContent>
 
       <DialogActions
         sx={{
           px: 3,
-          pb: 2.5,
-          pt: 1,
+          py: 2,
         }}
       >
-        <Button
-          type="button"
-          onClick={onClose}
-          disabled={confirming}
-          sx={{
-            textTransform: "none",
-            color: "#64748B",
-            fontWeight: 600,
-          }}
-        >
+        <Button onClick={onClose} disabled={submitting}>
           Cancel
         </Button>
 
         <Button
-          type="button"
           variant="contained"
           onClick={handleConfirm}
-          disabled={
-            loading ||
-            confirming ||
-            selectedPageIds.length === 0
-          }
+          disabled={loading || submitting || !selectedPageId}
           startIcon={
-            confirming ? (
-              <CircularProgress
-                size={15}
-                color="inherit"
-              />
-            ) : null
+            submitting ? <CircularProgress size={18} color="inherit" /> : null
           }
-          sx={{
-            textTransform: "none",
-            fontWeight: 600,
-            borderRadius: "10px",
-            px: 2.5,
-          }}
         >
-          {confirming
-            ? "Connecting..."
-            : "Connect Selected"}
+          {submitting ? "Connecting..." : "Connect Page"}
         </Button>
       </DialogActions>
     </Dialog>

@@ -30,6 +30,8 @@
 
 // import SocialAccountsSection from "../../components/organization/social/SocialAccountsSection";
 
+// import MetaPageSelectionDialog from "../../components/organization/social/MetaPageSelectionDialog";
+
 // // ============================================================
 // // UI DIALOGS
 // // ============================================================
@@ -126,14 +128,23 @@
 //   const [socialConnectSuccess, setSocialConnectSuccess] = useState("");
 
 //   // ============================================================
-//   // SOCIAL ACCOUNTS REFRESH
+//   // META PAGE SELECTION STATE
 //   // ============================================================
-//   //
-//   // Backend completes Meta connection before redirecting here.
-//   //
-//   // Incrementing this value tells SocialAccountsSection to
-//   // refresh its useSocialAccounts hook.
-//   //
+
+//   const [metaSelectionOpen, setMetaSelectionOpen] = useState(false);
+
+//   const [metaSelectionLoading, setMetaSelectionLoading] = useState(false);
+
+//   const [metaSelectionSubmitting, setMetaSelectionSubmitting] = useState(false);
+
+//   const [metaSelectionError, setMetaSelectionError] = useState("");
+
+//   const [metaSelectionPages, setMetaSelectionPages] = useState([]);
+
+//   const [metaSelectionKey, setMetaSelectionKey] = useState("");
+
+//   // ============================================================
+//   // SOCIAL ACCOUNTS REFRESH
 //   // ============================================================
 
 //   const [socialAccountsRefreshKey, setSocialAccountsRefreshKey] = useState(0);
@@ -196,7 +207,7 @@
 //   }, [organizationId]);
 
 //   // ============================================================
-//   // LOAD ORGANIZATION ON MOUNT / ID CHANGE
+//   // LOAD ORGANIZATION
 //   // ============================================================
 
 //   useEffect(() => {
@@ -204,25 +215,117 @@
 //   }, [loadOrganization]);
 
 //   // ============================================================
-//   // HANDLE SOCIAL OAUTH CALLBACK
+//   // LOAD META PAGE SELECTION
 //   // ============================================================
-//   //
-//   // Backend redirects:
-//   //
-//   // SUCCESS:
-//   //
-//   // ?social_connect=success
-//   // &platform=meta
-//   // &accounts_connected=2
-//   //
-//   // ERROR:
-//   //
-//   // ?social_connect=error
-//   // &platform=meta
-//   // &reason=...
-//   //
-//   // No frontend account selection happens here.
-//   //
+
+//   const loadMetaSelection = useCallback(
+//     async (selectionKey) => {
+//       if (!organizationId || !selectionKey) {
+//         return;
+//       }
+
+//       try {
+//         setMetaSelectionLoading(true);
+//         setMetaSelectionError("");
+
+//         setMetaSelectionKey(selectionKey);
+
+//         const response = await metaService.getOAuthSelection(
+//           organizationId,
+//           selectionKey,
+//         );
+
+//         const pages = response?.data?.pages || [];
+
+//         setMetaSelectionPages(pages);
+
+//         setMetaSelectionOpen(true);
+//       } catch (error) {
+//         console.error("Failed to load Meta Page selection:", error);
+
+//         setMetaSelectionError(
+//           error?.response?.data?.message ||
+//             error?.message ||
+//             "Unable to load Meta Pages.",
+//         );
+
+//         setMetaSelectionPages([]);
+
+//         setMetaSelectionOpen(true);
+//       } finally {
+//         setMetaSelectionLoading(false);
+//       }
+//     },
+//     [organizationId],
+//   );
+
+//   // ============================================================
+//   // HANDLE META PAGE SELECTION CONFIRM
+//   // ============================================================
+
+//   const handleMetaPageSelection = useCallback(
+//     async (pageId) => {
+//       if (
+//         !organizationId ||
+//         !metaSelectionKey ||
+//         !pageId ||
+//         metaSelectionSubmitting
+//       ) {
+//         return;
+//       }
+
+//       try {
+//         setMetaSelectionSubmitting(true);
+//         setMetaSelectionError("");
+
+//         const response = await metaService.confirmOAuthSelection(
+//           organizationId,
+//           metaSelectionKey,
+//           pageId,
+//         );
+
+//         const data = response?.data || {};
+
+//         const count = Number(data.accounts_connected || 0);
+
+//         setMetaSelectionOpen(false);
+
+//         setMetaSelectionPages([]);
+
+//         setMetaSelectionKey("");
+
+//         setConnectingPlatform(null);
+
+//         showSuccess(
+//           count > 0
+//             ? `${count} Meta account(s) connected successfully.`
+//             : "Meta accounts connected successfully.",
+//         );
+
+//         refreshSocialAccounts();
+//       } catch (error) {
+//         console.error("Failed to confirm Meta Page selection:", error);
+
+//         setMetaSelectionError(
+//           error?.response?.data?.message ||
+//             error?.message ||
+//             "Unable to connect the selected Meta Page.",
+//         );
+//       } finally {
+//         setMetaSelectionSubmitting(false);
+//       }
+//     },
+//     [
+//       organizationId,
+//       metaSelectionKey,
+//       metaSelectionSubmitting,
+//       refreshSocialAccounts,
+//       showSuccess,
+//     ],
+//   );
+
+//   // ============================================================
+//   // HANDLE SOCIAL OAUTH CALLBACK
 //   // ============================================================
 
 //   useEffect(() => {
@@ -236,9 +339,25 @@
 
 //     const reason = params.get("reason");
 
+//     const selectionKey = params.get("selection_key");
+
 //     if (!socialConnect) {
 //       return;
 //     }
+
+//     // ==========================================================
+//     // SELECTION REQUIRED
+//     // ==========================================================
+
+//     if (socialConnect === "selection" && platform === "meta") {
+//       setConnectingPlatform("meta");
+
+//       loadMetaSelection(selectionKey);
+//     }
+
+//     // ==========================================================
+//     // SUCCESS
+//     // ==========================================================
 
 //     if (socialConnect === "success") {
 //       setConnectingPlatform(null);
@@ -255,10 +374,12 @@
 //         showSuccess("Social account connected successfully.");
 //       }
 
-//       // Backend has already saved the accounts.
-//       // Refresh the connected accounts list.
 //       refreshSocialAccounts();
 //     }
+
+//     // ==========================================================
+//     // ERROR
+//     // ==========================================================
 
 //     if (socialConnect === "error") {
 //       setConnectingPlatform(null);
@@ -275,6 +396,7 @@
 //     params.delete("accounts_connected");
 //     params.delete("organization_id");
 //     params.delete("reason");
+//     params.delete("selection_key");
 
 //     const queryString = params.toString();
 
@@ -282,7 +404,7 @@
 //       `${window.location.pathname}` + `${queryString ? `?${queryString}` : ""}`;
 
 //     window.history.replaceState({}, document.title, cleanUrl);
-//   }, [refreshSocialAccounts, showError, showSuccess]);
+//   }, [loadMetaSelection, refreshSocialAccounts, showError, showSuccess]);
 
 //   // ============================================================
 //   // LOAD ACTIVE PLANS
@@ -426,7 +548,7 @@
 //   };
 
 //   // ============================================================
-//   // RENEW SUBSCRIPTION
+//   // RENEW
 //   // ============================================================
 
 //   const handleRenew = async ({ billingCycle }) => {
@@ -520,17 +642,6 @@
 //   // ============================================================
 //   // CONNECT SOCIAL ACCOUNT
 //   // ============================================================
-//   //
-//   // META:
-//   // - Facebook Page
-//   // - linked Instagram Professional account
-//   //
-//   // No frontend Page selection.
-//   //
-//   // LINKEDIN / YOUTUBE:
-//   // - Coming soon
-//   //
-//   // ============================================================
 
 //   const handleSocialConnect = async (platform, selectedOrganizationId) => {
 //     if (!selectedOrganizationId || selectedOrganizationId !== organizationId) {
@@ -539,9 +650,9 @@
 //       return;
 //     }
 
-//     // ==========================================================
+//     // ========================================================
 //     // META
-//     // ==========================================================
+//     // ========================================================
 
 //     if (platform === "meta") {
 //       try {
@@ -551,9 +662,6 @@
 //         setConnectingPlatform("meta");
 
 //         await metaService.startOAuth(selectedOrganizationId);
-
-//         // startOAuth normally redirects the browser.
-//         // Keep this here only as a defensive fallback.
 //       } catch (error) {
 //         console.error("Failed to start Meta OAuth:", error);
 
@@ -569,9 +677,9 @@
 //       return;
 //     }
 
-//     // ==========================================================
+//     // ========================================================
 //     // LINKEDIN
-//     // ==========================================================
+//     // ========================================================
 
 //     if (platform === "linkedin") {
 //       setSocialConnectError("LinkedIn integration is coming soon.");
@@ -579,9 +687,9 @@
 //       return;
 //     }
 
-//     // ==========================================================
+//     // ========================================================
 //     // YOUTUBE
-//     // ==========================================================
+//     // ========================================================
 
 //     if (platform === "youtube") {
 //       setSocialConnectError("YouTube integration is coming soon.");
@@ -589,9 +697,9 @@
 //       return;
 //     }
 
-//     // ==========================================================
-//     // UNKNOWN PLATFORM
-//     // ==========================================================
+//     // ========================================================
+//     // UNKNOWN
+//     // ========================================================
 
 //     setSocialConnectError("This social platform is not available yet.");
 //   };
@@ -691,7 +799,7 @@
 //       )}
 
 //       {/* ======================================================
-//           OVERVIEW LAYOUT
+//           OVERVIEW
 //       ====================================================== */}
 
 //       <OverviewLayout
@@ -727,7 +835,35 @@
 //       />
 
 //       {/* ======================================================
-//           DELETE ORGANIZATION
+//           META PAGE SELECTION
+//       ====================================================== */}
+
+//       <MetaPageSelectionDialog
+//         open={metaSelectionOpen}
+//         pages={metaSelectionPages}
+//         loading={metaSelectionLoading}
+//         submitting={metaSelectionSubmitting}
+//         error={metaSelectionError}
+//         onClose={() => {
+//           if (metaSelectionSubmitting) {
+//             return;
+//           }
+
+//           setMetaSelectionOpen(false);
+
+//           setMetaSelectionPages([]);
+
+//           setMetaSelectionKey("");
+
+//           setMetaSelectionError("");
+
+//           setConnectingPlatform(null);
+//         }}
+//         onConfirm={handleMetaPageSelection}
+//       />
+
+//       {/* ======================================================
+//           DELETE
 //       ====================================================== */}
 
 //       <ConfirmDialog
@@ -748,7 +884,7 @@
 //       />
 
 //       {/* ======================================================
-//           RENEW SUBSCRIPTION
+//           RENEW
 //       ====================================================== */}
 
 //       <RenewSubscriptionDialog
@@ -806,7 +942,7 @@
 //       />
 
 //       {/* ======================================================
-//           CANCEL SUBSCRIPTION
+//           CANCEL
 //       ====================================================== */}
 
 //       <CancelSubscriptionDialog
@@ -825,7 +961,7 @@
 //       />
 
 //       {/* ======================================================
-//           SUBSCRIPTION HISTORY
+//           HISTORY
 //       ====================================================== */}
 
 //       <SubscriptionHistoryDrawer
@@ -843,7 +979,7 @@
 //       />
 
 //       {/* ======================================================
-//           SOCIAL CONNECT SUCCESS
+//           SUCCESS
 //       ====================================================== */}
 
 //       <Snackbar
@@ -934,6 +1070,8 @@ import useOrganizationSubscription from "../../hooks/organization/useOrganizatio
 import organizationService from "../../services/organization/organization.service";
 
 import plansService from "../../services/plans.service";
+
+import instagramService from "../../services/social/instagram.service";
 
 // ============================================================
 // ORGANIZATION OVERVIEW
@@ -1197,8 +1335,16 @@ export default function OrganizationOverview() {
   // HANDLE SOCIAL OAUTH CALLBACK
   // ============================================================
 
+  // ============================================================
+  // HANDLE SOCIAL OAUTH CALLBACK
+  // ============================================================
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // ==========================================================
+    // EXISTING META CALLBACK PARAMETERS
+    // ==========================================================
 
     const socialConnect = params.get("social_connect");
 
@@ -1210,12 +1356,26 @@ export default function OrganizationOverview() {
 
     const selectionKey = params.get("selection_key");
 
-    if (!socialConnect) {
+    // ==========================================================
+    // INSTAGRAM CALLBACK PARAMETERS
+    // ==========================================================
+
+    const instagramOAuth = params.get("instagram_oauth");
+
+    const instagramSocialAccountId = params.get("social_account_id");
+
+    const instagramMessage = params.get("message");
+
+    // ==========================================================
+    // NOTHING TO HANDLE
+    // ==========================================================
+
+    if (!socialConnect && !instagramOAuth) {
       return;
     }
 
     // ==========================================================
-    // SELECTION REQUIRED
+    // META - SELECTION REQUIRED
     // ==========================================================
 
     if (socialConnect === "selection" && platform === "meta") {
@@ -1225,35 +1385,57 @@ export default function OrganizationOverview() {
     }
 
     // ==========================================================
-    // SUCCESS
+    // META - SUCCESS
     // ==========================================================
 
-    if (socialConnect === "success") {
+    if (socialConnect === "success" && platform === "meta") {
       setConnectingPlatform(null);
 
-      if (platform === "meta") {
-        const count = Number(accountsConnected || 0);
+      const count = Number(accountsConnected || 0);
 
-        showSuccess(
-          count > 0
-            ? `${count} Meta account(s) connected successfully.`
-            : "Meta accounts connected successfully.",
-        );
-      } else {
-        showSuccess("Social account connected successfully.");
-      }
+      showSuccess(
+        count > 0
+          ? `${count} Meta account(s) connected successfully.`
+          : "Meta accounts connected successfully.",
+      );
 
       refreshSocialAccounts();
     }
 
     // ==========================================================
-    // ERROR
+    // META - ERROR
     // ==========================================================
 
     if (socialConnect === "error") {
       setConnectingPlatform(null);
 
       showError(reason || "Unable to connect Meta accounts.");
+    }
+
+    // ==========================================================
+    // INSTAGRAM - SUCCESS
+    // ==========================================================
+
+    if (instagramOAuth === "success") {
+      setConnectingPlatform(null);
+
+      showSuccess(
+        instagramSocialAccountId
+          ? "Instagram account connected successfully."
+          : "Instagram account connected successfully.",
+      );
+
+      refreshSocialAccounts();
+    }
+
+    // ==========================================================
+    // INSTAGRAM - ERROR
+    // ==========================================================
+
+    if (instagramOAuth === "error") {
+      setConnectingPlatform(null);
+
+      showError(instagramMessage || "Unable to connect Instagram account.");
     }
 
     // ==========================================================
@@ -1266,6 +1448,10 @@ export default function OrganizationOverview() {
     params.delete("organization_id");
     params.delete("reason");
     params.delete("selection_key");
+
+    params.delete("instagram_oauth");
+    params.delete("social_account_id");
+    params.delete("message");
 
     const queryString = params.toString();
 
@@ -1540,6 +1726,33 @@ export default function OrganizationOverview() {
           error?.response?.data?.message ||
             error?.message ||
             "Unable to start Meta connection. Please try again.",
+        );
+      }
+
+      return;
+    }
+
+    // ========================================================
+    // INSTAGRAM
+    // ========================================================
+
+    if (platform === "instagram") {
+      try {
+        setSocialConnectError("");
+        setSocialConnectSuccess("");
+
+        setConnectingPlatform("instagram");
+
+        await instagramService.startOAuth(selectedOrganizationId);
+      } catch (error) {
+        console.error("Failed to start Instagram OAuth:", error);
+
+        setConnectingPlatform(null);
+
+        setSocialConnectError(
+          error?.response?.data?.message ||
+            error?.message ||
+            "Unable to start Instagram connection. Please try again.",
         );
       }
 

@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "apps.plans",
     # "apps.integrations.meta",
     "apps.integrations.meta.apps.MetaIntegrationConfig",
+    "apps.integrations.instagram.apps.InstagramIntegrationConfig",
 ]
 
 CLOUDINARY_STORAGE = {
@@ -297,6 +298,40 @@ META_HTTP_TIMEOUT_SECONDS = config(
 FRONTEND_URL = config(
     "FRONTEND_URL",
     default="http://localhost:5173",
+)
+
+# ============================================================
+# INSTAGRAM
+# ============================================================
+
+INSTAGRAM_APP_ID = config(
+    "INSTAGRAM_APP_ID",
+)
+
+INSTAGRAM_APP_SECRET = config(
+    "INSTAGRAM_APP_SECRET",
+)
+
+INSTAGRAM_GRAPH_API_VERSION = config(
+    "INSTAGRAM_GRAPH_API_VERSION",
+    default="v26.0",
+)
+
+INSTAGRAM_OAUTH_REDIRECT_URI = config(
+    "INSTAGRAM_OAUTH_REDIRECT_URI",
+    default="",
+)
+
+INSTAGRAM_OAUTH_STATE_MAX_AGE_SECONDS = config(
+    "INSTAGRAM_OAUTH_STATE_MAX_AGE_SECONDS",
+    default=600,
+    cast=int,
+)
+
+INSTAGRAM_HTTP_TIMEOUT_SECONDS = config(
+    "INSTAGRAM_HTTP_TIMEOUT_SECONDS",
+    default=30,
+    cast=int,
 )
 # ============================================================
 # GROQ AI

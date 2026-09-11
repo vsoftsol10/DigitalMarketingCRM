@@ -7,6 +7,16 @@ export const SOCIAL_PLATFORMS = [
     backgroundColor: "#EFF6FF",
     iconColor: "#1877F2",
   },
+
+  {
+    id: "instagram",
+    name: "Instagram",
+    description: "Professional account",
+    icon: "instagram",
+    backgroundColor: "#FDF2F8",
+    iconColor: "#E1306C",
+  },
+
   {
     id: "linkedin",
     name: "LinkedIn",
@@ -16,6 +26,7 @@ export const SOCIAL_PLATFORMS = [
     iconColor: "#0A66C2",
     comingSoon: true,
   },
+
   {
     id: "youtube",
     name: "YouTube",

@@ -2,6 +2,7 @@
 # from urllib.parse import urlencode
 
 # from django.conf import settings
+# from django.contrib.auth import get_user_model
 # from django.shortcuts import redirect
 # from rest_framework import status
 # from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -19,6 +20,7 @@
 #     MetaOAuthConfigurationError,
 #     MetaOAuthStateError,
 # )
+# from .models import MetaOAuthSession
 # from .oauth import (
 #     create_oauth_state,
 #     validate_oauth_state,
@@ -39,10 +41,10 @@
 # ):
 #     base_url = settings.FRONTEND_URL.rstrip("/")
 
-#     url = f"{base_url}/" f"{path.lstrip('/')}"
+#     url = f"{base_url}/{path.lstrip('/')}"
 
 #     if params:
-#         url = f"{url}?" f"{urlencode(params)}"
+#         url = f"{url}?{urlencode(params)}"
 
 #     return redirect(url)
 
@@ -55,10 +57,6 @@
 # class MetaOAuthStartAPIView(APIView):
 #     """
 #     Start Meta Facebook Login for Business OAuth.
-
-#     The organization is supplied by the frontend, but the
-#     organization ID is signed into OAuth state so the callback
-#     cannot safely substitute another organization.
 #     """
 
 #     permission_classes = [
@@ -69,18 +67,13 @@
 #         self,
 #         request,
 #     ):
-#         organization_id = (
-#             request.query_params.get(
-#                 "organization_id",
-#             )
-#             or ""
-#         ).strip()
+#         organization_id = (request.query_params.get("organization_id") or "").strip()
 
 #         if not organization_id:
 #             return Response(
 #                 {
 #                     "success": False,
-#                     "message": ("organization_id is required."),
+#                     "message": "organization_id is required.",
 #                 },
 #                 status=status.HTTP_400_BAD_REQUEST,
 #             )
@@ -111,7 +104,7 @@
 
 #         if not settings.META_BUSINESS_LOGIN_CONFIG_ID:
 #             raise MetaOAuthConfigurationError(
-#                 "Meta Business Login configuration ID " "is not configured.",
+#                 "Meta Business Login configuration ID is not configured.",
 #             )
 
 #         redirect_uri = (settings.META_OAUTH_REDIRECT_URI or "").strip()
@@ -121,28 +114,20 @@
 #                 "Meta OAuth redirect URI is not configured.",
 #             )
 
-#         # ----------------------------------------------------
-#         # SIGNED STATE
-#         # ----------------------------------------------------
-
 #         state = create_oauth_state(
 #             organization_id=organization.organization_id,
 #             user_id=request.user.id,
 #         )
-
-#         # ----------------------------------------------------
-#         # META AUTHORIZATION URL
-#         # ----------------------------------------------------
 
 #         params = {
 #             "client_id": settings.META_APP_ID,
 #             "redirect_uri": redirect_uri,
 #             "state": state,
 #             "response_type": "code",
-#             "config_id": (settings.META_BUSINESS_LOGIN_CONFIG_ID),
+#             "config_id": settings.META_BUSINESS_LOGIN_CONFIG_ID,
 #         }
 
-#         authorization_url = f"{META_OAUTH_AUTHORIZE_URL}" f"?{urlencode(params)}"
+#         authorization_url = f"{META_OAUTH_AUTHORIZE_URL}?{urlencode(params)}"
 
 #         return Response(
 #             {
@@ -162,21 +147,20 @@
 #     """
 #     Meta OAuth callback.
 
-#     This endpoint is intentionally AllowAny because the browser
-#     returns from Meta without the application's JWT.
+#     The callback is AllowAny because Meta redirects the browser
+#     without the application's JWT.
 
-#     The signed OAuth state authenticates the flow context.
+#     The signed OAuth state authenticates the OAuth flow context.
 #     """
 
 #     permission_classes = [
 #         AllowAny,
 #     ]
 
-#     def get(self, request):
-#         # ========================================================
-#         # CODE + STATE
-#         # ========================================================
-
+#     def get(
+#         self,
+#         request,
+#     ):
 #         code = (request.query_params.get("code") or "").strip()
 
 #         state = (request.query_params.get("state") or "").strip()
@@ -191,9 +175,9 @@
 #                 },
 #             )
 
-#         # ========================================================
-#         # VALIDATE SIGNED STATE
-#         # ========================================================
+#         # ====================================================
+#         # VALIDATE STATE
+#         # ====================================================
 
 #         try:
 #             state_data = validate_oauth_state(
@@ -222,9 +206,9 @@
 
 #         user_id = state_data.get("user_id")
 
-#         # ========================================================
+#         # ====================================================
 #         # ORGANIZATION
-#         # ========================================================
+#         # ====================================================
 
 #         organization = Organization.objects.filter(
 #             organization_id=organization_id,
@@ -243,9 +227,9 @@
 
 #         overview_path = f"/organizations/{organization_id}/overview"
 
-#         # ========================================================
-#         # PROVIDER ERROR
-#         # ========================================================
+#         # ====================================================
+#         # META PROVIDER ERROR
+#         # ====================================================
 
 #         error = (request.query_params.get("error") or "").strip()
 
@@ -266,9 +250,9 @@
 #                 },
 #             )
 
-#         # ========================================================
+#         # ====================================================
 #         # AUTHORIZATION CODE
-#         # ========================================================
+#         # ====================================================
 
 #         if not code:
 #             return _frontend_redirect(
@@ -280,11 +264,9 @@
 #                 },
 #             )
 
-#         # ========================================================
+#         # ====================================================
 #         # USER
-#         # ========================================================
-
-#         from django.contrib.auth import get_user_model
+#         # ====================================================
 
 #         User = get_user_model()
 
@@ -304,9 +286,9 @@
 #                 },
 #             )
 
-#         # ========================================================
-#         # COMPLETE OAUTH
-#         # ========================================================
+#         # ====================================================
+#         # COMPLETE OAUTH DISCOVERY
+#         # ====================================================
 
 #         try:
 #             result = MetaOAuthService().prepare_oauth(
@@ -315,30 +297,72 @@
 #                 user=user,
 #             )
 
-#             accounts = result.get("accounts") or []
+#             # ------------------------------------------------
+#             # DIRECT CONNECTION
+#             # ------------------------------------------------
 
-#             facebook_count = sum(
-#                 1
-#                 for account in accounts
-#                 if getattr(account, "platform", None) == "facebook"
-#             )
+#             if result.get("status") == "connected":
+#                 accounts = result.get("accounts") or []
 
-#             instagram_count = sum(
-#                 1
-#                 for account in accounts
-#                 if getattr(account, "platform", None) == "instagram"
-#             )
+#                 facebook_count = sum(
+#                     1
+#                     for account in accounts
+#                     if getattr(
+#                         account,
+#                         "platform",
+#                         None,
+#                     )
+#                     == "facebook"
+#                 )
 
-#             return _frontend_redirect(
-#                 overview_path,
-#                 {
-#                     "social_connect": "success",
-#                     "platform": "meta",
-#                     "accounts_connected": len(accounts),
-#                     "facebook_connected": facebook_count,
-#                     "instagram_connected": instagram_count,
-#                     "organization_id": organization_id,
-#                 },
+#                 instagram_count = sum(
+#                     1
+#                     for account in accounts
+#                     if getattr(
+#                         account,
+#                         "platform",
+#                         None,
+#                     )
+#                     == "instagram"
+#                 )
+
+#                 return _frontend_redirect(
+#                     overview_path,
+#                     {
+#                         "social_connect": "success",
+#                         "platform": "meta",
+#                         "accounts_connected": len(accounts),
+#                         "facebook_connected": facebook_count,
+#                         "instagram_connected": instagram_count,
+#                         "organization_id": organization_id,
+#                     },
+#                 )
+
+#             # ------------------------------------------------
+#             # MULTIPLE PAGES
+#             # ------------------------------------------------
+
+#             if result.get("status") == "selection_required":
+#                 session = result.get("session")
+
+#                 if not session:
+#                     raise MetaAPIError(
+#                         "Meta Page selection session was not created.",
+#                     )
+
+#                 return _frontend_redirect(
+#                     overview_path,
+#                     {
+#                         "social_connect": "selection",
+#                         "platform": "meta",
+#                         "selection_key": str(
+#                             session.selection_key,
+#                         ),
+#                     },
+#                 )
+
+#             raise MetaAPIError(
+#                 "Unexpected Meta OAuth result.",
 #             )
 
 #         except MetaAPIError as exc:
@@ -369,6 +393,272 @@
 #                     "platform": "meta",
 #                     "reason": "Unable to connect Meta accounts.",
 #                 },
+#             )
+
+
+# # ============================================================
+# # PAGE SELECTION
+# # ============================================================
+
+
+# class MetaOAuthSelectionAPIView(APIView):
+#     """
+#     Return the temporary Facebook Page selection data.
+
+#     Tokens are never returned to the frontend.
+#     """
+
+#     permission_classes = [
+#         IsAuthenticated,
+#     ]
+
+#     def get(
+#         self,
+#         request,
+#     ):
+#         selection_key = (request.query_params.get("selection_key") or "").strip()
+
+#         organization_id = (request.query_params.get("organization_id") or "").strip()
+
+#         if not selection_key:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "selection_key is required.",
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         if not organization_id:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "organization_id is required.",
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         organization = Organization.objects.filter(
+#             organization_id=organization_id,
+#             is_deleted=False,
+#         ).first()
+
+#         if not organization:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "Organization not found.",
+#                 },
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+
+#         session = MetaOAuthSession.objects.filter(
+#             selection_key=selection_key,
+#         ).first()
+
+#         if not session:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "Meta authorization session was not found.",
+#                 },
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+
+#         try:
+#             data = MetaOAuthService().get_selection_data(
+#                 session=session,
+#                 organization=organization,
+#                 user=request.user,
+#             )
+
+#             return Response(
+#                 {
+#                     "success": True,
+#                     "data": data,
+#                 },
+#                 status=status.HTTP_200_OK,
+#             )
+
+#         except MetaAPIError as exc:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": str(exc),
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         except Exception:
+#             logger.exception(
+#                 "Unable to load Meta Page selection.",
+#             )
+
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "Unable to load Meta Pages.",
+#                 },
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             )
+
+
+# # ============================================================
+# # PAGE SELECTION CONFIRM
+# # ============================================================
+
+
+# class MetaOAuthSelectionConfirmAPIView(APIView):
+#     """
+#     Confirm one Facebook Page selected by the user.
+
+#     Frontend sends only:
+#         selection_key
+#         organization_id
+#         page_id
+
+#     Access tokens remain server-side.
+#     """
+
+#     permission_classes = [
+#         IsAuthenticated,
+#     ]
+
+#     def post(
+#         self,
+#         request,
+#     ):
+#         selection_key = str(
+#             request.data.get("selection_key") or "",
+#         ).strip()
+
+#         organization_id = str(
+#             request.data.get("organization_id") or "",
+#         ).strip()
+
+#         page_id = str(
+#             request.data.get("page_id") or "",
+#         ).strip()
+
+#         if not selection_key:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "selection_key is required.",
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         if not organization_id:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "organization_id is required.",
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         if not page_id:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "page_id is required.",
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         organization = Organization.objects.filter(
+#             organization_id=organization_id,
+#             is_deleted=False,
+#         ).first()
+
+#         if not organization:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "Organization not found.",
+#                 },
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+
+#         session = MetaOAuthSession.objects.filter(
+#             selection_key=selection_key,
+#         ).first()
+
+#         if not session:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "Meta authorization session was not found.",
+#                 },
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+
+#         try:
+#             result = MetaOAuthService().confirm_selection(
+#                 session=session,
+#                 organization=organization,
+#                 user=request.user,
+#                 page_id=page_id,
+#             )
+
+#             accounts = result.get("accounts") or []
+
+#             facebook_count = sum(
+#                 1
+#                 for account in accounts
+#                 if getattr(
+#                     account,
+#                     "platform",
+#                     None,
+#                 )
+#                 == "facebook"
+#             )
+
+#             instagram_count = sum(
+#                 1
+#                 for account in accounts
+#                 if getattr(
+#                     account,
+#                     "platform",
+#                     None,
+#                 )
+#                 == "instagram"
+#             )
+
+#             return Response(
+#                 {
+#                     "success": True,
+#                     "message": "Meta accounts connected successfully.",
+#                     "data": {
+#                         "accounts_connected": len(accounts),
+#                         "facebook_connected": facebook_count,
+#                         "instagram_connected": instagram_count,
+#                     },
+#                 },
+#                 status=status.HTTP_200_OK,
+#             )
+
+#         except MetaAPIError as exc:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": str(exc),
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         except Exception:
+#             logger.exception(
+#                 "Unable to confirm Meta Page selection.",
+#             )
+
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "message": "Unable to connect the selected Meta Page.",
+#                 },
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
 #             )
 
 import logging
@@ -429,7 +719,7 @@ def _frontend_redirect(
 
 class MetaOAuthStartAPIView(APIView):
     """
-    Start Meta Facebook Login for Business OAuth.
+    Start Meta OAuth for connecting Facebook Pages.
     """
 
     permission_classes = [
@@ -518,10 +808,10 @@ class MetaOAuthStartAPIView(APIView):
 
 class MetaOAuthCallbackAPIView(APIView):
     """
-    Meta OAuth callback.
+    Handle Meta OAuth callback for Facebook Page connection.
 
-    The callback is AllowAny because Meta redirects the browser
-    without the application's JWT.
+    Meta redirects the browser without the application's JWT,
+    therefore this endpoint is intentionally AllowAny.
 
     The signed OAuth state authenticates the OAuth flow context.
     """
@@ -537,6 +827,10 @@ class MetaOAuthCallbackAPIView(APIView):
         code = (request.query_params.get("code") or "").strip()
 
         state = (request.query_params.get("state") or "").strip()
+
+        # ====================================================
+        # STATE
+        # ====================================================
 
         if not state:
             return _frontend_redirect(
@@ -660,7 +954,7 @@ class MetaOAuthCallbackAPIView(APIView):
             )
 
         # ====================================================
-        # COMPLETE OAUTH DISCOVERY
+        # COMPLETE FACEBOOK OAUTH
         # ====================================================
 
         try:
@@ -671,7 +965,7 @@ class MetaOAuthCallbackAPIView(APIView):
             )
 
             # ------------------------------------------------
-            # DIRECT CONNECTION
+            # DIRECT FACEBOOK CONNECTION
             # ------------------------------------------------
 
             if result.get("status") == "connected":
@@ -688,31 +982,19 @@ class MetaOAuthCallbackAPIView(APIView):
                     == "facebook"
                 )
 
-                instagram_count = sum(
-                    1
-                    for account in accounts
-                    if getattr(
-                        account,
-                        "platform",
-                        None,
-                    )
-                    == "instagram"
-                )
-
                 return _frontend_redirect(
                     overview_path,
                     {
                         "social_connect": "success",
                         "platform": "meta",
-                        "accounts_connected": len(accounts),
+                        "accounts_connected": facebook_count,
                         "facebook_connected": facebook_count,
-                        "instagram_connected": instagram_count,
                         "organization_id": organization_id,
                     },
                 )
 
             # ------------------------------------------------
-            # MULTIPLE PAGES
+            # MULTIPLE FACEBOOK PAGES
             # ------------------------------------------------
 
             if result.get("status") == "selection_required":
@@ -764,21 +1046,21 @@ class MetaOAuthCallbackAPIView(APIView):
                 {
                     "social_connect": "error",
                     "platform": "meta",
-                    "reason": "Unable to connect Meta accounts.",
+                    "reason": "Unable to connect Facebook Page.",
                 },
             )
 
 
 # ============================================================
-# PAGE SELECTION
+# FACEBOOK PAGE SELECTION
 # ============================================================
 
 
 class MetaOAuthSelectionAPIView(APIView):
     """
-    Return the temporary Facebook Page selection data.
+    Return temporary Facebook Page selection data.
 
-    Tokens are never returned to the frontend.
+    OAuth tokens are never returned to the frontend.
     """
 
     permission_classes = [
@@ -792,6 +1074,10 @@ class MetaOAuthSelectionAPIView(APIView):
         selection_key = (request.query_params.get("selection_key") or "").strip()
 
         organization_id = (request.query_params.get("organization_id") or "").strip()
+
+        # ====================================================
+        # VALIDATION
+        # ====================================================
 
         if not selection_key:
             return Response(
@@ -811,6 +1097,10 @@ class MetaOAuthSelectionAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # ====================================================
+        # ORGANIZATION
+        # ====================================================
+
         organization = Organization.objects.filter(
             organization_id=organization_id,
             is_deleted=False,
@@ -825,6 +1115,10 @@ class MetaOAuthSelectionAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # ====================================================
+        # SESSION
+        # ====================================================
+
         session = MetaOAuthSession.objects.filter(
             selection_key=selection_key,
         ).first()
@@ -833,10 +1127,14 @@ class MetaOAuthSelectionAPIView(APIView):
             return Response(
                 {
                     "success": False,
-                    "message": "Meta authorization session was not found.",
+                    "message": ("Meta authorization session was not found."),
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        # ====================================================
+        # GET FACEBOOK PAGES
+        # ====================================================
 
         try:
             data = MetaOAuthService().get_selection_data(
@@ -870,14 +1168,14 @@ class MetaOAuthSelectionAPIView(APIView):
             return Response(
                 {
                     "success": False,
-                    "message": "Unable to load Meta Pages.",
+                    "message": "Unable to load Facebook Pages.",
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
 # ============================================================
-# PAGE SELECTION CONFIRM
+# FACEBOOK PAGE SELECTION CONFIRM
 # ============================================================
 
 
@@ -885,12 +1183,13 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
     """
     Confirm one Facebook Page selected by the user.
 
-    Frontend sends only:
+    Frontend sends:
+
         selection_key
         organization_id
         page_id
 
-    Access tokens remain server-side.
+    OAuth access tokens remain server-side.
     """
 
     permission_classes = [
@@ -912,6 +1211,10 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
         page_id = str(
             request.data.get("page_id") or "",
         ).strip()
+
+        # ====================================================
+        # VALIDATION
+        # ====================================================
 
         if not selection_key:
             return Response(
@@ -940,6 +1243,10 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # ====================================================
+        # ORGANIZATION
+        # ====================================================
+
         organization = Organization.objects.filter(
             organization_id=organization_id,
             is_deleted=False,
@@ -954,6 +1261,10 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # ====================================================
+        # SESSION
+        # ====================================================
+
         session = MetaOAuthSession.objects.filter(
             selection_key=selection_key,
         ).first()
@@ -962,10 +1273,14 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
             return Response(
                 {
                     "success": False,
-                    "message": "Meta authorization session was not found.",
+                    "message": ("Meta authorization session was not found."),
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        # ====================================================
+        # CONFIRM FACEBOOK PAGE
+        # ====================================================
 
         try:
             result = MetaOAuthService().confirm_selection(
@@ -988,25 +1303,13 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
                 == "facebook"
             )
 
-            instagram_count = sum(
-                1
-                for account in accounts
-                if getattr(
-                    account,
-                    "platform",
-                    None,
-                )
-                == "instagram"
-            )
-
             return Response(
                 {
                     "success": True,
-                    "message": "Meta accounts connected successfully.",
+                    "message": ("Facebook Page connected successfully."),
                     "data": {
-                        "accounts_connected": len(accounts),
+                        "accounts_connected": facebook_count,
                         "facebook_connected": facebook_count,
-                        "instagram_connected": instagram_count,
                     },
                 },
                 status=status.HTTP_200_OK,
@@ -1029,7 +1332,7 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
             return Response(
                 {
                     "success": False,
-                    "message": "Unable to connect the selected Meta Page.",
+                    "message": ("Unable to connect the selected Facebook Page."),
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

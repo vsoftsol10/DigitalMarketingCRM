@@ -317,7 +317,7 @@ class SocialAccount(BaseModel):
                 name="social_platform_account_idx",
             ),
         ]
-
+    
     def __str__(self):
         display_name = self.account_name or self.username or self.platform_account_id
 

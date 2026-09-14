@@ -2,10 +2,7 @@ from django.utils import timezone
 
 from .crypto import decrypt_token
 from .exceptions import MetaIntegrationError
-from .models import (
-    MetaCredentialStatus,
-    MetaSocialAccountLink,
-)
+from .models import MetaCredentialStatus
 from .selectors import (
     get_meta_account_credential,
 )
@@ -16,22 +13,17 @@ class MetaCredentialService:
     Manage secure access to Meta credentials.
 
     Responsibilities:
-        - Resolve the correct Meta credential.
-        - Resolve Instagram credentials through its linked
-          Facebook Page.
+        - Resolve Meta credentials for Facebook Pages.
         - Validate credential status and expiry.
         - Decrypt credentials only when required.
         - Never expose credentials through API serializers.
 
-    Credential resolution:
+    IMPORTANT:
+        This service is ONLY responsible for Facebook Page
+        credentials.
 
-        Facebook Page
-            -> PAGE credential on Facebook SocialAccount
-
-        Instagram
-            -> MetaSocialAccountLink
-            -> Facebook Page
-            -> PAGE credential on Facebook SocialAccount
+        Instagram credentials are managed by the dedicated
+        Instagram integration and Instagram credential service.
     """
 
     @staticmethod
@@ -40,8 +32,23 @@ class MetaCredentialService:
         social_account,
     ):
         """
-        Return the correct decrypted Meta access token
-        for a social account.
+        Return the decrypted Meta access token for a
+        Facebook Page.
+
+        Meta credentials are intentionally NOT resolved for
+        Instagram accounts.
+
+        Facebook:
+            SocialAccount
+                ↓
+            Meta PAGE credential
+                ↓
+            decrypted access token
+
+        Instagram:
+            InstagramAccountCredential
+                ↓
+            handled by Instagram integration
         """
 
         if not social_account:
@@ -50,44 +57,29 @@ class MetaCredentialService:
             )
 
         # ====================================================
-        # 1. FACEBOOK PAGE
+        # FACEBOOK PAGE ONLY
         # ====================================================
 
-        if social_account.platform == "facebook":
-            credential = get_meta_account_credential(
-                social_account=social_account,
-            )
-
-        # ====================================================
-        # 2. INSTAGRAM
-        # ====================================================
-
-        elif social_account.platform == "instagram":
-            credential = MetaCredentialService._get_instagram_page_credential(
-                instagram_account=social_account,
-            )
-
-        # ====================================================
-        # 3. UNSUPPORTED PLATFORM
-        # ====================================================
-
-        else:
+        if social_account.platform != "facebook":
             raise MetaIntegrationError(
-                "Meta credential resolution is not supported "
-                f"for platform '{social_account.platform}'.",
+                "Meta credential resolution is supported only " "for Facebook Pages.",
             )
 
+        credential = get_meta_account_credential(
+            social_account=social_account,
+        )
+
         # ====================================================
-        # 4. CREDENTIAL NOT FOUND
+        # CREDENTIAL NOT FOUND
         # ====================================================
 
         if credential is None:
             raise MetaIntegrationError(
-                "Meta credential was not found.",
+                "Meta credential was not found for this Facebook Page.",
             )
 
         # ====================================================
-        # 5. STATUS VALIDATION
+        # STATUS VALIDATION
         # ====================================================
 
         if credential.status != MetaCredentialStatus.ACTIVE:
@@ -96,7 +88,7 @@ class MetaCredentialService:
             )
 
         # ====================================================
-        # 6. EXPIRY VALIDATION
+        # EXPIRY VALIDATION
         # ====================================================
 
         if (
@@ -108,7 +100,7 @@ class MetaCredentialService:
             )
 
         # ====================================================
-        # 7. DECRYPT ONLY WHEN REQUIRED
+        # DECRYPT TOKEN
         # ====================================================
 
         try:
@@ -120,52 +112,3 @@ class MetaCredentialService:
             raise MetaIntegrationError(
                 "Unable to decrypt Meta credential.",
             ) from exc
-
-    # ========================================================
-    # INSTAGRAM → FACEBOOK PAGE → PAGE CREDENTIAL
-    # ========================================================
-
-    @staticmethod
-    def _get_instagram_page_credential(
-        *,
-        instagram_account,
-    ):
-        """
-        Resolve the PAGE credential required for an Instagram
-        account through its linked Facebook Page.
-        """
-
-        link = (
-            MetaSocialAccountLink.objects.select_related(
-                "facebook_page",
-            )
-            .filter(
-                instagram_account=instagram_account,
-                organization_id=instagram_account.organization_id,
-                is_deleted=False,
-            )
-            .first()
-        )
-
-        if link is None:
-            raise MetaIntegrationError(
-                "Instagram account is not linked to a Facebook Page.",
-            )
-
-        facebook_page = link.facebook_page
-
-        if facebook_page.is_deleted:
-            raise MetaIntegrationError(
-                "Linked Facebook Page is no longer available.",
-            )
-
-        credential = get_meta_account_credential(
-            social_account=facebook_page,
-        )
-
-        if credential is None:
-            raise MetaIntegrationError(
-                "Linked Facebook Page Meta credential was not found.",
-            )
-
-        return credential

@@ -2,7 +2,7 @@ import api from "../../api/axios";
 
 const metaService = {
   // ==========================================================
-  // START OAUTH
+  // START FACEBOOK OAUTH
   // ==========================================================
 
   async startOAuth(organizationId) {
@@ -19,7 +19,7 @@ const metaService = {
     const authorizationUrl = response?.data?.authorization_url;
 
     if (!authorizationUrl) {
-      throw new Error("Meta authorization URL was not returned.");
+      throw new Error("Facebook authorization URL was not returned.");
     }
 
     window.location.assign(authorizationUrl);
@@ -28,7 +28,7 @@ const metaService = {
   },
 
   // ==========================================================
-  // GET PAGE SELECTION
+  // GET FACEBOOK PAGE SELECTION
   // ==========================================================
 
   async getOAuthSelection(organizationId, selectionKey) {
@@ -37,7 +37,7 @@ const metaService = {
     }
 
     if (!selectionKey) {
-      throw new Error("Meta selection key is required.");
+      throw new Error("Facebook selection key is required.");
     }
 
     const response = await api.get("/integrations/meta/oauth/selection/", {
@@ -48,14 +48,16 @@ const metaService = {
     });
 
     if (!response?.data?.success) {
-      throw new Error(response?.data?.message || "Unable to load Meta Pages.");
+      throw new Error(
+        response?.data?.message || "Unable to load Facebook Pages.",
+      );
     }
 
     return response.data;
   },
 
   // ==========================================================
-  // CONFIRM PAGE SELECTION
+  // CONFIRM FACEBOOK PAGE SELECTION
   // ==========================================================
 
   async confirmOAuthSelection(organizationId, selectionKey, pageId) {
@@ -64,7 +66,7 @@ const metaService = {
     }
 
     if (!selectionKey) {
-      throw new Error("Meta selection key is required.");
+      throw new Error("Facebook selection key is required.");
     }
 
     if (!pageId) {
@@ -82,7 +84,8 @@ const metaService = {
 
     if (!response?.data?.success) {
       throw new Error(
-        response?.data?.message || "Unable to connect the selected Meta Page.",
+        response?.data?.message ||
+          "Unable to connect the selected Facebook Page.",
       );
     }
 

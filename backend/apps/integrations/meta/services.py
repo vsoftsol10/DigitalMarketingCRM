@@ -1,885 +1,8 @@
-# import logging
-# from dataclasses import dataclass
-# from datetime import timedelta
-# from typing import List, Optional, Set
-
-# from django.conf import settings
-# from django.db import transaction
-# from django.utils import timezone
-
-# from apps.social_accounts.models import (
-#     SocialAccount,
-#     SocialAccountStatus,
-#     SocialConnection,
-#     SocialConnectionProvider,
-#     SocialConnectionStatus,
-#     SocialPlatform,
-# )
-
-# from .client import MetaAPIClient
-# from .crypto import encrypt_token
-# from .exceptions import MetaAPIError
-# from .models import (
-#     MetaAccountCredential,
-#     MetaCredentialStatus,
-#     MetaCredentialType,
-#     MetaSocialAccountLink,
-# )
-
-# logger = logging.getLogger(__name__)
-
-
-# # ============================================================
-# # DATA STRUCTURES
-# # ============================================================
-
-
-# @dataclass
-# class MetaAccountData:
-#     platform: str
-#     platform_account_id: str
-#     account_name: str
-#     username: str = ""
-#     profile_image: str = ""
-#     access_token: str = ""
-#     credential_type: str = MetaCredentialType.PAGE
-#     linked_facebook_page_platform_account_id: str = ""
-
-
-# @dataclass
-# class MetaDiscoveryResult:
-#     provider_user_id: str
-#     accounts: List[MetaAccountData]
-
-
-# # ============================================================
-# # META ACCOUNT DISCOVERY
-# # ============================================================
-
-
-# class MetaAccountDiscoveryService:
-#     """
-#     Discover the Facebook Page selected through the Meta
-#     Facebook Login for Business flow and its linked
-#     Instagram Professional account.
-
-#     Important behavior:
-
-#         Meta authorization
-#             ↓
-#         Page asset selection
-#             ↓
-#         /me/accounts
-#             ↓
-#         selected Page
-#             ↓
-#         Page access token
-#             ↓
-#         linked Instagram Professional account
-#     """
-
-#     def __init__(
-#         self,
-#         access_token: str,
-#     ):
-#         self.access_token = access_token
-#         self.client = MetaAPIClient()
-
-#     # ========================================================
-#     # SELECTED PAGE IDS
-#     # ========================================================
-
-#     def _get_selected_page_ids_from_token(self) -> Set[str]:
-#         """
-#         Inspect Meta token granular scopes for asset-specific
-#         Page target IDs.
-
-#         For Facebook Login for Business, Meta may provide
-#         target_ids for granular permissions.
-
-#         We never guess a Page from the list when Meta has
-#         explicitly provided asset-specific target IDs.
-#         """
-
-#         try:
-#             token_data = self.client.diagnose_token(
-#                 access_token=self.access_token,
-#             )
-
-#         except MetaAPIError:
-#             logger.warning(
-#                 "Unable to debug Meta token while determining " "selected Page.",
-#                 exc_info=True,
-#             )
-
-#             return set()
-
-#         granular_scopes = token_data.get("granular_scopes") or []
-
-#         selected_page_ids: Set[str] = set()
-
-#         for item in granular_scopes:
-#             if not isinstance(item, dict):
-#                 continue
-
-#             scope = item.get("scope")
-
-#             if scope != "pages_show_list":
-#                 continue
-
-#             target_ids = item.get("target_ids") or []
-
-#             for target_id in target_ids:
-#                 if target_id:
-#                     selected_page_ids.add(
-#                         str(target_id),
-#                     )
-
-#         return selected_page_ids
-
-#     # ========================================================
-#     # PAGE FILTERING
-#     # ========================================================
-
-#     @staticmethod
-#     def _select_page(
-#         *,
-#         pages: list,
-#         selected_page_ids: Set[str],
-#     ) -> dict:
-#         """
-#         Select exactly one Page.
-
-#         Rules:
-
-#         1. If Meta supplied asset-specific target IDs,
-#            exactly one matching Page must exist.
-
-#         2. If Meta did not supply target IDs:
-#            a single Page is accepted.
-#            multiple Pages are rejected.
-
-#         We never silently choose the first Page.
-#         """
-
-#         if not pages:
-#             raise MetaAPIError(
-#                 "Meta did not return any Facebook Pages " "for this authorization.",
-#             )
-
-#         if selected_page_ids:
-#             matching_pages = [
-#                 page
-#                 for page in pages
-#                 if str(
-#                     page.get("id") or "",
-#                 )
-#                 in selected_page_ids
-#             ]
-
-#             if len(matching_pages) == 1:
-#                 return matching_pages[0]
-
-#             if len(matching_pages) > 1:
-#                 raise MetaAPIError(
-#                     "Meta returned multiple selected Facebook "
-#                     "Pages. Please authorize only one Page "
-#                     "for this connection.",
-#                 )
-
-#             raise MetaAPIError(
-#                 "The Facebook Page selected in Meta could not "
-#                 "be resolved from the returned Page assets.",
-#             )
-
-#         if len(pages) == 1:
-#             return pages[0]
-
-#         raise MetaAPIError(
-#             "Meta returned multiple Facebook Pages, but the "
-#             "authorization response did not identify a unique "
-#             "selected Page. No accounts were connected.",
-#         )
-
-#     # ========================================================
-#     # DISCOVER
-#     # ========================================================
-
-#     def discover_accounts(self) -> MetaDiscoveryResult:
-#         # ----------------------------------------------------
-#         # META USER
-#         # ----------------------------------------------------
-
-#         current_user = self.client.get_current_user(
-#             access_token=self.access_token,
-#         )
-
-#         provider_user_id = str(
-#             current_user.get("id") or "",
-#         ).strip()
-
-#         if not provider_user_id:
-#             raise MetaAPIError(
-#                 "Meta did not return a provider user ID.",
-#             )
-
-#         # ----------------------------------------------------
-#         # PAGES
-#         # ----------------------------------------------------
-
-#         pages = self.client.get_pages(
-#             access_token=self.access_token,
-#         )
-
-#         selected_page_ids = self._get_selected_page_ids_from_token()
-
-#         page = self._select_page(
-#             pages=pages,
-#             selected_page_ids=selected_page_ids,
-#         )
-
-#         # ----------------------------------------------------
-#         # PAGE DATA
-#         # ----------------------------------------------------
-
-#         page_id = str(
-#             page.get("id") or "",
-#         ).strip()
-
-#         page_name = str(
-#             page.get("name") or "",
-#         ).strip()
-
-#         page_access_token = str(
-#             page.get("access_token") or "",
-#         ).strip()
-
-#         if not page_id:
-#             raise MetaAPIError(
-#                 "Meta returned a Facebook Page without an ID.",
-#             )
-
-#         if not page_access_token:
-#             raise MetaAPIError(
-#                 "Meta returned the Facebook Page without a " "Page access token.",
-#             )
-
-#         accounts: List[MetaAccountData] = []
-
-#         # ----------------------------------------------------
-#         # FACEBOOK PAGE
-#         # ----------------------------------------------------
-
-#         accounts.append(
-#             MetaAccountData(
-#                 platform=SocialPlatform.FACEBOOK,
-#                 platform_account_id=page_id,
-#                 account_name=page_name or page_id,
-#                 access_token=page_access_token,
-#                 credential_type=MetaCredentialType.PAGE,
-#             )
-#         )
-
-#         # ----------------------------------------------------
-#         # LINKED INSTAGRAM
-#         # ----------------------------------------------------
-
-#         instagram_business_account = page.get("instagram_business_account") or {}
-
-#         instagram_id = str(
-#             instagram_business_account.get("id") or "",
-#         ).strip()
-
-#         if instagram_id:
-#             instagram_profile = {}
-
-#             try:
-#                 instagram_profile = self.client.get_instagram_profile(
-#                     instagram_account_id=instagram_id,
-#                     access_token=page_access_token,
-#                 )
-
-#             except MetaAPIError:
-#                 # The Page itself can still be connected even
-#                 # if profile metadata retrieval temporarily
-#                 # fails. We retain the Instagram ID and use
-#                 # safe fallback display values.
-#                 logger.warning(
-#                     "Unable to fetch Instagram profile " "for Instagram ID %s.",
-#                     instagram_id,
-#                     exc_info=True,
-#                 )
-
-#             instagram_username = str(
-#                 instagram_profile.get("username") or "",
-#             ).strip()
-
-#             instagram_name = str(
-#                 instagram_profile.get("name") or instagram_username or instagram_id,
-#             ).strip()
-
-#             instagram_profile_image = str(
-#                 instagram_profile.get(
-#                     "profile_picture_url",
-#                 )
-#                 or "",
-#             ).strip()
-
-#             accounts.append(
-#                 MetaAccountData(
-#                     platform=SocialPlatform.INSTAGRAM,
-#                     platform_account_id=instagram_id,
-#                     account_name=instagram_name,
-#                     username=instagram_username,
-#                     profile_image=instagram_profile_image,
-#                     access_token="",
-#                     credential_type=MetaCredentialType.PAGE,
-#                     linked_facebook_page_platform_account_id=page_id,
-#                 )
-#             )
-
-#         return MetaDiscoveryResult(
-#             provider_user_id=provider_user_id,
-#             accounts=accounts,
-#         )
-
-
-# # ============================================================
-# # META SOCIAL ACCOUNT PERSISTENCE
-# # ============================================================
-
-
-# class MetaSocialAccountService:
-#     """
-#     Persist a Meta OAuth authorization and its selected
-#     Facebook Page / linked Instagram account.
-
-#     All database writes happen inside one transaction.
-#     """
-
-#     def __init__(
-#         self,
-#         organization,
-#         user,
-#     ):
-#         self.organization = organization
-#         self.user = user
-
-#     # ========================================================
-#     # CONNECTION
-#     # ========================================================
-
-#     def _get_or_create_connection(
-#         self,
-#         *,
-#         provider_user_id: str,
-#     ):
-#         connection = (
-#             SocialConnection.objects.filter(
-#                 organization=self.organization,
-#                 provider=SocialConnectionProvider.META,
-#                 provider_user_id=str(
-#                     provider_user_id,
-#                 ),
-#             )
-#             .order_by("-is_deleted", "-created_at")
-#             .first()
-#         )
-
-#         now = timezone.now()
-
-#         if connection:
-#             update_fields = []
-
-#             if connection.is_deleted:
-#                 connection.is_deleted = False
-#                 connection.deleted_at = None
-#                 update_fields.extend(
-#                     [
-#                         "is_deleted",
-#                         "deleted_at",
-#                     ]
-#                 )
-
-#             if connection.status != SocialConnectionStatus.ACTIVE:
-#                 connection.status = SocialConnectionStatus.ACTIVE
-#                 update_fields.append("status")
-
-#             connection.last_synced_at = now
-#             update_fields.append("last_synced_at")
-
-#             if update_fields:
-#                 update_fields.append("updated_at")
-#                 connection.save(
-#                     update_fields=update_fields,
-#                 )
-
-#             return connection
-
-#         return SocialConnection.objects.create(
-#             organization=self.organization,
-#             provider=SocialConnectionProvider.META,
-#             provider_user_id=str(
-#                 provider_user_id,
-#             ),
-#             status=SocialConnectionStatus.ACTIVE,
-#             last_synced_at=now,
-#         )
-
-#     # ========================================================
-#     # USER CREDENTIAL
-#     # ========================================================
-
-#     def _save_user_credential(
-#         self,
-#         *,
-#         connection,
-#         user_access_token: str,
-#         token_expires_at=None,
-#     ):
-#         credential = (
-#             MetaAccountCredential.objects.filter(
-#                 social_connection=connection,
-#                 credential_type=MetaCredentialType.USER,
-#             )
-#             .order_by("-created_at")
-#             .first()
-#         )
-
-#         encrypted_token = encrypt_token(
-#             user_access_token,
-#         )
-
-#         defaults = {
-#             "social_account": None,
-#             "access_token": encrypted_token,
-#             "token_expires_at": token_expires_at,
-#             "status": MetaCredentialStatus.ACTIVE,
-#             "last_verified_at": timezone.now(),
-#             "is_deleted": False,
-#             "deleted_at": None,
-#         }
-
-#         if credential:
-#             for field, value in defaults.items():
-#                 setattr(
-#                     credential,
-#                     field,
-#                     value,
-#                 )
-
-#             credential.save()
-
-#             return credential
-
-#         return MetaAccountCredential.objects.create(
-#             social_connection=connection,
-#             social_account=None,
-#             credential_type=MetaCredentialType.USER,
-#             **{
-#                 key: value
-#                 for key, value in defaults.items()
-#                 if key
-#                 not in {
-#                     "social_account",
-#                 }
-#             },
-#         )
-
-#     # ========================================================
-#     # SOCIAL ACCOUNT
-#     # ========================================================
-
-#     def _get_or_create_social_account(
-#         self,
-#         *,
-#         account_data: MetaAccountData,
-#         connection,
-#     ):
-#         now = timezone.now()
-
-#         social_account = (
-#             SocialAccount.objects.filter(
-#                 organization=self.organization,
-#                 platform=account_data.platform,
-#                 platform_account_id=(account_data.platform_account_id),
-#             )
-#             .order_by("-is_deleted", "-created_at")
-#             .first()
-#         )
-
-#         if social_account:
-#             social_account.organization = self.organization
-#             social_account.connection = connection
-#             social_account.account_name = account_data.account_name
-#             social_account.username = account_data.username
-#             social_account.profile_image = account_data.profile_image
-#             social_account.status = SocialAccountStatus.CONNECTED
-#             social_account.is_valid = True
-#             social_account.last_synced_at = now
-#             social_account.is_deleted = False
-#             social_account.deleted_at = None
-
-#             social_account.save()
-
-#             return social_account
-
-#         return SocialAccount.objects.create(
-#             organization=self.organization,
-#             connection=connection,
-#             platform=account_data.platform,
-#             platform_account_id=(account_data.platform_account_id),
-#             account_name=account_data.account_name,
-#             username=account_data.username,
-#             profile_image=account_data.profile_image,
-#             status=SocialAccountStatus.CONNECTED,
-#             is_valid=True,
-#             last_synced_at=now,
-#         )
-
-#     # ========================================================
-#     # PAGE CREDENTIAL
-#     # ========================================================
-
-#     def _save_page_credential(
-#         self,
-#         *,
-#         social_account,
-#         page_access_token: str,
-#     ):
-#         if not page_access_token:
-#             raise MetaAPIError(
-#                 "Facebook Page access token is missing.",
-#             )
-
-#         credential = (
-#             MetaAccountCredential.objects.filter(
-#                 social_account=social_account,
-#                 credential_type=MetaCredentialType.PAGE,
-#             )
-#             .order_by("-created_at")
-#             .first()
-#         )
-
-#         encrypted_token = encrypt_token(
-#             page_access_token,
-#         )
-
-#         if credential:
-#             credential.access_token = encrypted_token
-#             credential.social_connection = None
-#             credential.token_expires_at = None
-#             credential.status = MetaCredentialStatus.ACTIVE
-#             credential.last_verified_at = timezone.now()
-#             credential.is_deleted = False
-#             credential.deleted_at = None
-#             credential.save()
-
-#             return credential
-
-#         return MetaAccountCredential.objects.create(
-#             social_account=social_account,
-#             social_connection=None,
-#             credential_type=MetaCredentialType.PAGE,
-#             access_token=encrypted_token,
-#             token_expires_at=None,
-#             status=MetaCredentialStatus.ACTIVE,
-#             last_verified_at=timezone.now(),
-#         )
-
-#     # ========================================================
-#     # PAGE ↔ INSTAGRAM LINK
-#     # ========================================================
-
-#     def _save_page_instagram_link(
-#         self,
-#         *,
-#         facebook_page,
-#         instagram_account,
-#     ):
-#         link = (
-#             MetaSocialAccountLink.objects.filter(
-#                 organization=self.organization,
-#                 facebook_page=facebook_page,
-#                 instagram_account=instagram_account,
-#             )
-#             .order_by("-is_deleted", "-created_at")
-#             .first()
-#         )
-
-#         if link:
-#             link.is_deleted = False
-#             link.deleted_at = None
-#             link.save(
-#                 update_fields=[
-#                     "is_deleted",
-#                     "deleted_at",
-#                     "updated_at",
-#                 ]
-#             )
-
-#             return link
-
-#         return MetaSocialAccountLink.objects.create(
-#             organization=self.organization,
-#             facebook_page=facebook_page,
-#             instagram_account=instagram_account,
-#         )
-
-#     # ========================================================
-#     # COMPLETE SYNC
-#     # ========================================================
-
-#     @transaction.atomic
-#     def sync_connection_and_accounts(
-#         self,
-#         *,
-#         provider_user_id: str,
-#         user_access_token: str,
-#         accounts: List[MetaAccountData],
-#         token_expires_at=None,
-#     ):
-#         if not provider_user_id:
-#             raise MetaAPIError(
-#                 "Meta provider user ID is required.",
-#             )
-
-#         if not user_access_token:
-#             raise MetaAPIError(
-#                 "Meta access token is required.",
-#             )
-
-#         if not accounts:
-#             raise MetaAPIError(
-#                 "Meta did not return any social accounts.",
-#             )
-
-#         connection = self._get_or_create_connection(
-#             provider_user_id=provider_user_id,
-#         )
-
-#         self._save_user_credential(
-#             connection=connection,
-#             user_access_token=user_access_token,
-#             token_expires_at=token_expires_at,
-#         )
-
-#         facebook_accounts = {}
-#         instagram_accounts = {}
-#         synced_accounts = []
-
-#         # ----------------------------------------------------
-#         # CREATE / UPDATE ACCOUNTS
-#         # ----------------------------------------------------
-
-#         for account_data in accounts:
-#             social_account = self._get_or_create_social_account(
-#                 account_data=account_data,
-#                 connection=connection,
-#             )
-
-#             if account_data.platform == SocialPlatform.FACEBOOK:
-#                 facebook_accounts[account_data.platform_account_id] = social_account
-
-#                 self._save_page_credential(
-#                     social_account=social_account,
-#                     page_access_token=account_data.access_token,
-#                 )
-
-#             elif account_data.platform == SocialPlatform.INSTAGRAM:
-#                 instagram_accounts[account_data.platform_account_id] = social_account
-
-#             synced_accounts.append(
-#                 social_account,
-#             )
-
-#         # ----------------------------------------------------
-#         # PAGE → INSTAGRAM
-#         # ----------------------------------------------------
-
-#         for account_data in accounts:
-#             if account_data.platform != SocialPlatform.INSTAGRAM:
-#                 continue
-
-#             linked_page_id = account_data.linked_facebook_page_platform_account_id
-
-#             if not linked_page_id:
-#                 continue
-
-#             facebook_page = facebook_accounts.get(
-#                 linked_page_id,
-#             )
-
-#             instagram_account = instagram_accounts.get(
-#                 account_data.platform_account_id,
-#             )
-
-#             if not facebook_page or not instagram_account:
-#                 raise MetaAPIError(
-#                     "Meta returned an Instagram account without "
-#                     "a valid linked Facebook Page.",
-#                 )
-
-#             self._save_page_instagram_link(
-#                 facebook_page=facebook_page,
-#                 instagram_account=instagram_account,
-#             )
-
-#         connection.status = SocialConnectionStatus.ACTIVE
-#         connection.last_synced_at = timezone.now()
-
-#         connection.save(
-#             update_fields=[
-#                 "status",
-#                 "last_synced_at",
-#                 "updated_at",
-#             ]
-#         )
-
-#         return (
-#             connection,
-#             synced_accounts,
-#         )
-
-
-# # ============================================================
-# # META OAUTH SERVICE
-# # ============================================================
-
-
-# class MetaOAuthService:
-#     """
-#     Complete Meta OAuth orchestration.
-
-#     Flow:
-
-#         authorization code
-#             ↓
-#         access token
-#             ↓
-#         Meta account discovery
-#             ↓
-#         atomic persistence
-#     """
-
-#     def __init__(self):
-#         self.client = MetaAPIClient()
-
-#     # ========================================================
-#     # PREPARE OAUTH
-#     # ========================================================
-
-#     def prepare_oauth(
-#         self,
-#         *,
-#         code: str,
-#         organization,
-#         user,
-#     ):
-#         if not organization:
-#             raise MetaAPIError(
-#                 "Organization is required.",
-#             )
-
-#         if not user:
-#             raise MetaAPIError(
-#                 "Authenticated user is required.",
-#             )
-
-#         if not settings.META_APP_ID:
-#             raise MetaAPIError(
-#                 "META_APP_ID is not configured.",
-#             )
-
-#         if not settings.META_APP_SECRET:
-#             raise MetaAPIError(
-#                 "META_APP_SECRET is not configured.",
-#             )
-
-#         if not settings.META_OAUTH_REDIRECT_URI:
-#             raise MetaAPIError(
-#                 "META_OAUTH_REDIRECT_URI is not configured.",
-#             )
-
-#         # ----------------------------------------------------
-#         # AUTHORIZATION CODE → ACCESS TOKEN
-#         # ----------------------------------------------------
-
-#         token_response = self.client.exchange_code_for_access_token(
-#             code=code,
-#         )
-
-#         access_token = str(
-#             token_response.get("access_token") or "",
-#         ).strip()
-
-#         if not access_token:
-#             raise MetaAPIError(
-#                 "Meta did not return an access token.",
-#             )
-
-#         # Meta may return expires_in for some token types.
-#         expires_in = token_response.get(
-#             "expires_in",
-#         )
-
-#         token_expires_at: Optional[object] = None
-
-#         if expires_in:
-#             try:
-#                 expires_in_seconds = int(
-#                     expires_in,
-#                 )
-
-#                 if expires_in_seconds > 0:
-#                     token_expires_at = timezone.now() + timedelta(
-#                         seconds=expires_in_seconds,
-#                     )
-
-#             except (
-#                 TypeError,
-#                 ValueError,
-#             ):
-#                 logger.warning(
-#                     "Meta returned an invalid expires_in value.",
-#                 )
-
-#         # ----------------------------------------------------
-#         # DISCOVER SELECTED PAGE + LINKED IG
-#         # ----------------------------------------------------
-
-#         discovery = MetaAccountDiscoveryService(
-#             access_token=access_token,
-#         ).discover_accounts()
-
-#         # ----------------------------------------------------
-#         # PERSIST EVERYTHING ATOMICALLY
-#         # ----------------------------------------------------
-
-#         social_service = MetaSocialAccountService(
-#             organization=organization,
-#             user=user,
-#         )
-
-#         connection, accounts = social_service.sync_connection_and_accounts(
-#             provider_user_id=(discovery.provider_user_id),
-#             user_access_token=access_token,
-#             accounts=discovery.accounts,
-#             token_expires_at=token_expires_at,
-#         )
-
-#         return {
-#             "connection": connection,
-#             "accounts": accounts,
-#             "provider_user_id": (discovery.provider_user_id),
-#         }
-
-
 import json
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import List, Optional
+from typing import List
 
 from django.conf import settings
 from django.db import transaction
@@ -902,7 +25,6 @@ from .models import (
     MetaCredentialStatus,
     MetaCredentialType,
     MetaOAuthSession,
-    MetaSocialAccountLink,
 )
 
 logger = logging.getLogger(__name__)
@@ -915,6 +37,18 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MetaAccountData:
+    """
+    Temporary representation of a Facebook Page discovered
+    through the Meta authorization flow.
+
+    IMPORTANT:
+    The Meta Facebook connection flow intentionally handles
+    Facebook Pages only.
+
+    Instagram accounts must be connected through the dedicated
+    Instagram OAuth flow.
+    """
+
     platform: str
     platform_account_id: str
     account_name: str
@@ -922,6 +56,10 @@ class MetaAccountData:
     profile_image: str = ""
     access_token: str = ""
     credential_type: str = MetaCredentialType.PAGE
+
+    # Kept for backward compatibility with existing encrypted
+    # OAuth session payloads. It is NOT used to auto-connect
+    # Instagram anymore.
     linked_facebook_page_platform_account_id: str = ""
 
 
@@ -938,37 +76,54 @@ class MetaDiscoveryResult:
 
 class MetaAccountDiscoveryService:
     """
-    Discover Facebook Pages and their linked Instagram
-    Professional accounts from a Meta user access token.
+    Discover Facebook Pages available to the authenticated
+    Meta user.
 
-    Important:
+    IMPORTANT ARCHITECTURE RULE
+    ---------------------------
+    This service discovers Facebook Pages only.
 
-        We do NOT rely on granular_scopes.target_ids.
+    A Facebook Page can have a linked Instagram Professional
+    account at the Meta platform level. That relationship does
+    NOT mean that Instagram is connected to this organization.
 
-        Meta can return multiple Pages through /me/accounts.
-        Those Pages are intentionally returned to the caller
-        so the application can ask the user which Page to connect.
+    Instagram SocialAccount records are created only through
+    the dedicated Instagram OAuth flow.
+
+    Therefore:
+
+        Facebook OAuth
+            -> Facebook Pages
+            -> Facebook SocialAccount
+
+        Instagram OAuth
+            -> Instagram account
+            -> Instagram SocialAccount
     """
 
-    def __init__(
-        self,
-        access_token: str,
-    ):
+    def __init__(self, access_token: str):
         self.access_token = access_token
         self.client = MetaAPIClient()
 
-    # ========================================================
-    # DISCOVER ALL ACCOUNTS
-    # ========================================================
-
     def discover_accounts(self) -> MetaDiscoveryResult:
+        """
+        Discover usable Facebook Pages.
+
+        No Instagram account discovery is performed here.
+        """
+
         # ----------------------------------------------------
-        # META USER
+        # CURRENT META USER
         # ----------------------------------------------------
 
         current_user = self.client.get_current_user(
             access_token=self.access_token,
         )
+
+        if not isinstance(current_user, dict):
+            raise MetaAPIError(
+                "Meta returned an invalid current-user response.",
+            )
 
         provider_user_id = str(
             current_user.get("id") or "",
@@ -980,7 +135,7 @@ class MetaAccountDiscoveryService:
             )
 
         # ----------------------------------------------------
-        # PAGES
+        # FACEBOOK PAGES
         # ----------------------------------------------------
 
         pages = self.client.get_pages(
@@ -989,7 +144,7 @@ class MetaAccountDiscoveryService:
 
         if not pages:
             raise MetaAPIError(
-                "Meta did not return any Facebook Pages " "for this authorization.",
+                "Meta did not return any Facebook Pages for " "this authorization.",
             )
 
         logger.info(
@@ -1001,11 +156,14 @@ class MetaAccountDiscoveryService:
         accounts: List[MetaAccountData] = []
 
         # ----------------------------------------------------
-        # DISCOVER EVERY PAGE
+        # PROCESS FACEBOOK PAGES ONLY
         # ----------------------------------------------------
 
         for page in pages:
             if not isinstance(page, dict):
+                logger.warning(
+                    "Skipping invalid Meta Page payload.",
+                )
                 continue
 
             page_id = str(
@@ -1020,22 +178,30 @@ class MetaAccountDiscoveryService:
                 page.get("access_token") or "",
             ).strip()
 
+            # ------------------------------------------------
+            # PAGE ID VALIDATION
+            # ------------------------------------------------
+
             if not page_id:
                 logger.warning(
                     "Skipping Meta Page without an ID.",
                 )
                 continue
 
+            # ------------------------------------------------
+            # PAGE TOKEN VALIDATION
+            # ------------------------------------------------
+
             if not page_access_token:
                 logger.warning(
-                    "Skipping Meta Page %s because no Page access "
-                    "token was returned.",
+                    "Skipping Meta Page %s because no Page "
+                    "access token was returned.",
                     page_id,
                 )
                 continue
 
             # ------------------------------------------------
-            # FACEBOOK PAGE
+            # FACEBOOK ACCOUNT
             # ------------------------------------------------
 
             accounts.append(
@@ -1045,59 +211,6 @@ class MetaAccountDiscoveryService:
                     account_name=page_name or page_id,
                     access_token=page_access_token,
                     credential_type=MetaCredentialType.PAGE,
-                )
-            )
-
-            # ------------------------------------------------
-            # LINKED INSTAGRAM
-            # ------------------------------------------------
-
-            instagram_business_account = page.get("instagram_business_account") or {}
-
-            instagram_id = str(
-                instagram_business_account.get("id") or "",
-            ).strip()
-
-            if not instagram_id:
-                continue
-
-            instagram_profile = {}
-
-            try:
-                instagram_profile = self.client.get_instagram_profile(
-                    instagram_account_id=instagram_id,
-                    access_token=page_access_token,
-                )
-
-            except MetaAPIError:
-                logger.warning(
-                    "Unable to fetch Instagram profile for " "Instagram ID %s.",
-                    instagram_id,
-                    exc_info=True,
-                )
-
-            instagram_username = str(
-                instagram_profile.get("username") or "",
-            ).strip()
-
-            instagram_name = str(
-                instagram_profile.get("name") or instagram_username or instagram_id,
-            ).strip()
-
-            instagram_profile_image = str(
-                instagram_profile.get("profile_picture_url") or "",
-            ).strip()
-
-            accounts.append(
-                MetaAccountData(
-                    platform=SocialPlatform.INSTAGRAM,
-                    platform_account_id=instagram_id,
-                    account_name=instagram_name,
-                    username=instagram_username,
-                    profile_image=instagram_profile_image,
-                    access_token="",
-                    credential_type=MetaCredentialType.PAGE,
-                    linked_facebook_page_platform_account_id=page_id,
                 )
             )
 
@@ -1119,10 +232,18 @@ class MetaAccountDiscoveryService:
 
 class MetaSocialAccountService:
     """
-    Persist one selected Meta Facebook Page and its linked
-    Instagram account.
+    Persist Facebook Pages obtained through Meta OAuth.
 
-    All database writes happen inside one transaction.
+    This service intentionally DOES NOT create Instagram
+    SocialAccount records.
+
+    Responsibilities:
+        1. Create/restore Meta SocialConnection.
+        2. Save Meta user credential.
+        3. Create/restore Facebook SocialAccount.
+        4. Save Facebook Page credential.
+
+    Instagram is outside the responsibility of this service.
     """
 
     def __init__(
@@ -1142,17 +263,42 @@ class MetaSocialAccountService:
         *,
         provider_user_id: str,
     ):
+        """
+        Get or create the Meta OAuth connection for this
+        organization and Meta provider user.
+
+        Existing soft-deleted connections are restored instead
+        of creating a new connection.
+        """
+
+        provider_user_id = str(
+            provider_user_id or "",
+        ).strip()
+
+        if not provider_user_id:
+            raise MetaAPIError(
+                "Meta provider user ID is required.",
+            )
+
         connection = (
-            SocialConnection.objects.filter(
+            SocialConnection.objects.select_for_update()
+            .filter(
                 organization=self.organization,
                 provider=SocialConnectionProvider.META,
-                provider_user_id=str(provider_user_id),
+                provider_user_id=provider_user_id,
             )
-            .order_by("-is_deleted", "-created_at")
+            .order_by(
+                "-is_deleted",
+                "-created_at",
+            )
             .first()
         )
 
         now = timezone.now()
+
+        # ----------------------------------------------------
+        # EXISTING CONNECTION
+        # ----------------------------------------------------
 
         if connection:
             update_fields = []
@@ -1160,6 +306,7 @@ class MetaSocialAccountService:
             if connection.is_deleted:
                 connection.is_deleted = False
                 connection.deleted_at = None
+
                 update_fields.extend(
                     [
                         "is_deleted",
@@ -1183,10 +330,14 @@ class MetaSocialAccountService:
 
             return connection
 
+        # ----------------------------------------------------
+        # NEW CONNECTION
+        # ----------------------------------------------------
+
         return SocialConnection.objects.create(
             organization=self.organization,
             provider=SocialConnectionProvider.META,
-            provider_user_id=str(provider_user_id),
+            provider_user_id=provider_user_id,
             status=SocialConnectionStatus.ACTIVE,
             last_synced_at=now,
         )
@@ -1202,12 +353,26 @@ class MetaSocialAccountService:
         user_access_token: str,
         token_expires_at=None,
     ):
+        """
+        Save/update the Meta user-level credential.
+
+        The credential belongs to SocialConnection, not to a
+        Facebook Page SocialAccount.
+        """
+
+        if not user_access_token:
+            raise MetaAPIError(
+                "Meta user access token is required.",
+            )
+
         credential = (
             MetaAccountCredential.objects.filter(
                 social_connection=connection,
                 credential_type=MetaCredentialType.USER,
             )
-            .order_by("-created_at")
+            .order_by(
+                "-created_at",
+            )
             .first()
         )
 
@@ -1215,27 +380,28 @@ class MetaSocialAccountService:
             user_access_token,
         )
 
-        defaults = {
-            "social_account": None,
-            "access_token": encrypted_token,
-            "token_expires_at": token_expires_at,
-            "status": MetaCredentialStatus.ACTIVE,
-            "last_verified_at": timezone.now(),
-            "is_deleted": False,
-            "deleted_at": None,
-        }
+        now = timezone.now()
+
+        # ----------------------------------------------------
+        # UPDATE EXISTING USER CREDENTIAL
+        # ----------------------------------------------------
 
         if credential:
-            for field, value in defaults.items():
-                setattr(
-                    credential,
-                    field,
-                    value,
-                )
+            credential.social_account = None
+            credential.access_token = encrypted_token
+            credential.token_expires_at = token_expires_at
+            credential.status = MetaCredentialStatus.ACTIVE
+            credential.last_verified_at = now
+            credential.is_deleted = False
+            credential.deleted_at = None
 
             credential.save()
 
             return credential
+
+        # ----------------------------------------------------
+        # CREATE USER CREDENTIAL
+        # ----------------------------------------------------
 
         return MetaAccountCredential.objects.create(
             social_connection=connection,
@@ -1244,7 +410,7 @@ class MetaSocialAccountService:
             access_token=encrypted_token,
             token_expires_at=token_expires_at,
             status=MetaCredentialStatus.ACTIVE,
-            last_verified_at=timezone.now(),
+            last_verified_at=now,
         )
 
     # ========================================================
@@ -1257,27 +423,80 @@ class MetaSocialAccountService:
         account_data: MetaAccountData,
         connection,
     ):
+        """
+        Create or restore one Facebook SocialAccount.
+
+        Provider identity:
+
+            organization
+            +
+            platform
+            +
+            platform_account_id
+
+        represents one logical connected account.
+
+        Existing soft-deleted records are restored instead of
+        creating duplicate records.
+        """
+
+        # ----------------------------------------------------
+        # HARD SAFETY CHECK
+        # ----------------------------------------------------
+
+        if account_data.platform != SocialPlatform.FACEBOOK:
+            raise MetaAPIError(
+                "Meta Facebook connection can persist Facebook " "accounts only.",
+            )
+
+        platform_account_id = str(
+            account_data.platform_account_id or "",
+        ).strip()
+
+        if not platform_account_id:
+            raise MetaAPIError(
+                "Facebook Page ID is required.",
+            )
+
         now = timezone.now()
 
+        # ----------------------------------------------------
+        # EXISTING ACCOUNT
+        # ----------------------------------------------------
+
         social_account = (
-            SocialAccount.objects.filter(
+            SocialAccount.objects.select_for_update()
+            .filter(
                 organization=self.organization,
-                platform=account_data.platform,
-                platform_account_id=account_data.platform_account_id,
+                platform=SocialPlatform.FACEBOOK,
+                platform_account_id=platform_account_id,
             )
-            .order_by("-is_deleted", "-created_at")
+            .order_by(
+                "-is_deleted",
+                "-created_at",
+            )
             .first()
         )
 
         if social_account:
             social_account.organization = self.organization
             social_account.connection = connection
-            social_account.account_name = account_data.account_name
-            social_account.username = account_data.username
-            social_account.profile_image = account_data.profile_image
+
+            social_account.account_name = (
+                account_data.account_name or platform_account_id
+            )
+
+            social_account.username = account_data.username or ""
+
+            social_account.profile_image = account_data.profile_image or ""
+
             social_account.status = SocialAccountStatus.CONNECTED
+
             social_account.is_valid = True
             social_account.last_synced_at = now
+
+            # Restore a previously disconnected/soft-deleted
+            # Facebook account.
             social_account.is_deleted = False
             social_account.deleted_at = None
 
@@ -1285,14 +504,18 @@ class MetaSocialAccountService:
 
             return social_account
 
+        # ----------------------------------------------------
+        # CREATE ACCOUNT
+        # ----------------------------------------------------
+
         return SocialAccount.objects.create(
             organization=self.organization,
             connection=connection,
-            platform=account_data.platform,
-            platform_account_id=account_data.platform_account_id,
-            account_name=account_data.account_name,
-            username=account_data.username,
-            profile_image=account_data.profile_image,
+            platform=SocialPlatform.FACEBOOK,
+            platform_account_id=platform_account_id,
+            account_name=(account_data.account_name or platform_account_id),
+            username=account_data.username or "",
+            profile_image=account_data.profile_image or "",
             status=SocialAccountStatus.CONNECTED,
             is_valid=True,
             last_synced_at=now,
@@ -1308,6 +531,17 @@ class MetaSocialAccountService:
         social_account,
         page_access_token: str,
     ):
+        """
+        Save/update the Facebook Page access token.
+
+        The credential is owned by the Facebook SocialAccount.
+        """
+
+        if social_account.platform != SocialPlatform.FACEBOOK:
+            raise MetaAPIError(
+                "Page credentials can only belong to Facebook " "SocialAccounts.",
+            )
+
         if not page_access_token:
             raise MetaAPIError(
                 "Facebook Page access token is missing.",
@@ -1318,7 +552,9 @@ class MetaSocialAccountService:
                 social_account=social_account,
                 credential_type=MetaCredentialType.PAGE,
             )
-            .order_by("-created_at")
+            .order_by(
+                "-created_at",
+            )
             .first()
         )
 
@@ -1326,18 +562,28 @@ class MetaSocialAccountService:
             page_access_token,
         )
 
+        now = timezone.now()
+
+        # ----------------------------------------------------
+        # UPDATE EXISTING PAGE CREDENTIAL
+        # ----------------------------------------------------
+
         if credential:
-            credential.access_token = encrypted_token
             credential.social_connection = None
+            credential.access_token = encrypted_token
             credential.token_expires_at = None
             credential.status = MetaCredentialStatus.ACTIVE
-            credential.last_verified_at = timezone.now()
+            credential.last_verified_at = now
             credential.is_deleted = False
             credential.deleted_at = None
 
             credential.save()
 
             return credential
+
+        # ----------------------------------------------------
+        # CREATE PAGE CREDENTIAL
+        # ----------------------------------------------------
 
         return MetaAccountCredential.objects.create(
             social_account=social_account,
@@ -1346,51 +592,11 @@ class MetaSocialAccountService:
             access_token=encrypted_token,
             token_expires_at=None,
             status=MetaCredentialStatus.ACTIVE,
-            last_verified_at=timezone.now(),
+            last_verified_at=now,
         )
 
     # ========================================================
-    # PAGE → INSTAGRAM LINK
-    # ========================================================
-
-    def _save_page_instagram_link(
-        self,
-        *,
-        facebook_page,
-        instagram_account,
-    ):
-        link = (
-            MetaSocialAccountLink.objects.filter(
-                organization=self.organization,
-                facebook_page=facebook_page,
-                instagram_account=instagram_account,
-            )
-            .order_by("-is_deleted", "-created_at")
-            .first()
-        )
-
-        if link:
-            link.is_deleted = False
-            link.deleted_at = None
-
-            link.save(
-                update_fields=[
-                    "is_deleted",
-                    "deleted_at",
-                    "updated_at",
-                ]
-            )
-
-            return link
-
-        return MetaSocialAccountLink.objects.create(
-            organization=self.organization,
-            facebook_page=facebook_page,
-            instagram_account=instagram_account,
-        )
-
-    # ========================================================
-    # SAVE SELECTED ACCOUNTS
+    # SAVE SELECTED FACEBOOK ACCOUNTS
     # ========================================================
 
     @transaction.atomic
@@ -1402,6 +608,21 @@ class MetaSocialAccountService:
         accounts: List[MetaAccountData],
         token_expires_at=None,
     ):
+        """
+        Persist selected Facebook Pages.
+
+        IMPORTANT:
+        This method rejects Instagram accounts even if an old
+        caller accidentally passes one.
+
+        This gives us a second layer of protection against the
+        original Facebook -> Instagram auto-connect bug.
+        """
+
+        # ----------------------------------------------------
+        # VALIDATION
+        # ----------------------------------------------------
+
         if not provider_user_id:
             raise MetaAPIError(
                 "Meta provider user ID is required.",
@@ -1414,12 +635,41 @@ class MetaSocialAccountService:
 
         if not accounts:
             raise MetaAPIError(
-                "Meta did not return any social accounts.",
+                "Meta did not return any Facebook Pages.",
             )
+
+        # ----------------------------------------------------
+        # FACEBOOK-ONLY SAFETY GUARD
+        # ----------------------------------------------------
+
+        invalid_accounts = [
+            account
+            for account in accounts
+            if account.platform != SocialPlatform.FACEBOOK
+        ]
+
+        if invalid_accounts:
+            logger.error(
+                "Attempted to persist non-Facebook account(s) "
+                "through Meta Facebook flow.",
+            )
+
+            raise MetaAPIError(
+                "Only Facebook Pages can be connected through "
+                "the Meta Facebook flow.",
+            )
+
+        # ----------------------------------------------------
+        # META CONNECTION
+        # ----------------------------------------------------
 
         connection = self._get_or_create_connection(
             provider_user_id=provider_user_id,
         )
+
+        # ----------------------------------------------------
+        # USER CREDENTIAL
+        # ----------------------------------------------------
 
         self._save_user_credential(
             connection=connection,
@@ -1427,8 +677,10 @@ class MetaSocialAccountService:
             token_expires_at=token_expires_at,
         )
 
-        facebook_accounts = {}
-        instagram_accounts = {}
+        # ----------------------------------------------------
+        # FACEBOOK PAGES
+        # ----------------------------------------------------
+
         synced_accounts = []
 
         for account_data in accounts:
@@ -1437,48 +689,18 @@ class MetaSocialAccountService:
                 connection=connection,
             )
 
-            if account_data.platform == SocialPlatform.FACEBOOK:
-                facebook_accounts[account_data.platform_account_id] = social_account
-
-                self._save_page_credential(
-                    social_account=social_account,
-                    page_access_token=account_data.access_token,
-                )
-
-            elif account_data.platform == SocialPlatform.INSTAGRAM:
-                instagram_accounts[account_data.platform_account_id] = social_account
+            self._save_page_credential(
+                social_account=social_account,
+                page_access_token=account_data.access_token,
+            )
 
             synced_accounts.append(
                 social_account,
             )
 
-        for account_data in accounts:
-            if account_data.platform != SocialPlatform.INSTAGRAM:
-                continue
-
-            linked_page_id = account_data.linked_facebook_page_platform_account_id
-
-            if not linked_page_id:
-                continue
-
-            facebook_page = facebook_accounts.get(
-                linked_page_id,
-            )
-
-            instagram_account = instagram_accounts.get(
-                account_data.platform_account_id,
-            )
-
-            if not facebook_page or not instagram_account:
-                raise MetaAPIError(
-                    "Meta returned an Instagram account without "
-                    "a valid linked Facebook Page.",
-                )
-
-            self._save_page_instagram_link(
-                facebook_page=facebook_page,
-                instagram_account=instagram_account,
-            )
+        # ----------------------------------------------------
+        # CONNECTION SYNC STATE
+        # ----------------------------------------------------
 
         connection.status = SocialConnectionStatus.ACTIVE
         connection.last_synced_at = timezone.now()
@@ -1501,18 +723,29 @@ class MetaSocialAccountService:
 
 class MetaOAuthService:
     """
-    Meta OAuth orchestration.
+    Meta OAuth orchestration for Facebook Page connections.
 
-    The authorization code is exchanged for a Meta user token.
+    Flow:
 
-    The user token is then used to discover all available Pages.
+        OAuth authorization code
+                ↓
+        Meta user access token
+                ↓
+        Discover Facebook Pages
+                ↓
+        One Page
+            ↓
+        connect immediately
 
-    If only one Page exists:
-        persist immediately.
+        Multiple Pages
+            ↓
+        temporary encrypted selection session
+            ↓
+        user selects Facebook Page
+            ↓
+        connect selected Facebook Page
 
-    If multiple Pages exist:
-        create a temporary encrypted MetaOAuthSession.
-        The frontend can then ask the user which Page to connect.
+    Instagram is intentionally excluded from this flow.
     """
 
     SESSION_TTL_SECONDS = 600
@@ -1528,6 +761,11 @@ class MetaOAuthService:
     def _get_token_expiry(
         token_response,
     ):
+        """
+        Convert Meta expires_in into a timezone-aware expiry
+        datetime.
+        """
+
         expires_in = token_response.get(
             "expires_in",
         )
@@ -1566,27 +804,36 @@ class MetaOAuthService:
         accounts: List[MetaAccountData],
     ):
         """
-        Serialize discovered account data for temporary encrypted
-        server-side storage.
+        Serialize Facebook Page discovery data into the
+        encrypted temporary OAuth session.
 
-        Access tokens never go to the frontend.
+        Access tokens remain server-side and encrypted.
+
+        Only Facebook accounts are allowed.
         """
 
-        return [
-            {
-                "platform": account.platform,
-                "platform_account_id": account.platform_account_id,
-                "account_name": account.account_name,
-                "username": account.username,
-                "profile_image": account.profile_image,
-                "access_token": account.access_token,
-                "credential_type": account.credential_type,
-                "linked_facebook_page_platform_account_id": (
-                    account.linked_facebook_page_platform_account_id
-                ),
-            }
-            for account in accounts
-        ]
+        serialized = []
+
+        for account in accounts:
+            if account.platform != SocialPlatform.FACEBOOK:
+                continue
+
+            serialized.append(
+                {
+                    "platform": account.platform,
+                    "platform_account_id": (account.platform_account_id),
+                    "account_name": account.account_name,
+                    "username": account.username,
+                    "profile_image": account.profile_image,
+                    "access_token": account.access_token,
+                    "credential_type": account.credential_type,
+                    # Kept for backward compatibility only.
+                    # It is intentionally empty for new sessions.
+                    "linked_facebook_page_platform_account_id": "",
+                }
+            )
+
+        return serialized
 
     # ========================================================
     # DESERIALIZE SESSION ACCOUNTS
@@ -1596,6 +843,18 @@ class MetaOAuthService:
     def _deserialize_accounts(
         encrypted_accounts: str,
     ) -> List[MetaAccountData]:
+        """
+        Decrypt and deserialize temporary OAuth session data.
+
+        Legacy sessions may contain Instagram records because
+        they were created by the previous implementation.
+
+        Those records are deliberately ignored here.
+
+        This prevents an old session from causing a new
+        Instagram SocialAccount to be created.
+        """
+
         try:
             raw = decrypt_token(
                 encrypted_accounts,
@@ -1606,6 +865,10 @@ class MetaOAuthService:
             )
 
         except Exception as exc:
+            logger.exception(
+                "Unable to deserialize Meta OAuth session.",
+            )
+
             raise MetaAPIError(
                 "Unable to read the temporary Meta authorization session.",
             ) from exc
@@ -1615,20 +878,36 @@ class MetaOAuthService:
                 "Temporary Meta authorization data is invalid.",
             )
 
-        accounts = []
+        accounts: List[MetaAccountData] = []
 
         for item in data:
             if not isinstance(item, dict):
                 continue
 
+            platform = str(
+                item.get("platform") or "",
+            ).strip()
+
+            # ------------------------------------------------
+            # IMPORTANT:
+            # Never deserialize Instagram records into the
+            # Facebook selection flow.
+            # ------------------------------------------------
+
+            if platform != SocialPlatform.FACEBOOK:
+                continue
+
+            platform_account_id = str(
+                item.get("platform_account_id") or "",
+            ).strip()
+
+            if not platform_account_id:
+                continue
+
             accounts.append(
                 MetaAccountData(
-                    platform=str(
-                        item.get("platform") or "",
-                    ),
-                    platform_account_id=str(
-                        item.get("platform_account_id") or "",
-                    ),
+                    platform=SocialPlatform.FACEBOOK,
+                    platform_account_id=platform_account_id,
                     account_name=str(
                         item.get("account_name") or "",
                     ),
@@ -1644,9 +923,9 @@ class MetaOAuthService:
                     credential_type=str(
                         item.get("credential_type") or MetaCredentialType.PAGE,
                     ),
-                    linked_facebook_page_platform_account_id=str(
-                        item.get("linked_facebook_page_platform_account_id") or "",
-                    ),
+                    # Do not restore legacy relationship data
+                    # into the new connection flow.
+                    linked_facebook_page_platform_account_id="",
                 )
             )
 
@@ -1666,19 +945,44 @@ class MetaOAuthService:
         accounts: List[MetaAccountData],
         token_expires_at=None,
     ):
+        """
+        Create a short-lived encrypted Facebook Page selection
+        session.
+
+        No Instagram account is stored in the new session.
+        """
+
         if not accounts:
             raise MetaAPIError(
-                "Meta did not return any accounts.",
+                "Meta did not return any Facebook Pages.",
+            )
+
+        facebook_accounts = [
+            account
+            for account in accounts
+            if account.platform == SocialPlatform.FACEBOOK
+        ]
+
+        if not facebook_accounts:
+            raise MetaAPIError(
+                "Meta did not return any usable Facebook Pages.",
             )
 
         expires_at = timezone.now() + timedelta(
             seconds=self.SESSION_TTL_SECONDS,
         )
 
+        serialized_accounts = self._serialize_accounts(
+            facebook_accounts,
+        )
+
         encrypted_accounts = encrypt_token(
             json.dumps(
-                self._serialize_accounts(accounts),
-                separators=(",", ":"),
+                serialized_accounts,
+                separators=(
+                    ",",
+                    ":",
+                ),
             )
         )
 
@@ -1707,6 +1011,20 @@ class MetaOAuthService:
         organization,
         user,
     ):
+        """
+        Complete Meta OAuth and connect Facebook Page(s).
+
+        If exactly one Facebook Page is available, it is
+        connected immediately.
+
+        If multiple Pages are available, a temporary selection
+        session is created.
+        """
+
+        # ----------------------------------------------------
+        # REQUEST VALIDATION
+        # ----------------------------------------------------
+
         if not organization:
             raise MetaAPIError(
                 "Organization is required.",
@@ -1715,6 +1033,11 @@ class MetaOAuthService:
         if not user:
             raise MetaAPIError(
                 "Authenticated user is required.",
+            )
+
+        if not code:
+            raise MetaAPIError(
+                "Meta authorization code is required.",
             )
 
         if not settings.META_APP_ID:
@@ -1740,6 +1063,11 @@ class MetaOAuthService:
             code=code,
         )
 
+        if not isinstance(token_response, dict):
+            raise MetaAPIError(
+                "Meta returned an invalid access-token response.",
+            )
+
         access_token = str(
             token_response.get("access_token") or "",
         ).strip()
@@ -1754,16 +1082,12 @@ class MetaOAuthService:
         )
 
         # ----------------------------------------------------
-        # DISCOVER ALL PAGES + LINKED INSTAGRAM
+        # DISCOVER FACEBOOK PAGES ONLY
         # ----------------------------------------------------
 
         discovery = MetaAccountDiscoveryService(
             access_token=access_token,
         ).discover_accounts()
-
-        # ----------------------------------------------------
-        # GROUP FACEBOOK PAGES
-        # ----------------------------------------------------
 
         facebook_accounts = [
             account
@@ -1771,17 +1095,13 @@ class MetaOAuthService:
             if account.platform == SocialPlatform.FACEBOOK
         ]
 
-        # ----------------------------------------------------
-        # NO PAGE
-        # ----------------------------------------------------
-
         if not facebook_accounts:
             raise MetaAPIError(
                 "Meta did not return any usable Facebook Pages.",
             )
 
         # ----------------------------------------------------
-        # ONE PAGE → DIRECT CONNECT
+        # ONE FACEBOOK PAGE → DIRECT CONNECT
         # ----------------------------------------------------
 
         if len(facebook_accounts) == 1:
@@ -1789,16 +1109,8 @@ class MetaOAuthService:
 
             selected_accounts = [
                 account
-                for account in discovery.accounts
-                if (
-                    account.platform == SocialPlatform.FACEBOOK
-                    and account.platform_account_id == selected_page_id
-                )
-                or (
-                    account.platform == SocialPlatform.INSTAGRAM
-                    and account.linked_facebook_page_platform_account_id
-                    == selected_page_id
-                )
+                for account in facebook_accounts
+                if account.platform_account_id == selected_page_id
             ]
 
             social_service = MetaSocialAccountService(
@@ -1821,7 +1133,7 @@ class MetaOAuthService:
             }
 
         # ----------------------------------------------------
-        # MULTIPLE PAGES → TEMPORARY SELECTION SESSION
+        # MULTIPLE FACEBOOK PAGES → SELECTION SESSION
         # ----------------------------------------------------
 
         session = self.create_selection_session(
@@ -1829,7 +1141,7 @@ class MetaOAuthService:
             user=user,
             provider_user_id=discovery.provider_user_id,
             user_access_token=access_token,
-            accounts=discovery.accounts,
+            accounts=facebook_accounts,
             token_expires_at=token_expires_at,
         )
 
@@ -1837,7 +1149,8 @@ class MetaOAuthService:
             "status": "selection_required",
             "session": session,
             "provider_user_id": discovery.provider_user_id,
-            "accounts": discovery.accounts,
+            # Only Facebook Pages are returned.
+            "accounts": facebook_accounts,
         }
 
     # ========================================================
@@ -1851,22 +1164,41 @@ class MetaOAuthService:
         organization,
         user,
     ):
+        """
+        Return Facebook Pages available for selection.
+
+        The frontend receives only page metadata.
+
+        OAuth access tokens remain encrypted on the server.
+        """
+
         if not session:
             raise MetaAPIError(
                 "Meta authorization session was not found.",
             )
 
-        # if session.organization_id != organization.organization_id:
+        # ----------------------------------------------------
+        # ORGANIZATION OWNERSHIP
+        # ----------------------------------------------------
+
         if session.organization_id != organization.pk:
             raise MetaAPIError(
                 "This Meta authorization session does not belong "
                 "to the selected organization.",
             )
 
+        # ----------------------------------------------------
+        # USER OWNERSHIP
+        # ----------------------------------------------------
+
         if session.user_id != user.id:
             raise MetaAPIError(
-                "This Meta authorization session belongs to another user.",
+                "This Meta authorization session belongs to " "another user.",
             )
+
+        # ----------------------------------------------------
+        # SESSION STATE
+        # ----------------------------------------------------
 
         if session.is_consumed:
             raise MetaAPIError(
@@ -1876,8 +1208,12 @@ class MetaOAuthService:
         if session.is_expired:
             raise MetaAPIError(
                 "The Meta authorization session has expired. "
-                "Please connect Meta again.",
+                "Please connect Facebook again.",
             )
+
+        # ----------------------------------------------------
+        # DESERIALIZE
+        # ----------------------------------------------------
 
         accounts = self._deserialize_accounts(
             session.encrypted_accounts,
@@ -1887,30 +1223,21 @@ class MetaOAuthService:
             {
                 "id": account.platform_account_id,
                 "name": account.account_name,
-                "instagram": next(
-                    (
-                        {
-                            "id": instagram.platform_account_id,
-                            "username": instagram.username,
-                            "name": instagram.account_name,
-                            "profile_image": instagram.profile_image,
-                        }
-                        for instagram in accounts
-                        if (
-                            instagram.platform == SocialPlatform.INSTAGRAM
-                            and instagram.linked_facebook_page_platform_account_id
-                            == account.platform_account_id
-                        )
-                    ),
-                    None,
-                ),
+                "profile_image": account.profile_image,
             }
             for account in accounts
             if account.platform == SocialPlatform.FACEBOOK
         ]
 
+        if not pages:
+            raise MetaAPIError(
+                "No Facebook Pages are available in this " "authorization session.",
+            )
+
         return {
-            "selection_key": str(session.selection_key),
+            "selection_key": str(
+                session.selection_key,
+            ),
             "pages": pages,
             "expires_at": session.expires_at,
         }
@@ -1927,22 +1254,43 @@ class MetaOAuthService:
         user,
         page_id: str,
     ):
+        """
+        Persist the Facebook Page selected by the user.
+
+        The selected page is resolved strictly from the encrypted
+        OAuth session. The frontend cannot inject an arbitrary
+        Page ID.
+
+        Instagram is never created or linked here.
+        """
+
         if not session:
             raise MetaAPIError(
                 "Meta authorization session was not found.",
             )
 
-        # if session.organization_id != organization.organization_id:
+        # ----------------------------------------------------
+        # ORGANIZATION OWNERSHIP
+        # ----------------------------------------------------
+
         if session.organization_id != organization.pk:
             raise MetaAPIError(
                 "This Meta authorization session does not belong "
                 "to the selected organization.",
             )
 
+        # ----------------------------------------------------
+        # USER OWNERSHIP
+        # ----------------------------------------------------
+
         if session.user_id != user.id:
             raise MetaAPIError(
-                "This Meta authorization session belongs to another user.",
+                "This Meta authorization session belongs to " "another user.",
             )
+
+        # ----------------------------------------------------
+        # SESSION STATE
+        # ----------------------------------------------------
 
         if session.is_consumed:
             raise MetaAPIError(
@@ -1952,8 +1300,12 @@ class MetaOAuthService:
         if session.is_expired:
             raise MetaAPIError(
                 "The Meta authorization session has expired. "
-                "Please connect Meta again.",
+                "Please connect Facebook again.",
             )
+
+        # ----------------------------------------------------
+        # PAGE ID
+        # ----------------------------------------------------
 
         page_id = str(
             page_id or "",
@@ -1964,9 +1316,17 @@ class MetaOAuthService:
                 "Facebook Page ID is required.",
             )
 
+        # ----------------------------------------------------
+        # LOAD SESSION ACCOUNTS
+        # ----------------------------------------------------
+
         accounts = self._deserialize_accounts(
             session.encrypted_accounts,
         )
+
+        # ----------------------------------------------------
+        # RESOLVE SELECTED FACEBOOK PAGE
+        # ----------------------------------------------------
 
         selected_page = next(
             (
@@ -1986,16 +1346,16 @@ class MetaOAuthService:
                 "this Meta authorization session.",
             )
 
+        # ----------------------------------------------------
+        # SELECT FACEBOOK PAGE ONLY
+        # ----------------------------------------------------
+
         selected_accounts = [
             account
             for account in accounts
             if (
                 account.platform == SocialPlatform.FACEBOOK
                 and account.platform_account_id == page_id
-            )
-            or (
-                account.platform == SocialPlatform.INSTAGRAM
-                and account.linked_facebook_page_platform_account_id == page_id
             )
         ]
 
@@ -2004,9 +1364,31 @@ class MetaOAuthService:
                 "Unable to resolve the selected Facebook Page.",
             )
 
-        user_access_token = decrypt_token(
-            session.encrypted_access_token,
-        )
+        # ----------------------------------------------------
+        # DECRYPT USER ACCESS TOKEN
+        # ----------------------------------------------------
+
+        try:
+            user_access_token = decrypt_token(
+                session.encrypted_access_token,
+            )
+        except Exception as exc:
+            logger.exception(
+                "Unable to decrypt Meta OAuth session token.",
+            )
+
+            raise MetaAPIError(
+                "Unable to continue the Meta authorization session.",
+            ) from exc
+
+        if not user_access_token:
+            raise MetaAPIError(
+                "Meta authorization token is unavailable.",
+            )
+
+        # ----------------------------------------------------
+        # PERSIST FACEBOOK PAGE
+        # ----------------------------------------------------
 
         social_service = MetaSocialAccountService(
             organization=organization,
@@ -2019,6 +1401,10 @@ class MetaOAuthService:
             accounts=selected_accounts,
             token_expires_at=session.token_expires_at,
         )
+
+        # ----------------------------------------------------
+        # CONSUME SESSION
+        # ----------------------------------------------------
 
         session.consumed_at = timezone.now()
 

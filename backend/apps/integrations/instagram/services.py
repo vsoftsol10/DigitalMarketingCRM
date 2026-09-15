@@ -316,3 +316,53 @@ class InstagramOAuthService:
         )
 
         return credential
+
+
+class InstagramCredentialService:
+    """
+    Handles lifecycle operations for Instagram account credentials.
+
+    Provider credential state is intentionally kept separate from
+    SocialAccount state.
+
+    Responsibilities:
+        - Revoke local credential usage on disconnect.
+        - Preserve credential history.
+        - Never delete the SocialAccount.
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def revoke_for_disconnect(
+        *,
+        social_account,
+    ):
+        """
+        Revoke the locally stored Instagram credential when the
+        user disconnects the Instagram account.
+
+        The encrypted token is intentionally retained for audit/
+        historical purposes, but it can no longer be resolved for
+        API usage because the credential status becomes REVOKED.
+        """
+
+        credential = (
+            InstagramAccountCredential.objects.select_for_update()
+            .filter(
+                social_account=social_account,
+                is_deleted=False,
+            )
+            .first()
+        )
+
+        if credential:
+            credential.status = InstagramCredentialStatus.REVOKED
+
+            credential.save(
+                update_fields=[
+                    "status",
+                    "updated_at",
+                ]
+            )
+
+        return credential

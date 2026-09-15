@@ -11,6 +11,14 @@ from apps.organizations.selectors import (
     get_organization_by_id,
 )
 
+from .lifecycle import (
+    disconnect_social_account_with_credentials,
+)
+
+from .models import (
+    SocialAccountStatus,
+)
+
 from .selectors import (
     get_social_account_by_id,
     get_social_accounts_for_organization,
@@ -25,7 +33,6 @@ from .serializers import (
 from .services import (
     create_social_account,
     delete_social_account,
-    disconnect_social_account,
     update_social_account,
 )
 
@@ -44,7 +51,9 @@ class OrganizationSocialAccountListCreateAPIView(APIView):
         self,
         organization_id,
     ):
-        organization = get_organization_by_id(organization_id)
+        organization = get_organization_by_id(
+            organization_id,
+        )
 
         if not organization:
             raise ResourceNotFoundException("Organization not found.")
@@ -60,9 +69,13 @@ class OrganizationSocialAccountListCreateAPIView(APIView):
         request,
         organization_id,
     ):
-        organization = self.get_organization(organization_id)
+        organization = self.get_organization(
+            organization_id,
+        )
 
-        queryset = get_social_accounts_for_organization(organization.organization_id)
+        queryset = get_social_accounts_for_organization(
+            organization.organization_id,
+        )
 
         serializer = SocialAccountReadSerializer(
             queryset,
@@ -86,7 +99,9 @@ class OrganizationSocialAccountListCreateAPIView(APIView):
         request,
         organization_id,
     ):
-        organization = self.get_organization(organization_id)
+        organization = self.get_organization(
+            organization_id,
+        )
 
         serializer = SocialAccountCreateSerializer(
             data=request.data,
@@ -95,7 +110,9 @@ class OrganizationSocialAccountListCreateAPIView(APIView):
             },
         )
 
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(
+            raise_exception=True,
+        )
 
         social_account = create_social_account(
             organization=organization,
@@ -118,8 +135,11 @@ class OrganizationSocialAccountListCreateAPIView(APIView):
 
 class OrganizationSocialAccountDetailAPIView(APIView):
     """
-    Retrieve, update, disconnect, and delete a
-    social account belonging to a specific organization.
+    Retrieve, update, and delete a social account
+    belonging to a specific organization.
+
+    Disconnect is intentionally handled by the dedicated
+    disconnect endpoint.
     """
 
     permission_classes = [
@@ -130,7 +150,9 @@ class OrganizationSocialAccountDetailAPIView(APIView):
         self,
         organization_id,
     ):
-        organization = get_organization_by_id(organization_id)
+        organization = get_organization_by_id(
+            organization_id,
+        )
 
         if not organization:
             raise ResourceNotFoundException("Organization not found.")
@@ -162,7 +184,9 @@ class OrganizationSocialAccountDetailAPIView(APIView):
         organization_id,
         social_account_id,
     ):
-        organization = self.get_organization(organization_id)
+        organization = self.get_organization(
+            organization_id,
+        )
 
         social_account = self.get_object(
             organization=organization,
@@ -191,7 +215,9 @@ class OrganizationSocialAccountDetailAPIView(APIView):
         organization_id,
         social_account_id,
     ):
-        organization = self.get_organization(organization_id)
+        organization = self.get_organization(
+            organization_id,
+        )
 
         social_account = self.get_object(
             organization=organization,
@@ -207,7 +233,9 @@ class OrganizationSocialAccountDetailAPIView(APIView):
             },
         )
 
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(
+            raise_exception=True,
+        )
 
         social_account = update_social_account(
             social_account=social_account,
@@ -236,16 +264,100 @@ class OrganizationSocialAccountDetailAPIView(APIView):
         organization_id,
         social_account_id,
     ):
-        organization = self.get_organization(organization_id)
+        organization = self.get_organization(
+            organization_id,
+        )
 
         social_account = self.get_object(
             organization=organization,
             social_account_id=social_account_id,
         )
 
-        delete_social_account(social_account=social_account)
+        # ----------------------------------------------------
+        # DELETE SAFETY
+        # ----------------------------------------------------
+        #
+        # A connected account must be disconnected first.
+        #
+        # CONNECTED
+        #     ↓
+        # DISCONNECT
+        #     ↓
+        # DISCONNECTED
+        #     ↓
+        # DELETE
+        #     ↓
+        # SOFT DELETE
+        #
+        # ----------------------------------------------------
+
+        if social_account.status != SocialAccountStatus.DISCONNECTED:
+            return success_response(
+                message=("Disconnect the social account before " "deleting it."),
+                status_code=status.HTTP_409_CONFLICT,
+            )
+
+        delete_social_account(
+            social_account=social_account,
+        )
 
         return success_response(
             message=("Social account deleted successfully."),
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class OrganizationSocialAccountDisconnectAPIView(APIView):
+    """
+    Disconnect a social account without deleting its
+    historical record.
+
+    Provider-specific credentials are revoked by the
+    social-account lifecycle service.
+    """
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    # ========================================================
+    # DISCONNECT
+    # ========================================================
+
+    def post(
+        self,
+        request,
+        organization_id,
+        social_account_id,
+    ):
+        organization = get_organization_by_id(
+            organization_id,
+        )
+
+        if not organization:
+            raise ResourceNotFoundException("Organization not found.")
+
+        social_account = get_social_account_by_id(
+            social_account_id=social_account_id,
+            organization_id=organization.organization_id,
+        )
+
+        if not social_account:
+            raise ResourceNotFoundException("Social account not found.")
+
+        social_account = disconnect_social_account_with_credentials(
+            social_account=social_account,
+        )
+
+        serializer = SocialAccountReadSerializer(
+            social_account,
+            context={
+                "request": request,
+            },
+        )
+
+        return success_response(
+            data=serializer.data,
+            message=("Social account disconnected successfully."),
             status_code=status.HTTP_200_OK,
         )

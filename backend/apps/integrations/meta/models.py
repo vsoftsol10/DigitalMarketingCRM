@@ -27,10 +27,11 @@ class MetaCredentialType(models.TextChoices):
 
 
 class MetaCredentialStatus(models.TextChoices):
-    ACTIVE = "active", "Active"
-    EXPIRED = "expired", "Expired"
-    INVALID = "invalid", "Invalid"
-    ERROR = "error", "Error"
+    ACTIVE = "ACTIVE", "Active"
+    EXPIRED = "EXPIRED", "Expired"
+    REVOKED = "REVOKED", "Revoked"
+    INVALID = "INVALID", "Invalid"
+    ERROR = "ERROR", "Error"
 
 
 # ============================================================

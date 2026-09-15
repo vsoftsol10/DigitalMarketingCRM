@@ -18,51 +18,109 @@ import {
 
 const PLATFORM_CONFIG = {
   facebook: {
-    title: "Connect Facebook",
-    continueLabel: "Continue with Facebook",
-    message: "Your Facebook login will open in the next step.",
+    connect: {
+      title: "Connect Facebook",
+      continueLabel: "Continue with Facebook",
+      loadingLabel: "Connecting...",
+      message: "Your Facebook login will open in the next step.",
 
-    requirements: [
-      {
-        title: "Facebook account",
-        description:
-          "Make sure you can sign in to the Facebook account you want to use.",
-      },
-      {
-        title: "Facebook Page",
-        description:
-          "Make sure the Facebook Page you want to connect is already connected to a Business Portfolio.",
-      },
-      {
-        title: "Page access",
-        description:
-          "Make sure you have the required access to manage the Facebook Page.",
-      },
-    ],
+      requirements: [
+        {
+          title: "Facebook account",
+          description:
+            "Make sure you can sign in to the Facebook account you want to use.",
+        },
+        {
+          title: "Facebook Page",
+          description:
+            "Make sure the Facebook Page you want to connect is already connected to a Business Portfolio.",
+        },
+        {
+          title: "Page access",
+          description:
+            "Make sure you have the required access to manage the Facebook Page.",
+        },
+      ],
+    },
+
+    reconnect: {
+      title: "Reconnect Facebook",
+      continueLabel: "Continue with Facebook",
+      loadingLabel: "Reconnecting...",
+      message:
+        "Your Facebook login will open in the next step. Make sure you are using the same Meta Business Portfolio that was previously used to connect this Page.",
+
+      requirements: [
+        {
+          title: "Same Meta Business Portfolio",
+          description:
+            "Make sure you are logged in to the same Meta Business Portfolio that was previously used to connect this Facebook Page.",
+        },
+        {
+          title: "Facebook Page",
+          description:
+            "Make sure the Facebook Page you want to reconnect is available in that Business Portfolio.",
+        },
+        {
+          title: "Page access",
+          description:
+            "Make sure you have the required access to manage the Facebook Page.",
+        },
+      ],
+    },
   },
 
   instagram: {
-    title: "Connect Instagram",
-    continueLabel: "Continue with Instagram",
-    message: "Your Instagram login will open in the next step.",
+    connect: {
+      title: "Connect Instagram",
+      continueLabel: "Continue with Instagram",
+      loadingLabel: "Connecting...",
+      message: "Your Instagram login will open in the next step.",
 
-    requirements: [
-      {
-        title: "Professional Instagram account",
-        description:
-          "Make sure the Instagram account you want to connect is a Professional account.",
-      },
-      {
-        title: "Instagram access",
-        description:
-          "Make sure you can sign in to the Instagram account you want to connect.",
-      },
-      {
-        title: "Authorization",
-        description:
-          "You'll need to authorize access to connect your Instagram account.",
-      },
-    ],
+      requirements: [
+        {
+          title: "Professional Instagram account",
+          description:
+            "Make sure the Instagram account you want to connect is a Professional account.",
+        },
+        {
+          title: "Instagram access",
+          description:
+            "Make sure you can sign in to the Instagram account you want to connect.",
+        },
+        {
+          title: "Authorization",
+          description:
+            "You'll need to authorize access to connect your Instagram account.",
+        },
+      ],
+    },
+
+    reconnect: {
+      title: "Reconnect Instagram",
+      continueLabel: "Continue with Instagram",
+      loadingLabel: "Reconnecting...",
+      message:
+        "Your Instagram login will open in the next step. Make sure you are logged in to the same Instagram account that was previously connected.",
+
+      requirements: [
+        {
+          title: "Same Instagram account",
+          description:
+            "Make sure you are logged in to the same Instagram account that was previously connected.",
+        },
+        {
+          title: "Professional Instagram account",
+          description:
+            "Make sure the Instagram account is still a Professional account.",
+        },
+        {
+          title: "Authorization",
+          description:
+            "You'll need to authorize access again to reconnect your Instagram account.",
+        },
+      ],
+    },
   },
 };
 
@@ -73,6 +131,7 @@ const PLATFORM_CONFIG = {
 const ConnectSocialAccountDialog = ({
   isOpen,
   platform,
+  mode = "connect",
   onClose,
   onContinue,
   isLoading = false,
@@ -81,7 +140,9 @@ const ConnectSocialAccountDialog = ({
   // PLATFORM CONFIG
   // ==========================================================
 
-  const config = PLATFORM_CONFIG[platform];
+  const platformConfig = PLATFORM_CONFIG[platform];
+
+  const config = platformConfig?.[mode];
 
   // ==========================================================
   // INVALID / CLOSED STATE
@@ -125,15 +186,15 @@ const ConnectSocialAccountDialog = ({
       onClose={handleClose}
       fullWidth
       maxWidth="sm"
-      aria-labelledby="connect-social-account-dialog-title"
-      aria-describedby="connect-social-account-dialog-description"
+      aria-labelledby="social-account-dialog-title"
+      aria-describedby="social-account-dialog-description"
     >
       {/* ======================================================
           TITLE
       ====================================================== */}
 
       <DialogTitle
-        id="connect-social-account-dialog-title"
+        id="social-account-dialog-title"
         sx={{
           px: 3,
           pt: 3,
@@ -151,7 +212,7 @@ const ConnectSocialAccountDialog = ({
       ====================================================== */}
 
       <DialogContent
-        id="connect-social-account-dialog-description"
+        id="social-account-dialog-description"
         sx={{
           px: 3,
           py: 2,
@@ -262,8 +323,9 @@ const ConnectSocialAccountDialog = ({
             px: 2,
             py: 1.5,
             borderRadius: "10px",
-            backgroundColor: "#F9FAFB",
-            border: "1px solid #E5E7EB",
+            backgroundColor: mode === "reconnect" ? "#FFFBEB" : "#F9FAFB",
+            border:
+              mode === "reconnect" ? "1px solid #FDE68A" : "1px solid #E5E7EB",
           }}
         >
           <Typography
@@ -271,7 +333,7 @@ const ConnectSocialAccountDialog = ({
             sx={{
               fontSize: "0.8125rem",
               lineHeight: 1.6,
-              color: "#4B5563",
+              color: mode === "reconnect" ? "#92400E" : "#4B5563",
             }}
           >
             {config.message}
@@ -342,7 +404,7 @@ const ConnectSocialAccountDialog = ({
             },
           }}
         >
-          {isLoading ? "Connecting..." : config.continueLabel}
+          {isLoading ? config.loadingLabel : config.continueLabel}
         </Button>
       </DialogActions>
     </Dialog>
@@ -358,6 +420,8 @@ ConnectSocialAccountDialog.propTypes = {
 
   platform: PropTypes.oneOf(["facebook", "instagram"]),
 
+  mode: PropTypes.oneOf(["connect", "reconnect"]),
+
   onClose: PropTypes.func.isRequired,
 
   onContinue: PropTypes.func.isRequired,
@@ -371,6 +435,7 @@ ConnectSocialAccountDialog.propTypes = {
 
 ConnectSocialAccountDialog.defaultProps = {
   platform: null,
+  mode: "connect",
   isLoading: false,
 };
 

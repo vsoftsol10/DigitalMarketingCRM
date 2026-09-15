@@ -1420,3 +1420,58 @@ class MetaOAuthService:
             "accounts": synced_accounts,
             "provider_user_id": session.provider_user_id,
         }
+
+
+class MetaCredentialService:
+    """
+    Handles lifecycle operations for Meta credentials.
+
+    A Facebook Page credential belongs to the Facebook
+    SocialAccount.
+
+    A Meta USER credential belongs to the SocialConnection.
+
+    Disconnecting one Facebook Page must NOT revoke the
+    organization-level Meta USER credential.
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def revoke_page_credential_for_disconnect(
+        *,
+        social_account,
+    ):
+        """
+        Revoke only the Facebook Page credential associated
+        with the supplied Facebook SocialAccount.
+
+        The Meta USER credential / SocialConnection is intentionally
+        left untouched.
+        """
+
+        if social_account.platform != SocialPlatform.FACEBOOK:
+            raise MetaAPIError(
+                "Meta Page credential revocation requires a Facebook account."
+            )
+
+        credential = (
+            MetaAccountCredential.objects.select_for_update()
+            .filter(
+                social_account=social_account,
+                credential_type=MetaCredentialType.PAGE,
+                is_deleted=False,
+            )
+            .first()
+        )
+
+        if credential:
+            credential.status = MetaCredentialStatus.REVOKED
+
+            credential.save(
+                update_fields=[
+                    "status",
+                    "updated_at",
+                ]
+            )
+
+        return credential

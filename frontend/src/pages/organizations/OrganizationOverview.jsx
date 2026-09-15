@@ -49,6 +49,7 @@ import SubscriptionHistoryDrawer from "../../components/organization/subscriptio
 
 import useOrganizationSubscription from "../../hooks/organization/useOrganizationSubscription";
 
+import useSocialAccounts from "../../hooks/social/useSocialAccounts";
 // ============================================================
 // SERVICES
 // ============================================================
@@ -120,6 +121,17 @@ export default function OrganizationOverview() {
   const [socialConnectSuccess, setSocialConnectSuccess] = useState("");
 
   // ============================================================
+  // SOCIAL DISCONNECT STATE
+  // ============================================================
+
+  const [socialDisconnectOpen, setSocialDisconnectOpen] = useState(false);
+
+  const [socialAccountToDisconnect, setSocialAccountToDisconnect] =
+    useState(null);
+
+  const [socialDisconnectLoading, setSocialDisconnectLoading] = useState(false);
+
+  // ============================================================
   // FACEBOOK PAGE SELECTION STATE
   // ============================================================
 
@@ -152,6 +164,15 @@ export default function OrganizationOverview() {
     useState(false);
 
   // ============================================================
+  // SOCIAL RECONNECT DIALOG STATE
+  // ============================================================
+
+  const [socialReconnectDialogOpen, setSocialReconnectDialogOpen] =
+    useState(false);
+
+  const [socialReconnectAccount, setSocialReconnectAccount] = useState(null);
+
+  // ============================================================
   // HELPERS
   // ============================================================
 
@@ -166,6 +187,8 @@ export default function OrganizationOverview() {
   const refreshSocialAccounts = useCallback(() => {
     setSocialAccountsRefreshKey((current) => current + 1);
   }, []);
+
+  const { disconnectAccount } = useSocialAccounts(organizationId);
 
   // ============================================================
   // LOAD ORGANIZATION
@@ -745,6 +768,58 @@ export default function OrganizationOverview() {
 
     setSocialConnectError("This social platform is not available yet.");
   };
+  // ============================================================
+  // HANDLE SOCIAL DISCONNECT
+  // ============================================================
+
+  const handleSocialDisconnect = useCallback((account) => {
+    if (!account?.id) {
+      return;
+    }
+
+    setSocialAccountToDisconnect(account);
+    setSocialDisconnectOpen(true);
+  }, []);
+
+  // ============================================================
+  // CONFIRM SOCIAL DISCONNECT
+  // ============================================================
+
+  const handleConfirmSocialDisconnect = useCallback(async () => {
+    if (!socialAccountToDisconnect?.id || socialDisconnectLoading) {
+      return;
+    }
+
+    try {
+      setSocialDisconnectLoading(true);
+
+      await disconnectAccount(socialAccountToDisconnect.id);
+
+      setSocialDisconnectOpen(false);
+      setSocialAccountToDisconnect(null);
+
+      showSuccess("Social account disconnected successfully.");
+
+      refreshSocialAccounts();
+    } catch (error) {
+      console.error("Failed to disconnect social account:", error);
+
+      showError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Unable to disconnect social account. Please try again.",
+      );
+    } finally {
+      setSocialDisconnectLoading(false);
+    }
+  }, [
+    socialAccountToDisconnect,
+    socialDisconnectLoading,
+    disconnectAccount,
+    refreshSocialAccounts,
+    showSuccess,
+    showError,
+  ]);
   const handleContinueSocialConnect = async (platform) => {
     if (!organizationId) {
       return;
@@ -768,6 +843,83 @@ export default function OrganizationOverview() {
     }
   };
 
+  // ============================================================
+  // OPEN SOCIAL RECONNECT
+  // ============================================================
+
+  const handleSocialReconnect = useCallback(
+    (account) => {
+      if (!account?.id || !account?.platform) {
+        return;
+      }
+
+      if (account.platform !== "facebook" && account.platform !== "instagram") {
+        showError("Reconnect is not available for this social platform.");
+        return;
+      }
+
+      setSocialConnectError("");
+      setSocialConnectSuccess("");
+
+      setSocialReconnectAccount(account);
+      setSocialReconnectDialogOpen(true);
+    },
+    [showError],
+  );
+
+  // ============================================================
+  // CONTINUE SOCIAL RECONNECT
+  // ============================================================
+
+  const handleContinueSocialReconnect = async (platform) => {
+    if (!organizationId) {
+      return;
+    }
+
+    try {
+      setSocialConnectDialogLoading(true);
+
+      if (platform === "facebook") {
+        await metaService.startOAuth(organizationId);
+        return;
+      }
+
+      if (platform === "instagram") {
+        await instagramService.startOAuth(organizationId);
+        return;
+      }
+
+      setSocialConnectDialogLoading(false);
+
+      setSocialReconnectDialogOpen(false);
+      setSocialReconnectAccount(null);
+
+      showError("Reconnect is not available for this social platform.");
+    } catch (error) {
+      console.error("Failed to start social reconnect:", error);
+
+      setSocialConnectDialogLoading(false);
+
+      showError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to reconnect social account.",
+      );
+    }
+  };
+
+  // ============================================================
+  // CLOSE SOCIAL RECONNECT DIALOG
+  // ============================================================
+
+  const handleCloseSocialReconnect = useCallback(() => {
+    if (socialConnectDialogLoading) {
+      return;
+    }
+
+    setSocialReconnectDialogOpen(false);
+    setSocialReconnectAccount(null);
+  }, [socialConnectDialogLoading]);
   // ============================================================
   // INITIAL LOADING
   // ============================================================
@@ -875,6 +1027,8 @@ export default function OrganizationOverview() {
           <SocialAccountsSection
             organizationId={organizationId}
             onConnect={handleSocialConnect}
+            onDisconnect={handleSocialDisconnect}
+            onReconnect={handleSocialReconnect}
             connectingPlatform={connectingPlatform}
             refreshKey={socialAccountsRefreshKey}
           />
@@ -939,6 +1093,39 @@ export default function OrganizationOverview() {
         }}
         onContinue={handleContinueSocialConnect}
         isLoading={socialConnectDialogLoading}
+      />
+
+      <ConnectSocialAccountDialog
+        isOpen={socialReconnectDialogOpen}
+        platform={socialReconnectAccount?.platform || null}
+        mode="reconnect"
+        onClose={handleCloseSocialReconnect}
+        onContinue={handleContinueSocialReconnect}
+        isLoading={socialConnectDialogLoading}
+      />
+
+      <ConfirmDialog
+        open={socialDisconnectOpen}
+        title="Disconnect social account"
+        message="Are you sure you want to disconnect"
+        entityName={
+          socialAccountToDisconnect?.pageName ||
+          socialAccountToDisconnect?.username ||
+          "this account"
+        }
+        description="You can reconnect this account later."
+        confirmText="Disconnect"
+        cancelText="Cancel"
+        loading={socialDisconnectLoading}
+        onClose={() => {
+          if (socialDisconnectLoading) {
+            return;
+          }
+
+          setSocialDisconnectOpen(false);
+          setSocialAccountToDisconnect(null);
+        }}
+        onConfirm={handleConfirmSocialDisconnect}
       />
 
       {/* ======================================================

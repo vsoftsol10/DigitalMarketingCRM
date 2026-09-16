@@ -40,11 +40,6 @@
 // // ============================================================
 // // ACCOUNT TYPES
 // // ============================================================
-// //
-// // These describe what the connected account represents.
-// // They are derived from the platform, not from account data.
-// //
-// // ============================================================
 
 // const ACCOUNT_TYPES = {
 //   facebook: "Facebook Page",
@@ -117,24 +112,75 @@
 //   // ==========================================================
 //   //
 //   // Facebook:
-//   //     accountName = Page name
+//   //     pageName -> Facebook Page name
 //   //
 //   // Instagram:
-//   //     accountName = Instagram profile name
-//   //     username    = Instagram username
+//   //     pageName -> Instagram profile/display name
+//   //     username -> Instagram username
 //   //
-//   // No actual account name is hardcoded here.
+//   // Other platforms:
+//   //     pageName -> accountName -> name -> platformName
 //   //
 //   // ==========================================================
 
 //   const accountName =
-//     account?.accountName || account?.pageName || account?.name || platformName;
+//     account?.pageName || account?.accountName || account?.name || platformName;
 
 //   const username = account?.username || "";
+
+//   // ==========================================================
+//   // CONNECTION STATE
+//   // ==========================================================
 
 //   const connected = Boolean(account?.connected);
 
 //   const valid = account?.valid !== false;
+
+//   // ==========================================================
+//   // VALIDITY STATUS
+//   // ==========================================================
+//   //
+//   // Connected + valid
+//   //     -> Valid
+//   //
+//   // Connected + invalid
+//   //     -> Expired
+//   //
+//   // Disconnected
+//   //     -> Revoked
+//   //
+//   // A disconnected account should not be shown as "Expired"
+//   // because disconnection is a separate lifecycle state.
+//   //
+//   // ==========================================================
+
+//   const validityLabel = !connected ? "Revoked" : valid ? "Valid" : "Expired";
+
+//   // ==========================================================
+//   // VALIDITY STATUS STYLING
+//   // ==========================================================
+
+//   const validityBackgroundColor = !connected
+//     ? "#F1F5F9"
+//     : valid
+//       ? "#ECFDF3"
+//       : "#FEF2F2";
+
+//   const validityTextColor = !connected
+//     ? "#64748B"
+//     : valid
+//       ? "#059669"
+//       : "#DC2626";
+
+//   const validityBorderColor = !connected
+//     ? "#CBD5E1"
+//     : valid
+//       ? "#A7F3D0"
+//       : "#FECACA";
+
+//   // ==========================================================
+//   // PROFILE IMAGE
+//   // ==========================================================
 
 //   const profileImage =
 //     !imgError && account?.profileImage ? account.profileImage : "";
@@ -155,6 +201,8 @@
 //     try {
 //       await onReconnect(account);
 //     } catch (err) {
+//       console.error("Reconnect failed:", err);
+
 //       setActionError("Reconnect failed. Try again.");
 //     }
 //   };
@@ -173,6 +221,8 @@
 //     try {
 //       await onDisconnect(account);
 //     } catch (err) {
+//       console.error("Disconnect failed:", err);
+
 //       setActionError("Disconnect failed. Try again.");
 //     }
 //   };
@@ -394,16 +444,16 @@
 //         ================================================== */}
 
 //         <Chip
-//           label={valid ? "Valid" : "Expired"}
+//           label={validityLabel}
 //           size="small"
 //           sx={{
 //             height: PILL_HEIGHT,
 //             display: "flex",
 //             alignItems: "center",
-//             bgcolor: valid ? "#ECFDF3" : "#FEF2F2",
-//             color: valid ? "#059669" : "#DC2626",
+//             bgcolor: validityBackgroundColor,
+//             color: validityTextColor,
 //             border: "1px solid",
-//             borderColor: valid ? "#A7F3D0" : "#FECACA",
+//             borderColor: validityBorderColor,
 //             fontWeight: 600,
 //             fontSize: 12,
 //             "& .MuiChip-label": {
@@ -506,7 +556,7 @@
 
 // export default memo(ConnectedAccountRow);
 
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import {
   Avatar,
@@ -557,6 +607,12 @@ const ACCOUNT_TYPES = {
 };
 
 // ============================================================
+// SHARED PILL HEIGHT
+// ============================================================
+
+const PILL_HEIGHT = 32;
+
+// ============================================================
 // DATE FORMATTER
 // ============================================================
 
@@ -581,10 +637,97 @@ function formatLastSync(value) {
 }
 
 // ============================================================
-// SHARED PILL HEIGHT
+// CONNECTION STATUS CONFIG
 // ============================================================
 
-const PILL_HEIGHT = 32;
+const CONNECTION_STATUS_CONFIG = {
+  connected: {
+    label: "Connected",
+    backgroundColor: "#ECFDF3",
+    textColor: "#059669",
+    borderColor: "#A7F3D0",
+  },
+
+  disconnected: {
+    label: "Disconnected",
+    backgroundColor: "#F1F5F9",
+    textColor: "#64748B",
+    borderColor: "#CBD5E1",
+  },
+
+  expired: {
+    label: "Expired",
+    backgroundColor: "#FEF2F2",
+    textColor: "#DC2626",
+    borderColor: "#FECACA",
+  },
+
+  error: {
+    label: "Error",
+    backgroundColor: "#FFF7ED",
+    textColor: "#C2410C",
+    borderColor: "#FED7AA",
+  },
+};
+
+// ============================================================
+// CREDENTIAL STATUS CONFIG
+// ============================================================
+
+const CREDENTIAL_STATUS_CONFIG = {
+  active: {
+    label: "Valid",
+    backgroundColor: "#ECFDF3",
+    textColor: "#059669",
+    borderColor: "#A7F3D0",
+  },
+
+  expired: {
+    label: "Expired",
+    backgroundColor: "#FEF2F2",
+    textColor: "#DC2626",
+    borderColor: "#FECACA",
+  },
+
+  revoked: {
+    label: "Revoked",
+    backgroundColor: "#F1F5F9",
+    textColor: "#64748B",
+    borderColor: "#CBD5E1",
+  },
+
+  invalid: {
+    label: "Invalid",
+    backgroundColor: "#FEF2F2",
+    textColor: "#DC2626",
+    borderColor: "#FECACA",
+  },
+
+  error: {
+    label: "Error",
+    backgroundColor: "#FFF7ED",
+    textColor: "#C2410C",
+    borderColor: "#FED7AA",
+  },
+};
+
+// ============================================================
+// DEFAULT STATUS CONFIG
+// ============================================================
+
+const DEFAULT_CONNECTION_STATUS = {
+  label: "Unknown",
+  backgroundColor: "#F8FAFC",
+  textColor: "#64748B",
+  borderColor: "#CBD5E1",
+};
+
+const DEFAULT_CREDENTIAL_STATUS = {
+  label: "Unknown",
+  backgroundColor: "#F8FAFC",
+  textColor: "#64748B",
+  borderColor: "#CBD5E1",
+};
 
 // ============================================================
 // COMPONENT
@@ -618,18 +761,6 @@ function ConnectedAccountRow({
   // ==========================================================
   // DISPLAY IDENTITY
   // ==========================================================
-  //
-  // Facebook:
-  //     pageName -> Facebook Page name
-  //
-  // Instagram:
-  //     pageName -> Instagram profile/display name
-  //     username -> Instagram username
-  //
-  // Other platforms:
-  //     pageName -> accountName -> name -> platformName
-  //
-  // ==========================================================
 
   const accountName =
     account?.pageName || account?.accountName || account?.name || platformName;
@@ -637,54 +768,34 @@ function ConnectedAccountRow({
   const username = account?.username || "";
 
   // ==========================================================
-  // CONNECTION STATE
+  // LIFECYCLE STATE
   // ==========================================================
 
-  const connected = Boolean(account?.connected);
+  const connectionStatus = account?.connectionStatus || null;
 
-  const valid = account?.valid !== false;
+  const credentialStatus = account?.credentialStatus || null;
 
-  // ==========================================================
-  // VALIDITY STATUS
-  // ==========================================================
-  //
-  // Connected + valid
-  //     -> Valid
-  //
-  // Connected + invalid
-  //     -> Expired
-  //
-  // Disconnected
-  //     -> Revoked
-  //
-  // A disconnected account should not be shown as "Expired"
-  // because disconnection is a separate lifecycle state.
-  //
-  // ==========================================================
+  const connected = account?.connected === true;
 
-  const validityLabel = !connected ? "Revoked" : valid ? "Valid" : "Expired";
+  const valid = account?.valid === true;
+
+  const needsReconnect = account?.needsReconnect === true;
 
   // ==========================================================
-  // VALIDITY STATUS STYLING
+  // STATUS CONFIGURATION
   // ==========================================================
 
-  const validityBackgroundColor = !connected
-    ? "#F1F5F9"
-    : valid
-      ? "#ECFDF3"
-      : "#FEF2F2";
+  const connectionStatusConfig = useMemo(() => {
+    return (
+      CONNECTION_STATUS_CONFIG[connectionStatus] || DEFAULT_CONNECTION_STATUS
+    );
+  }, [connectionStatus]);
 
-  const validityTextColor = !connected
-    ? "#64748B"
-    : valid
-      ? "#059669"
-      : "#DC2626";
-
-  const validityBorderColor = !connected
-    ? "#CBD5E1"
-    : valid
-      ? "#A7F3D0"
-      : "#FECACA";
+  const credentialStatusConfig = useMemo(() => {
+    return (
+      CREDENTIAL_STATUS_CONFIG[credentialStatus] || DEFAULT_CREDENTIAL_STATUS
+    );
+  }, [credentialStatus]);
 
   // ==========================================================
   // PROFILE IMAGE
@@ -696,11 +807,22 @@ function ConnectedAccountRow({
   const lastSync = account?.lastSync || null;
 
   // ==========================================================
+  // ACTION STATE
+  // ==========================================================
+
+  const canReconnect = needsReconnect && typeof onReconnect === "function";
+
+  const canDisconnect =
+    connected &&
+    credentialStatus === "active" &&
+    typeof onDisconnect === "function";
+
+  // ==========================================================
   // RECONNECT
   // ==========================================================
 
   const handleReconnect = async () => {
-    if (loading || typeof onReconnect !== "function") {
+    if (!canReconnect || loading) {
       return;
     }
 
@@ -720,7 +842,7 @@ function ConnectedAccountRow({
   // ==========================================================
 
   const handleDisconnect = async () => {
-    if (loading || typeof onDisconnect !== "function") {
+    if (!canDisconnect || loading) {
       return;
     }
 
@@ -891,6 +1013,7 @@ function ConnectedAccountRow({
 
           {actionError && (
             <Typography
+              role="alert"
               sx={{
                 mt: 0.4,
                 fontSize: 12,
@@ -921,6 +1044,10 @@ function ConnectedAccountRow({
           ml: {
             md: 2,
           },
+          flexWrap: {
+            xs: "wrap",
+            md: "nowrap",
+          },
         }}
       >
         {/* ==================================================
@@ -928,16 +1055,16 @@ function ConnectedAccountRow({
         ================================================== */}
 
         <Chip
-          label={connected ? "Connected" : "Disconnected"}
+          label={connectionStatusConfig.label}
           size="small"
           sx={{
             height: PILL_HEIGHT,
             display: "flex",
             alignItems: "center",
-            bgcolor: connected ? "#ECFDF3" : "#F1F5F9",
-            color: connected ? "#059669" : "#64748B",
+            bgcolor: connectionStatusConfig.backgroundColor,
+            color: connectionStatusConfig.textColor,
             border: "1px solid",
-            borderColor: connected ? "#A7F3D0" : "#CBD5E1",
+            borderColor: connectionStatusConfig.borderColor,
             fontWeight: 600,
             fontSize: 12,
             "& .MuiChip-label": {
@@ -948,20 +1075,20 @@ function ConnectedAccountRow({
         />
 
         {/* ==================================================
-            VALIDITY STATUS
+            CREDENTIAL STATUS
         ================================================== */}
 
         <Chip
-          label={validityLabel}
+          label={credentialStatusConfig.label}
           size="small"
           sx={{
             height: PILL_HEIGHT,
             display: "flex",
             alignItems: "center",
-            bgcolor: validityBackgroundColor,
-            color: validityTextColor,
+            bgcolor: credentialStatusConfig.backgroundColor,
+            color: credentialStatusConfig.textColor,
             border: "1px solid",
-            borderColor: validityBorderColor,
+            borderColor: credentialStatusConfig.borderColor,
             fontWeight: 600,
             fontSize: 12,
             "& .MuiChip-label": {
@@ -988,16 +1115,16 @@ function ConnectedAccountRow({
         />
 
         {/* ==================================================
-            RECONNECT / DISCONNECT
+            ACTION
         ================================================== */}
 
-        {!connected || !valid ? (
+        {canReconnect ? (
           <Button
             type="button"
             variant="outlined"
             size="small"
             onClick={handleReconnect}
-            disabled={loading || typeof onReconnect !== "function"}
+            disabled={loading}
             aria-label={`Reconnect ${accountName}`}
             startIcon={
               loading ? <CircularProgress size={14} color="inherit" /> : null
@@ -1024,13 +1151,13 @@ function ConnectedAccountRow({
           >
             {loading ? "Connecting..." : "Reconnect"}
           </Button>
-        ) : (
+        ) : canDisconnect ? (
           <Button
             type="button"
             variant="text"
             size="small"
             onClick={handleDisconnect}
-            disabled={loading || typeof onDisconnect !== "function"}
+            disabled={loading}
             aria-label={`Disconnect ${accountName}`}
             startIcon={
               loading ? <CircularProgress size={14} color="inherit" /> : null
@@ -1056,11 +1183,10 @@ function ConnectedAccountRow({
           >
             {loading ? "Please wait..." : "Disconnect"}
           </Button>
-        )}
+        ) : null}
       </Stack>
     </Box>
   );
 }
 
 export default memo(ConnectedAccountRow);
-  

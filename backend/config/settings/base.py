@@ -225,6 +225,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": ("apps.organizations.tasks." "expire_due_subscriptions_task"),
         "schedule": 3600.0,
     },
+    "maintain-instagram-tokens": {
+        "task": ("apps.integrations.instagram.tasks." "maintain_instagram_tokens_task"),
+        "schedule": 3600.0,
+    },
+    "maintain-meta-tokens": {
+        "task": ("apps.integrations.meta.tasks." "maintain_meta_tokens_task"),
+        "schedule": 3600.0,
+    },
 }
 
 
@@ -295,6 +303,16 @@ META_HTTP_TIMEOUT_SECONDS = config(
     cast=int,
 )
 
+# ============================================================
+# META TOKEN LIFECYCLE
+# ============================================================
+
+META_TOKEN_LIFECYCLE_LOCK_TIMEOUT_SECONDS = config(
+    "META_TOKEN_LIFECYCLE_LOCK_TIMEOUT_SECONDS",
+    default=5 * 60,
+    cast=int,
+)
+
 FRONTEND_URL = config(
     "FRONTEND_URL",
     default="http://localhost:5173",
@@ -331,6 +349,12 @@ INSTAGRAM_OAUTH_STATE_MAX_AGE_SECONDS = config(
 INSTAGRAM_HTTP_TIMEOUT_SECONDS = config(
     "INSTAGRAM_HTTP_TIMEOUT_SECONDS",
     default=30,
+    cast=int,
+)
+
+INSTAGRAM_TOKEN_REFRESH_WINDOW_SECONDS = config(
+    "INSTAGRAM_TOKEN_REFRESH_WINDOW_SECONDS",
+    default=7 * 24 * 60 * 60,
     cast=int,
 )
 # ============================================================

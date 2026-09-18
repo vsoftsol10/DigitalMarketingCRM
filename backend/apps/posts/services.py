@@ -3,7 +3,13 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.social_accounts.models import SocialAccount
+from apps.integrations.instagram.selectors import get_active_instagram_credential
+from apps.integrations.meta.credentials import MetaCredentialService
+from apps.social_accounts.models import (
+    SocialAccount,
+    SocialAccountStatus,
+    SocialPlatform,
+)
 
 from .models import (
     Post,
@@ -74,6 +80,7 @@ def create_post(
     validate_target_accounts(
         organization=organization,
         targets=targets,
+        require_publishable=publish_type != PostPublishType.DRAFT,
     )
 
     scheduled_at = build_scheduled_at(
@@ -106,6 +113,9 @@ def create_post(
         media_items=media_items,
     )
 
+    if publish_type == PostPublishType.NOW:
+        transaction.on_commit(lambda: enqueue_post_publication(post.id))
+
     return post
 
 
@@ -118,6 +128,7 @@ def validate_target_accounts(
     *,
     organization,
     targets,
+    require_publishable=True,
 ):
     """
     Ensure every selected SocialAccount belongs to the same
@@ -156,6 +167,26 @@ def validate_target_accounts(
             "One or more selected social accounts do not belong "
             "to the organization or are unavailable.",
         )
+
+    if not require_publishable:
+        return account_map
+
+    for account in accounts:
+        if (
+            account.status != SocialAccountStatus.CONNECTED
+            or not account.is_valid
+        ):
+            raise ValueError("A selected social account is not publishable.")
+
+        # Resolve through the existing credential layers. Tokens are never
+        # retained or returned by posts; this only verifies publish readiness.
+        if account.platform == SocialPlatform.FACEBOOK:
+            MetaCredentialService.get_access_token(social_account=account)
+        elif account.platform == SocialPlatform.INSTAGRAM:
+            if not get_active_instagram_credential(social_account=account):
+                raise ValueError("Instagram credential is not active.")
+        else:
+            raise ValueError("Publishing is not configured for this platform.")
 
     return account_map
 
@@ -550,6 +581,7 @@ def update_post(
         validate_target_accounts(
             organization=post.organization,
             targets=targets,
+            require_publishable=publish_type != PostPublishType.DRAFT,
         )
 
         PostPlatform.objects.filter(
@@ -583,6 +615,13 @@ def update_post(
         )
 
     return post
+
+
+def enqueue_post_publication(post_id):
+    """Queue publishing after the post transaction has committed."""
+    from .tasks import publish_post_task
+
+    publish_post_task.delay(str(post_id))
 
 
 # ============================================================

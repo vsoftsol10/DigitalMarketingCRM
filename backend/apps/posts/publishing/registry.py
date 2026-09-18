@@ -1,4 +1,4 @@
-from apps.social.models import SocialConnectionProvider
+from apps.social_accounts.models import SocialConnectionProvider
 
 from .exceptions import UnsupportedPublishingPlatformError
 from .meta import MetaPublisher

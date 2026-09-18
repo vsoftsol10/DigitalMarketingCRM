@@ -239,6 +239,7 @@ from .exceptions import (
     InstagramOAuthConfigurationError,
     InstagramOAuthStateError,
 )
+from .constants import INSTAGRAM_OAUTH_SCOPES
 from .oauth import (
     OAUTH_ACTION_CONNECT,
     OAUTH_ACTION_RECONNECT,
@@ -364,7 +365,7 @@ class InstagramOAuthStartAPIView(APIView):
                     "client_id": service.client.client_id,
                     "redirect_uri": service.client.redirect_uri,
                     "response_type": "code",
-                    "scope": "instagram_business_basic",
+                    "scope": ",".join(INSTAGRAM_OAUTH_SCOPES),
                     "state": state,
                 }
 

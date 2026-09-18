@@ -5,9 +5,12 @@ from rest_framework.parsers import (
     MultiPartParser,
 )
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 
-from apps.common.exceptions import ResourceNotFoundException
+from cloudinary.exceptions import BadRequest as CloudinaryBadRequest
+
+from apps.common.exceptions import BadRequestException, ResourceNotFoundException
 from apps.common.responses import success_response
 from apps.organizations.selectors import get_organization_by_id
 
@@ -49,10 +52,7 @@ class OrganizationPostListCreateAPIView(APIView):
         FormParser,
     ]
 
-    def get_organization(
-        self,
-        organization_id,
-    ):
+    def get_organization(self, organization_id, user):
         organization = get_organization_by_id(
             organization_id,
         )
@@ -62,6 +62,8 @@ class OrganizationPostListCreateAPIView(APIView):
                 "Organization not found.",
             )
 
+        if organization.created_by_id and organization.created_by_id != user.id:
+            raise PermissionDenied("You do not have access to this organization.")
         return organization
 
     # ========================================================
@@ -73,9 +75,7 @@ class OrganizationPostListCreateAPIView(APIView):
         request,
         organization_id,
     ):
-        organization = self.get_organization(
-            organization_id,
-        )
+        organization = self.get_organization(organization_id, request.user)
 
         queryset = get_posts_for_organization(
             organization.id,
@@ -103,9 +103,7 @@ class OrganizationPostListCreateAPIView(APIView):
         request,
         organization_id,
     ):
-        organization = self.get_organization(
-            organization_id,
-        )
+        organization = self.get_organization(organization_id, request.user)
 
         serializer = PostCreateSerializer(
             data=request.data,
@@ -119,11 +117,16 @@ class OrganizationPostListCreateAPIView(APIView):
             raise_exception=True,
         )
 
-        post = create_post(
-            organization=organization,
-            created_by=request.user,
-            validated_data=serializer.validated_data,
-        )
+        try:
+            post = create_post(
+                organization=organization,
+                created_by=request.user,
+                validated_data=serializer.validated_data,
+            )
+        except CloudinaryBadRequest as exc:
+            raise BadRequestException(
+                "Media upload failed. Please upload a valid supported media file."
+            ) from exc
 
         response_serializer = PostReadSerializer(
             post,
@@ -134,7 +137,11 @@ class OrganizationPostListCreateAPIView(APIView):
 
         return success_response(
             data=response_serializer.data,
-            message="Post created successfully.",
+            message=(
+                "Post created and queued for publishing."
+                if post.publish_type == "NOW"
+                else "Post created successfully."
+            ),
             status_code=status.HTTP_201_CREATED,
         )
 
@@ -160,10 +167,7 @@ class OrganizationPostDetailAPIView(APIView):
         FormParser,
     ]
 
-    def get_organization(
-        self,
-        organization_id,
-    ):
+    def get_organization(self, organization_id, user):
         organization = get_organization_by_id(
             organization_id,
         )
@@ -173,6 +177,8 @@ class OrganizationPostDetailAPIView(APIView):
                 "Organization not found.",
             )
 
+        if organization.created_by_id and organization.created_by_id != user.id:
+            raise PermissionDenied("You do not have access to this organization.")
         return organization
 
     def get_object(
@@ -202,9 +208,7 @@ class OrganizationPostDetailAPIView(APIView):
         organization_id,
         post_id,
     ):
-        organization = self.get_organization(
-            organization_id,
-        )
+        organization = self.get_organization(organization_id, request.user)
 
         post = self.get_object(
             organization=organization,
@@ -233,9 +237,7 @@ class OrganizationPostDetailAPIView(APIView):
         organization_id,
         post_id,
     ):
-        organization = self.get_organization(
-            organization_id,
-        )
+        organization = self.get_organization(organization_id, request.user)
 
         post = self.get_object(
             organization=organization,
@@ -283,9 +285,7 @@ class OrganizationPostDetailAPIView(APIView):
         organization_id,
         post_id,
     ):
-        organization = self.get_organization(
-            organization_id,
-        )
+        organization = self.get_organization(organization_id, request.user)
 
         post = self.get_object(
             organization=organization,
@@ -322,10 +322,7 @@ class OrganizationPostMediaCreateAPIView(APIView):
         JSONParser,
     ]
 
-    def get_organization(
-        self,
-        organization_id,
-    ):
+    def get_organization(self, organization_id, user):
         organization = get_organization_by_id(
             organization_id,
         )
@@ -335,6 +332,8 @@ class OrganizationPostMediaCreateAPIView(APIView):
                 "Organization not found.",
             )
 
+        if organization.created_by_id and organization.created_by_id != user.id:
+            raise PermissionDenied("You do not have access to this organization.")
         return organization
 
     def get_object(
@@ -364,9 +363,7 @@ class OrganizationPostMediaCreateAPIView(APIView):
         organization_id,
         post_id,
     ):
-        organization = self.get_organization(
-            organization_id,
-        )
+        organization = self.get_organization(organization_id, request.user)
 
         post = self.get_object(
             organization=organization,
@@ -384,11 +381,16 @@ class OrganizationPostMediaCreateAPIView(APIView):
             raise_exception=True,
         )
 
-        media = upload_post_media(
-            post=post,
-            uploaded_file=serializer.validated_data["file"],
-            media_type=serializer.validated_data["media_type"],
-        )
+        try:
+            media = upload_post_media(
+                post=post,
+                uploaded_file=serializer.validated_data["file"],
+                media_type=serializer.validated_data["media_type"],
+            )
+        except CloudinaryBadRequest as exc:
+            raise BadRequestException(
+                "Media upload failed. Please upload a valid supported media file."
+            ) from exc
 
         response_serializer = PostMediaReadSerializer(
             media,

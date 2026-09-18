@@ -1,5 +1,7 @@
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from django.utils import timezone
+
 from rest_framework import serializers
 
 from .models import (
@@ -71,6 +73,9 @@ class PostMediaInputSerializer(serializers.Serializer):
         if media_type == PostMediaType.IMAGE:
             self.validate_image(uploaded_file)
 
+        if media_type == PostMediaType.VIDEO:
+            self.validate_video(uploaded_file)
+
         return attrs
 
     def validate_image(self, uploaded_file):
@@ -115,6 +120,21 @@ class PostMediaInputSerializer(serializers.Serializer):
                         "Allowed formats: JPG, JPEG, PNG, WEBP."
                     )
                 }
+            )
+
+    def validate_video(self, uploaded_file):
+        max_size = 50 * 1024 * 1024
+        allowed_types = {"video/mp4"}
+        content_type = (getattr(uploaded_file, "content_type", "") or "").lower()
+
+        if uploaded_file.size > max_size:
+            raise serializers.ValidationError(
+                {"file": "Video size must not exceed 50 MB."}
+            )
+
+        if content_type not in allowed_types:
+            raise serializers.ValidationError(
+                {"file": "Unsupported video format. Only MP4 is allowed."}
             )
 
 
@@ -167,6 +187,8 @@ class PostPlatformReadSerializer(
             "external_post_id",
             "published_at",
             "error_message",
+            "provider_container_id",
+            "attempt_count",
         )
 
         read_only_fields = fields
@@ -406,6 +428,16 @@ class PostCreateSerializer(
                     {
                         "timezone": "Timezone is required for scheduled posts.",
                     }
+                )
+
+            scheduled_at = timezone.datetime.combine(
+                publish_date,
+                publish_time,
+            ).replace(tzinfo=ZoneInfo(timezone_name))
+
+            if scheduled_at <= timezone.now():
+                raise serializers.ValidationError(
+                    {"publish_time": "Scheduled publishing must be in the future."}
                 )
 
         return attrs

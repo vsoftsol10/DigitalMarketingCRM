@@ -123,13 +123,14 @@ const socialAccountService = {
   // GET ORGANIZATION SOCIAL ACCOUNTS
   // ==========================================================
 
-  getOrganizationSocialAccounts: async (organizationId) => {
+  getOrganizationSocialAccounts: async (organizationId, { signal } = {}) => {
     if (!organizationId) {
       throw new Error("Organization ID is required.");
     }
 
     const response = await api.get(
       `/organizations/${organizationId}/social-accounts/`,
+      { signal },
     );
 
     return {

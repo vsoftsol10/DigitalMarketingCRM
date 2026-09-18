@@ -7,12 +7,9 @@ class PostService {
   // CREATE POST PAGE CONFIGURATION
   // ============================================================
   //
-  // Current phase:
-  // - Uses local configuration data.
-  //
-  // Later:
-  // - This can be replaced with a backend configuration endpoint
-  //   without changing the page/components.
+  // Platform and media capabilities are static frontend configuration.
+  // Organizations and connected accounts are loaded by the page from their
+  // existing APIs because they are organization-specific runtime data.
   //
 
   async getCreatePostData() {
@@ -23,18 +20,43 @@ class PostService {
   // CREATE POST
   // ============================================================
   //
-  // Backend endpoint is not implemented yet.
-  //
-  // Keep the API boundary ready, but do not silently fake
-  // a successful response.
-  //
+  async createPost(organizationId, payload) {
+    if (!organizationId) {
+      throw new Error("Organization ID is required.");
+    }
 
-  async createPost(payload) {
     if (!payload) {
       throw new Error("Create post payload is required.");
     }
 
-    const response = await api.post("/posts/", payload);
+    const formData = new FormData();
+
+    payload.targets.forEach((target, index) => {
+      formData.append(`targets[${index}]social_account`, target.social_account);
+      formData.append(`targets[${index}]content_type`, target.content_type);
+    });
+
+    formData.append("caption", payload.caption);
+    formData.append("publish_type", payload.publish_type);
+    formData.append("timezone", payload.timezone);
+
+    if (payload.publish_date) {
+      formData.append("publish_date", payload.publish_date);
+    }
+
+    if (payload.publish_time) {
+      formData.append("publish_time", payload.publish_time);
+    }
+
+    payload.media.forEach((media, index) => {
+      formData.append(`media[${index}]file`, media.file);
+      formData.append(`media[${index}]media_type`, media.media_type);
+    });
+
+    const response = await api.post(
+      `/posts/organizations/${organizationId}/`,
+      formData,
+    );
 
     return response.data;
   }

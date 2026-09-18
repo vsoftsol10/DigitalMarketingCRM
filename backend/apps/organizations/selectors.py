@@ -251,6 +251,27 @@ def get_organizations(
     )
 
 
+def get_organization_options(*, ordering="-created_at"):
+    """Return only the fields required by organization selection controls."""
+
+    allowed_ordering = {
+        "created_at": "created_at",
+        "-created_at": "-created_at",
+        "name": "name",
+        "-name": "-name",
+    }
+
+    return Organization.objects.filter(
+        is_deleted=False,
+    ).only(
+        "organization_id",
+        "name",
+        "created_at",
+    ).order_by(
+        allowed_ordering.get(ordering, "-created_at"),
+    )
+
+
 def get_organization_by_id(
     organization_id,
 ):

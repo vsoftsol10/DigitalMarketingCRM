@@ -364,6 +364,7 @@ from apps.social_accounts.models import (
 )
 
 from .client import InstagramAPIClient
+from .constants import INSTAGRAM_OAUTH_SCOPES
 from .crypto import encrypt_token
 from .exceptions import InstagramIntegrationError
 from .models import (
@@ -427,7 +428,7 @@ class InstagramOAuthService:
             "client_id": self.client.client_id,
             "redirect_uri": self.client.redirect_uri,
             "response_type": "code",
-            "scope": "instagram_business_basic",
+            "scope": ",".join(INSTAGRAM_OAUTH_SCOPES),
             "state": state,
         }
 

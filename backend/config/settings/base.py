@@ -213,6 +213,10 @@ CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
 # ============================================================
 
 CELERY_BEAT_SCHEDULE = {
+    "dispatch-due-posts": {
+        "task": "apps.posts.tasks.dispatch_due_posts_task",
+        "schedule": 60.0,
+    },
     "activate-scheduled-subscriptions": {
         "task": ("apps.organizations.tasks." "activate_scheduled_subscriptions_task"),
         "schedule": 60.0,

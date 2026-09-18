@@ -160,6 +160,55 @@ class MetaAPIClient:
             response,
         )
 
+    def post(self, path: str, *, access_token: str, data=None) -> dict:
+        """POST to Graph without ever logging credentials or request bodies."""
+        if not access_token:
+            raise MetaAPIError("Meta access token is required.")
+
+        payload = dict(data or {})
+        payload["access_token"] = access_token
+        url = self._build_url(path)
+
+        try:
+            response = requests.post(url, data=payload, timeout=self.timeout)
+        except requests.RequestException as exc:
+            logger.exception("Meta POST request failed: %s", url)
+            raise MetaAPIError("Meta API request failed.") from exc
+
+        return self._handle_response(response)
+
+    def upload_reel_video(
+        self,
+        upload_url: str,
+        *,
+        access_token: str,
+        video_file,
+        file_size: int,
+    ) -> dict:
+        """Upload a Page Reel binary to Meta's resumable-upload URL."""
+        if not upload_url:
+            raise MetaAPIError("Facebook Reel upload URL is required.")
+        if not access_token:
+            raise MetaAPIError("Meta access token is required.")
+
+        try:
+            response = requests.post(
+                upload_url,
+                data=video_file,
+                headers={
+                    "Authorization": f"OAuth {access_token}",
+                    "offset": "0",
+                    "file_size": str(file_size),
+                    "Content-Type": "application/octet-stream",
+                },
+                timeout=self.timeout,
+            )
+        except requests.RequestException as exc:
+            logger.exception("Meta Reel video upload failed.")
+            raise MetaAPIError("Meta Reel video upload failed.") from exc
+
+        return self._handle_response(response)
+
     # ========================================================
     # OAUTH CODE EXCHANGE
     # ========================================================

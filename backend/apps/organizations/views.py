@@ -8,6 +8,7 @@ from apps.common.responses import success_response
 
 from .selectors import (
     get_organization_by_id,
+    get_organization_options,
     get_organization_summary,
     get_organizations,
     get_subscription_history,
@@ -15,6 +16,7 @@ from .selectors import (
 from .serializers import (
     OrganizationCreateSerializer,
     OrganizationReadSerializer,
+    OrganizationOptionSerializer,
     OrganizationUpdateSerializer,
 )
 
@@ -45,6 +47,8 @@ class OrganizationListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
+        options_only = request.query_params.get("options") == "true"
+
         search = request.query_params.get("search")
 
         status_filter = request.query_params.get("status")
@@ -56,14 +60,19 @@ class OrganizationListCreateAPIView(APIView):
             "-created_at",
         )
 
-        queryset = get_organizations(
-            search=search,
-            status=status_filter,
-            subscription_status=subscription_status_filter,
-            ordering=ordering,
-        )
-
-        summary = get_organization_summary()
+        if options_only:
+            queryset = get_organization_options(ordering=ordering)
+            summary = None
+            serializer_class = OrganizationOptionSerializer
+        else:
+            queryset = get_organizations(
+                search=search,
+                status=status_filter,
+                subscription_status=subscription_status_filter,
+                ordering=ordering,
+            )
+            summary = get_organization_summary()
+            serializer_class = OrganizationReadSerializer
 
         paginator = self.pagination_class()
 
@@ -73,7 +82,7 @@ class OrganizationListCreateAPIView(APIView):
             view=self,
         )
 
-        serializer = OrganizationReadSerializer(
+        serializer = serializer_class(
             page,
             many=True,
             context={

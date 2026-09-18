@@ -1,4 +1,4 @@
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -8,7 +8,11 @@ import { Box, Grid } from "@mui/material";
 
 import { useEffect, useRef, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
+
 import postService from "../../services/post.service";
+import organizationService from "../../services/organization/organization.service";
+import socialAccountService from "../../services/social/socialAccount.service";
 
 import OrganizationSection from "../../components/post/create/OrganizationSection";
 import PlatformSection from "../../components/post/create/PlatformSection";
@@ -26,7 +30,7 @@ import { createPostSchema } from "../../validation/createPost.schema";
 
 import { buildCreatePostPayload } from "../../utils/post/createPostPayload";
 
-import { SOCIAL_ACCOUNT_DUMMY_DATA } from "../../constants/social/socialAccountDummyData";
+import { CREATE_POST } from "../../data/post";
 
 export default function CreatePost() {
   // ============================================================
@@ -48,18 +52,57 @@ export default function CreatePost() {
   const {
     handleSubmit,
 
-    formState: { isSubmitting: formIsSubmitting, errors },
+    setValue,
+
+    formState: { isSubmitting: formIsSubmitting },
   } = methods;
 
   // ============================================================
   // PAGE DATA
   // ============================================================
 
-  const [createPostData, setCreatePostData] = useState(null);
+  const selectedOrganizationId = useWatch({
+    control: methods.control,
+    name: "organization",
+  }) || "";
 
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const {
+    data: organizationsResponse,
+    isLoading: isLoadingOrganizations,
+    error: organizationsError,
+  } = useQuery({
+    queryKey: ["organization-options", "create-post"],
+    queryFn: () => organizationService.getOrganizationOptions(),
+  });
 
-  const [loadDataError, setLoadDataError] = useState(null);
+  const {
+    data: socialAccountsResponse,
+  } = useQuery({
+    queryKey: ["organization-social-accounts", selectedOrganizationId],
+    queryFn: ({ signal }) =>
+      socialAccountService.getOrganizationSocialAccounts(selectedOrganizationId, {
+        signal,
+      }),
+    enabled: Boolean(selectedOrganizationId),
+  });
+
+  const createPostData = CREATE_POST;
+
+  const organizations = Array.isArray(organizationsResponse?.data?.items)
+    ? organizationsResponse.data.items.map((organization) => ({
+        id: organization.organization_id,
+        name: organization.name,
+      }))
+    : [];
+
+  const socialAccounts = Array.isArray(socialAccountsResponse?.data)
+    ? socialAccountsResponse.data.map((account) => ({
+        ...account,
+        organizationId: selectedOrganizationId,
+        platform: String(account.platform || "").toUpperCase(),
+        accountName: account.pageName,
+      }))
+    : [];
 
   // ============================================================
   // SUBMIT STATE
@@ -81,45 +124,14 @@ export default function CreatePost() {
   };
 
   // ============================================================
-  // LOAD CREATE POST DATA
+  // CLEAR ORGANIZATION-SCOPED SELECTIONS
   // ============================================================
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadData() {
-      try {
-        setIsLoadingData(true);
-        setLoadDataError(null);
-
-        const response = await postService.getCreatePostData();
-
-        if (!isMounted) {
-          return;
-        }
-
-        setCreatePostData(response);
-      } catch (error) {
-        console.error("Failed to load create post data:", error);
-
-        if (!isMounted) {
-          return;
-        }
-
-        setLoadDataError("Unable to load the Create Post page.");
-      } finally {
-        if (isMounted) {
-          setIsLoadingData(false);
-        }
-      }
-    }
-
-    loadData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    setValue("social_account_ids", [], { shouldValidate: false });
+    setValue("platforms", [], { shouldValidate: false });
+    setValue("platform_content_types", {}, { shouldValidate: false });
+  }, [selectedOrganizationId, setValue]);
 
   // ============================================================
   // CREATE POST
@@ -142,33 +154,24 @@ export default function CreatePost() {
       // BUILD PAYLOAD
       // ========================================================
 
-      const payload = buildCreatePostPayload(data);
+      const payload = buildCreatePostPayload(data, socialAccounts);
 
-      console.log("Create Post Payload:", payload);
+      const response = await postService.createPost(data.organization, payload);
 
-      /*
-       * Backend create-post API is not connected yet.
-       *
-       * Later:
-       *
-       * const response =
-       *   await postService.createPost(payload);
-       */
-
-      // ========================================================
-      // TEMPORARY DEVELOPMENT FEEDBACK
-      // ========================================================
+      if (!response?.success) {
+        throw new Error(response?.message || "Unable to create the post.");
+      }
 
       if (data.publish_type === "NOW") {
-        toast.success("Post data is ready to publish.");
+        toast.success(response.message || "Post created successfully.");
       }
 
       if (data.publish_type === "SCHEDULE") {
-        toast.success("Post scheduling data is ready.");
+        toast.success(response.message || "Post scheduled successfully.");
       }
 
       if (data.publish_type === "DRAFT") {
-        toast.success("Draft data is ready to save.");
+        toast.success(response.message || "Draft saved successfully.");
       }
     } catch (error) {
       console.error("Create post failed:", error);
@@ -268,7 +271,7 @@ export default function CreatePost() {
   // LOADING
   // ============================================================
 
-  if (isLoadingData) {
+  if (isLoadingOrganizations) {
     return null;
   }
 
@@ -276,7 +279,7 @@ export default function CreatePost() {
   // LOAD ERROR
   // ============================================================
 
-  if (loadDataError || !createPostData) {
+  if (organizationsError || !organizationsResponse?.success) {
     return (
       <Box
         sx={{
@@ -284,7 +287,7 @@ export default function CreatePost() {
           color: "error.main",
         }}
       >
-        {loadDataError || "Unable to load Create Post."}
+        {organizationsError?.message || "Unable to load Create Post."}
       </Box>
     );
   }
@@ -324,7 +327,7 @@ export default function CreatePost() {
 
               <Box ref={sectionRefs.organization}>
                 <OrganizationSection
-                  organizations={createPostData.organizations}
+                  organizations={organizations}
                 />
               </Box>
 
@@ -343,7 +346,7 @@ export default function CreatePost() {
               <Box ref={sectionRefs.platforms}>
                 <PlatformSection
                   platforms={createPostData.platforms}
-                  accounts={SOCIAL_ACCOUNT_DUMMY_DATA}
+                  accounts={socialAccounts}
                 />
               </Box>
 
@@ -401,9 +404,9 @@ export default function CreatePost() {
               ============================================== */}
 
               <LivePreviewSection
-                organizations={createPostData.organizations}
+                organizations={organizations}
                 platforms={createPostData.platforms}
-                accounts={SOCIAL_ACCOUNT_DUMMY_DATA}
+                accounts={socialAccounts}
               />
 
               {/* ==============================================

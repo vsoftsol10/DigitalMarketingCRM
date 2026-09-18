@@ -1,9 +1,13 @@
+import uuid
+
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
 
 from apps.common.models import BaseModel
+
+from .storage import PostMediaCloudinaryStorage
 
 # ============================================================
 # POST ENUMS
@@ -250,6 +254,33 @@ class PostPlatform(BaseModel):
         blank=True,
     )
 
+    # Provider execution state is deliberately stored on the exact
+    # destination. Credentials remain in the integrations apps.
+    idempotency_key = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+    )
+
+    provider_container_id = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    provider_state = models.JSONField(
+        default=dict,
+        blank=True,
+    )
+
+    publish_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    attempt_count = models.PositiveIntegerField(
+        default=0,
+    )
+
     class Meta:
         db_table = "post_platforms"
 
@@ -326,6 +357,7 @@ class PostMedia(BaseModel):
 
     file = models.FileField(
         upload_to="posts/%Y/%m/%d/",
+        storage=PostMediaCloudinaryStorage(),
     )
 
     original_filename = models.CharField(

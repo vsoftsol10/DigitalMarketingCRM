@@ -205,3 +205,23 @@ class InstagramAPIClient:
             response,
             operation="Instagram profile lookup",
         )
+
+    def graph_post(self, path, *, access_token, data):
+        if not access_token:
+            raise InstagramAPIError("Instagram access token is missing.")
+        response = requests.post(
+            f"{INSTAGRAM_GRAPH_BASE_URL}/{INSTAGRAM_GRAPH_API_VERSION}/{path.lstrip('/')}",
+            data={**data, "access_token": access_token},
+            timeout=self.timeout,
+        )
+        return self._handle_response(response, operation="Instagram content publishing")
+
+    def graph_get(self, path, *, access_token, params=None):
+        if not access_token:
+            raise InstagramAPIError("Instagram access token is missing.")
+        response = requests.get(
+            f"{INSTAGRAM_GRAPH_BASE_URL}/{INSTAGRAM_GRAPH_API_VERSION}/{path.lstrip('/')}",
+            params={**(params or {}), "access_token": access_token},
+            timeout=self.timeout,
+        )
+        return self._handle_response(response, operation="Instagram content publishing")

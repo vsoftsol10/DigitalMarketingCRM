@@ -38,6 +38,19 @@ class OrganizationService {
     return response.data;
   }
 
+  async getOrganizationOptions({ page = 1, pageSize = 100 } = {}) {
+    const response = await api.get("/organizations/", {
+      params: {
+        page,
+        page_size: pageSize,
+        ordering: "-created_at",
+        options: "true",
+      },
+    });
+
+    return response.data;
+  }
+
   // ============================================================
   // GET SINGLE ORGANIZATION
   // ============================================================

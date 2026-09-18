@@ -12,3 +12,7 @@ class PublishingValidationError(PublishingError):
 
 class ProviderPublishingError(PublishingError):
     """Raised when the external provider rejects the publish request."""
+
+
+class MediaProcessingPending(PublishingError):
+    """Raised when a provider container exists but is not ready to publish."""

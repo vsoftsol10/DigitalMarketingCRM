@@ -453,6 +453,18 @@ class OrganizationReadSerializer(serializers.ModelSerializer):
         ]
 
 
+class OrganizationOptionSerializer(serializers.ModelSerializer):
+    """Small organization representation used by selection controls."""
+
+    class Meta:
+        model = Organization
+        fields = (
+            "organization_id",
+            "name",
+        )
+        read_only_fields = fields
+
+
 # ============================================================
 # ORGANIZATION CREATE SERIALIZER
 # ============================================================

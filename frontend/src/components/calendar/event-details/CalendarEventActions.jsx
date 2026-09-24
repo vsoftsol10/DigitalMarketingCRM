@@ -4,6 +4,7 @@ import {
   IconButton,
   Stack,
   Tooltip,
+  CircularProgress,
 } from "@mui/material";
 
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
@@ -37,6 +38,7 @@ export default function CalendarEventActions({
   onRetry,
   onDelete,
   loading = false,
+  loadingAction = null,
 }) {
   if (!event) {
     return null;
@@ -80,14 +82,14 @@ export default function CalendarEventActions({
               <Button
                 variant="contained"
                 disableElevation
-                startIcon={<PublishRoundedIcon />}
+                startIcon={loadingAction === "publish" ? <CircularProgress size={16} color="inherit" /> : <PublishRoundedIcon />}
                 onClick={() =>
                   handleAction(onPublishNow)
                 }
                 disabled={loading}
                 sx={buttonSx}
               >
-                Publish now
+                {loadingAction === "publish" ? "Publishing..." : "Publish now"}
               </Button>
 
               <Button
@@ -121,14 +123,14 @@ export default function CalendarEventActions({
 
               <Button
                 variant="outlined"
-                startIcon={<PublishRoundedIcon />}
+                startIcon={loadingAction === "publish" ? <CircularProgress size={16} color="inherit" /> : <PublishRoundedIcon />}
                 onClick={() =>
                   handleAction(onPublishNow)
                 }
                 disabled={loading}
                 sx={secondaryButtonSx}
               >
-                Publish now
+                {loadingAction === "publish" ? "Publishing..." : "Publish now"}
               </Button>
             </>
           )}
@@ -138,12 +140,12 @@ export default function CalendarEventActions({
               variant="contained"
               disableElevation
               color="error"
-              startIcon={<ReplayRoundedIcon />}
+              startIcon={loadingAction === "retry" ? <CircularProgress size={16} color="inherit" /> : <ReplayRoundedIcon />}
               onClick={() => handleAction(onRetry)}
               disabled={loading}
               sx={buttonSx}
             >
-              Retry
+              {loadingAction === "retry" ? "Retrying..." : "Retry"}
             </Button>
           )}
         </Stack>

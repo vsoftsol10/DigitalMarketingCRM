@@ -347,6 +347,52 @@ export default function useCalendar({
     return fetchEvents();
   }, [fetchEvents]);
 
+  const removeEvent = useCallback((targetId) => {
+    setEvents((currentEvents) => currentEvents.filter(
+      (event) => (event.targetId || event.id) !== targetId,
+    ));
+  }, []);
+
+  const syncEvent = useCallback((updatedEvent) => {
+    if (!updatedEvent) {
+      return;
+    }
+
+    const targetId = updatedEvent.targetId || updatedEvent.id;
+    if (!targetId) {
+      return;
+    }
+
+    const matchesCurrentView = (
+      (!currentDate || updatedEvent.date?.slice(0, 7) === currentDate.format("YYYY-MM"))
+      && (!filters.organization || updatedEvent.organizationId === filters.organization)
+      && (!filters.socialAccount || updatedEvent.socialAccountId === filters.socialAccount)
+      && (!filters.contentType || updatedEvent.contentType?.toUpperCase() === filters.contentType.toUpperCase())
+      && (!filters.status || updatedEvent.status?.toUpperCase() === filters.status.toUpperCase())
+    );
+
+    setEvents((currentEvents) => {
+      const wasInCurrentCollection = currentEvents.some(
+        (event) => (event.targetId || event.id) === targetId,
+      );
+      const withoutTarget = currentEvents.filter(
+        (event) => (event.targetId || event.id) !== targetId,
+      );
+
+      if (!wasInCurrentCollection || !matchesCurrentView) {
+        return withoutTarget;
+      }
+
+      return [...withoutTarget, updatedEvent];
+    });
+  }, [
+    currentDate,
+    filters.contentType,
+    filters.organization,
+    filters.socialAccount,
+    filters.status,
+  ]);
+
   // ==========================================
   // RETURN
   // ==========================================
@@ -369,5 +415,7 @@ export default function useCalendar({
     filterOptionsError,
 
     refresh,
+    removeEvent,
+    syncEvent,
   };
 }

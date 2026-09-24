@@ -1,5 +1,6 @@
 import {
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -52,6 +53,7 @@ export default function CalendarScheduleDialog({
   open,
   event,
   loading = false,
+  loadingAction = null,
   onClose,
   onConfirm,
 }) {
@@ -140,8 +142,16 @@ export default function CalendarScheduleDialog({
         <Button disabled={loading} variant="outlined" onClick={onClose}>
           Cancel
         </Button>
-        <Button disabled={loading} variant="contained" form="calendar-schedule-form" type="submit">
-          {isReschedule ? "Reschedule" : "Schedule"}
+        <Button
+          disabled={loading}
+          variant="contained"
+          form="calendar-schedule-form"
+          type="submit"
+          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
+        >
+          {loading
+            ? loadingAction === "reschedule" ? "Rescheduling..." : "Scheduling..."
+            : isReschedule ? "Reschedule" : "Schedule"}
         </Button>
       </DialogActions>
     </Dialog>

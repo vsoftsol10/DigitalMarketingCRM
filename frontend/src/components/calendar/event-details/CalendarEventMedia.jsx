@@ -1,8 +1,11 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, IconButton, Stack, Typography } from "@mui/material";
 
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import PermMediaRoundedIcon from "@mui/icons-material/PermMediaRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PhotoRoundedIcon from "@mui/icons-material/PhotoRounded";
+import { useRef, useState } from "react";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
 
@@ -140,13 +143,57 @@ export default function CalendarEventMedia({ event }) {
   const media = Array.isArray(event?.media)
     ? event.media.filter((item) => item?.url)
     : [];
+  const [selection, setSelection] = useState({ mediaKey: "", index: 0 });
+  const touchStartX = useRef(null);
+  const mediaKey = media.map((item) => item.id || item.url).join("|");
+  const activeIndex = selection.mediaKey === mediaKey ? selection.index : 0;
 
   if (!media.length) {
     return null;
   }
 
-  const [hero, ...rest] = media;
   const hasMultiple = media.length > 1;
+  const currentIndex = Math.min(activeIndex, media.length - 1);
+  const activeMedia = media[currentIndex];
+
+  function showMedia(index) {
+    setSelection({
+      mediaKey,
+      index: (index + media.length) % media.length,
+    });
+  }
+
+  function handleTouchStart(event) {
+    touchStartX.current = event.touches?.[0]?.clientX ?? null;
+  }
+
+  function handleTouchEnd(event) {
+    if (touchStartX.current === null) {
+      return;
+    }
+
+    const delta = (event.changedTouches?.[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+    touchStartX.current = null;
+
+    if (!hasMultiple || Math.abs(delta) < 40 || event.target?.tagName === "VIDEO") {
+      return;
+    }
+
+    showMedia(currentIndex + (delta < 0 ? 1 : -1));
+  }
+
+  function handleKeyDown(event) {
+    if (!hasMultiple) {
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      showMedia(currentIndex - 1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      showMedia(currentIndex + 1);
+    }
+  }
 
   return (
     <Box
@@ -193,48 +240,55 @@ export default function CalendarEventMedia({ event }) {
         </Box>
       </Stack>
 
-      {/* ==========================================
-          HERO — first asset, shown large
-      ========================================== */}
+      <Box
+        role={hasMultiple ? "group" : undefined}
+        aria-label={hasMultiple ? "Post media carousel" : undefined}
+        tabIndex={hasMultiple ? 0 : undefined}
+        onKeyDown={handleKeyDown}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        sx={{ width: "100%", minWidth: 0, touchAction: "pan-y" }}
+      >
+        <MediaFrame
+          key={activeMedia.id || activeMedia.url}
+          item={activeMedia}
+          aspectRatio="16 / 10"
+          rounded={2.5}
+          hoverZoom={!hasMultiple}
+        />
 
-      <MediaFrame item={hero} aspectRatio="16 / 10" rounded={2.5} />
-
-      {/* ==========================================
-          THUMBNAIL STRIP — remaining assets
-      ========================================== */}
-
-      {hasMultiple && (
-        <Box
-          sx={{
-            display: "flex",
-            gap: 1,
-            mt: 1,
-            overflowX: "auto",
-            pb: 0.5,
-            "&::-webkit-scrollbar": {
-              height: 5,
-            },
-            "&::-webkit-scrollbar-thumb": {
-              bgcolor: "divider",
-              borderRadius: 10,
-            },
-            "&::-webkit-scrollbar-track": {
-              bgcolor: "transparent",
-            },
-          }}
-        >
-          {rest.map((item) => (
-            <Box key={item.id || item.url} sx={{ width: 88, flexShrink: 0 }}>
-              <MediaFrame
-                item={item}
-                aspectRatio="1 / 1"
-                rounded={1.75}
-                badge={false}
-              />
-            </Box>
-          ))}
-        </Box>
-      )}
+        {hasMultiple && (
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mt: 0.75, minWidth: 0 }}
+          >
+            <IconButton
+              aria-label="Previous media"
+              onClick={() => showMedia(currentIndex - 1)}
+              size="small"
+              sx={{ border: "1px solid", borderColor: "divider" }}
+            >
+              <ChevronLeftRoundedIcon />
+            </IconButton>
+            <Typography
+              aria-live="polite"
+              sx={{ ...TYPOGRAPHY.caption, color: "text.secondary", fontWeight: 700 }}
+            >
+              {currentIndex + 1} / {media.length}
+            </Typography>
+            <IconButton
+              aria-label="Next media"
+              onClick={() => showMedia(currentIndex + 1)}
+              size="small"
+              sx={{ border: "1px solid", borderColor: "divider" }}
+            >
+              <ChevronRightRoundedIcon />
+            </IconButton>
+          </Stack>
+        )}
+      </Box>
     </Box>
   );
 }

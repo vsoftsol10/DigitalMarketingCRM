@@ -307,9 +307,9 @@
 //   );
 // }
 
-import { Box, CircularProgress, Typography } from "@mui/material";
+import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
@@ -372,6 +372,10 @@ export default function Calendar() {
 
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [loadingAction, setLoadingAction] = useState(null);
+
+  const actionInFlightRef = useRef(false);
+
   const [confirmation, setConfirmation] = useState(null);
 
   const [scheduleEvent, setScheduleEvent] = useState(null);
@@ -398,6 +402,8 @@ export default function Calendar() {
     filterOptionsError,
 
     refresh,
+    removeEvent,
+    syncEvent,
   } = useCalendar({
     currentDate,
     filters: appliedFilters,
@@ -581,30 +587,56 @@ export default function Calendar() {
   }
 
   async function refreshEvent(event) {
-    const refreshedEvents = await refresh();
-    const refreshedEvent = refreshedEvents?.find(
-      (candidate) => candidate.id === event.id,
-    );
-
-    if (refreshedEvent) {
-      setSelectedEvent(refreshedEvent);
-    }
-  }
-
-  async function runAction(action, fallbackMessage) {
-    if (actionLoading) {
+    const targetId = event?.targetId || event?.id;
+    if (!targetId) {
       return false;
     }
 
     try {
+      const refreshedEvent = await calendarService.getEventById(targetId);
+      if (!refreshedEvent) {
+        throw new Error("The updated calendar event was not returned.");
+      }
+
+      setSelectedEvent(refreshedEvent);
+      syncEvent(refreshedEvent);
+      await refresh();
+      return true;
+    } catch (detailError) {
+      const refreshedEvents = await refresh();
+      const refreshedEvent = refreshedEvents?.find(
+        (candidate) => (candidate.targetId || candidate.id) === targetId,
+      );
+
+      if (refreshedEvent) {
+        setSelectedEvent(refreshedEvent);
+        syncEvent(refreshedEvent);
+        return true;
+      }
+
+      console.error("Calendar event status could not be refreshed:", detailError);
+      return false;
+    }
+  }
+
+  async function runAction(action, fallbackMessage, actionType) {
+    if (actionInFlightRef.current) {
+      return false;
+    }
+
+    try {
+      actionInFlightRef.current = true;
       setActionLoading(true);
+      setLoadingAction(actionType);
       await action();
       return true;
     } catch (actionError) {
       toast.error(getActionErrorMessage(actionError, fallbackMessage));
       return false;
     } finally {
+      actionInFlightRef.current = false;
       setActionLoading(false);
+      setLoadingAction(null);
     }
   }
 
@@ -618,6 +650,7 @@ export default function Calendar() {
       return;
     }
 
+    const isReschedule = event.status?.toUpperCase() === "SCHEDULED";
     const succeeded = await runAction(async () => {
       const { organizationId, postId, targetId } = getEventIdentifiers(event);
       const response = await postService.schedulePostTarget(
@@ -631,14 +664,18 @@ export default function Calendar() {
         throw new Error(response?.message || "Unable to schedule the post.");
       }
 
-      await refreshEvent(event);
-      toast.success(
-        response.message ||
-          (event.status?.toUpperCase() === "SCHEDULED"
+      const synchronized = await refreshEvent(event);
+      if (synchronized) {
+        toast.success(
+          response.message || (isReschedule
             ? "Post rescheduled successfully."
             : "Post scheduled successfully."),
-      );
-    }, "Unable to schedule the post.");
+        );
+      } else {
+        handleEventDetailsClose();
+        toast.error("The schedule was saved, but the updated event could not be loaded. Reopen it before taking another action.");
+      }
+    }, "Unable to schedule the post.", isReschedule ? "reschedule" : "schedule");
 
     if (succeeded) {
       setScheduleEvent(null);
@@ -660,6 +697,7 @@ export default function Calendar() {
     }
 
     const { event, type } = pendingConfirmation;
+    let mutationConfirmed = false;
     const succeeded = await runAction(async () => {
       const { organizationId, postId, targetId } = getEventIdentifiers(event);
       const response = type === "delete"
@@ -680,17 +718,26 @@ export default function Calendar() {
       }
 
       if (type === "delete") {
+        mutationConfirmed = true;
+        const { targetId } = getEventIdentifiers(event);
+        removeEvent(targetId);
         handleEventDetailsClose();
         await refresh();
         toast.success(response.message || "Post deleted successfully.");
         return;
       }
 
-      await refreshEvent(event);
-      toast.success(response.message || "Post queued for publishing.");
-    }, type === "delete" ? "Unable to delete the post." : "Unable to publish the post now.");
+      mutationConfirmed = true;
+      const synchronized = await refreshEvent(event);
+      if (synchronized) {
+        toast.success(response.message || "Post queued for publishing.");
+      } else {
+        handleEventDetailsClose();
+        toast.error("Publishing was queued, but the updated event could not be loaded. Reopen it before taking another action.");
+      }
+    }, type === "delete" ? "Unable to delete the post." : "Unable to publish the post now.", type);
 
-    if (succeeded) {
+    if (succeeded || mutationConfirmed) {
       setConfirmation(null);
     }
   }
@@ -708,9 +755,14 @@ export default function Calendar() {
         throw new Error(response?.message || "Unable to retry publishing.");
       }
 
-      await refreshEvent(event);
-      toast.success(response.message || "Publishing retry queued.");
-    }, "Unable to retry publishing.");
+      const synchronized = await refreshEvent(event);
+      if (synchronized) {
+        toast.success(response.message || "Publishing retry queued.");
+      } else {
+        handleEventDetailsClose();
+        toast.error("Retry was queued, but the updated event could not be loaded. Reopen it before taking another action.");
+      }
+    }, "Unable to retry publishing.", "retry");
   }
 
   // ==========================================
@@ -903,12 +955,14 @@ export default function Calendar() {
         onRetry={handleRetry}
         onDelete={handleDeleteRequest}
         actionLoading={actionLoading}
+        loadingAction={loadingAction}
       />
 
       <CalendarScheduleDialog
         open={Boolean(scheduleEvent)}
         event={scheduleEvent}
         loading={actionLoading}
+        loadingAction={loadingAction}
         onClose={() => setScheduleEvent(null)}
         onConfirm={handleScheduleConfirm}
       />
@@ -931,9 +985,12 @@ export default function Calendar() {
             ? "This action cannot be undone."
             : "It will be queued for publishing immediately."
         }
-        confirmText={
-          confirmation?.type === "delete" ? "Delete" : "Publish now"
-        }
+        confirmText={actionLoading ? (
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <CircularProgress size={16} sx={{ color: "currentColor" }} />
+            <span>{loadingAction === "delete" ? "Deleting..." : "Publishing..."}</span>
+          </Stack>
+        ) : confirmation?.type === "delete" ? "Delete" : "Publish now"}
         loading={actionLoading}
         onClose={() => {
           if (!actionLoading) {

@@ -192,6 +192,7 @@ export default function CalendarEventDetails({
   onRetry,
   onDelete,
   actionLoading,
+  loadingAction,
 }) {
   if (!event) {
     return null;
@@ -204,17 +205,32 @@ export default function CalendarEventDetails({
       onClose={onClose}
       PaperProps={{
         sx: {
-          width: { xs: "100%", sm: 480 },
-          maxWidth: 480,
           height: "100dvh",
           maxHeight: "100dvh",
           display: "flex",
           flexDirection: "column",
           bgcolor: "background.paper",
           boxSizing: "border-box",
+          overflowX: "hidden",
         },
       }}
       slotProps={{
+        paper: {
+          sx: {
+            width: {
+              xs: "100%",
+              sm: "480px",
+            },
+            minWidth: {
+              xs: 0,
+              sm: "480px",
+            },
+            maxWidth: {
+              xs: "100%",
+              sm: "480px",
+            },
+          },
+        },
         backdrop: {
           sx: {
             bgcolor: "rgba(15, 23, 42, 0.42)",
@@ -296,7 +312,9 @@ export default function CalendarEventDetails({
         sx={{
           flex: 1,
           minHeight: 0,
+          minWidth: 0,
           overflowY: "auto",
+          overflowX: "hidden",
           overscrollBehavior: "contain",
           px: { xs: 2.5, sm: 3 },
           pb: 3,
@@ -331,6 +349,7 @@ export default function CalendarEventDetails({
         onRetry={onRetry}
         onDelete={onDelete}
         loading={actionLoading}
+        loadingAction={loadingAction}
       />
     </Drawer>
   );

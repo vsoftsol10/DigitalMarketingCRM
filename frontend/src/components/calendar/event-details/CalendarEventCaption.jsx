@@ -68,6 +68,7 @@ export default function CalendarEventCaption({
         sx={{
           position: "relative",
           width: "100%",
+          minWidth: 0,
           pl: 2,
           pr: 1.5,
           py: 1.5,
@@ -82,8 +83,10 @@ export default function CalendarEventCaption({
           sx={{
             ...TYPOGRAPHY.body,
             color: "text.primary",
+            minWidth: 0,
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
+            overflowWrap: "anywhere",
           }}
         >
           {event.caption}

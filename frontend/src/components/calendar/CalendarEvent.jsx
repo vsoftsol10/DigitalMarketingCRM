@@ -325,6 +325,16 @@ const STATUS_CONFIG = {
     dot: "primary.main",
   },
 
+  PUBLISHING: {
+    label: "Publishing",
+    dot: "warning.main",
+  },
+
+  UNRESOLVED: {
+    label: "Unresolved",
+    dot: "warning.main",
+  },
+
   PUBLISHED: {
     label: "Published",
     dot: "success.main",

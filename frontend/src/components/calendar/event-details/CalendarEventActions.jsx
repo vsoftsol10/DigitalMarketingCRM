@@ -6,7 +6,6 @@ import {
   Tooltip,
 } from "@mui/material";
 
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import PublishRoundedIcon from "@mui/icons-material/PublishRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
@@ -33,11 +32,11 @@ const secondaryButtonSx = {
 
 export default function CalendarEventActions({
   event,
-  onEdit,
   onReschedule,
   onPublishNow,
   onRetry,
   onDelete,
+  loading = false,
 }) {
   if (!event) {
     return null;
@@ -45,7 +44,12 @@ export default function CalendarEventActions({
 
   const status = event.status?.toUpperCase();
   const handleAction = (callback) => callback?.(event);
-  const canDelete = status !== "PUBLISHED";
+
+  if (["PUBLISHED", "UNRESOLVED"].includes(status)) {
+    return null;
+  }
+
+  const canDelete = ["DRAFT", "SCHEDULED", "FAILED"].includes(status);
 
   return (
     <Box
@@ -76,11 +80,14 @@ export default function CalendarEventActions({
               <Button
                 variant="contained"
                 disableElevation
-                startIcon={<EditRoundedIcon />}
-                onClick={() => handleAction(onEdit)}
+                startIcon={<PublishRoundedIcon />}
+                onClick={() =>
+                  handleAction(onPublishNow)
+                }
+                disabled={loading}
                 sx={buttonSx}
               >
-                Edit post
+                Publish now
               </Button>
 
               <Button
@@ -89,6 +96,7 @@ export default function CalendarEventActions({
                 onClick={() =>
                   handleAction(onReschedule)
                 }
+                disabled={loading}
                 sx={secondaryButtonSx}
               >
                 Schedule
@@ -105,6 +113,7 @@ export default function CalendarEventActions({
                 onClick={() =>
                   handleAction(onReschedule)
                 }
+                disabled={loading}
                 sx={buttonSx}
               >
                 Reschedule
@@ -116,6 +125,7 @@ export default function CalendarEventActions({
                 onClick={() =>
                   handleAction(onPublishNow)
                 }
+                disabled={loading}
                 sx={secondaryButtonSx}
               >
                 Publish now
@@ -123,39 +133,18 @@ export default function CalendarEventActions({
             </>
           )}
 
-          {status === "PUBLISHED" && (
-            <Button
-              variant="outlined"
-              startIcon={<EditRoundedIcon />}
-              onClick={() => handleAction(onEdit)}
-              sx={secondaryButtonSx}
-            >
-              View post
-            </Button>
-          )}
-
           {status === "FAILED" && (
-            <>
-              <Button
-                variant="contained"
-                disableElevation
-                color="error"
-                startIcon={<ReplayRoundedIcon />}
-                onClick={() => handleAction(onRetry)}
-                sx={buttonSx}
-              >
-                Retry publishing
-              </Button>
-
-              <Button
-                variant="outlined"
-                startIcon={<EditRoundedIcon />}
-                onClick={() => handleAction(onEdit)}
-                sx={secondaryButtonSx}
-              >
-                Edit post
-              </Button>
-            </>
+            <Button
+              variant="contained"
+              disableElevation
+              color="error"
+              startIcon={<ReplayRoundedIcon />}
+              onClick={() => handleAction(onRetry)}
+              disabled={loading}
+              sx={buttonSx}
+            >
+              Retry
+            </Button>
           )}
         </Stack>
 
@@ -167,6 +156,7 @@ export default function CalendarEventActions({
             <IconButton
               aria-label="Delete post"
               onClick={() => handleAction(onDelete)}
+              disabled={loading}
               sx={{
                 width: 40,
                 height: 40,

@@ -19,6 +19,8 @@ export const CALENDAR_WEEK_DAYS = [
 export const CALENDAR_POST_STATUS = {
   DRAFT: "DRAFT",
   SCHEDULED: "SCHEDULED",
+  PUBLISHING: "PUBLISHING",
+  UNRESOLVED: "UNRESOLVED",
   PUBLISHED: "PUBLISHED",
   FAILED: "FAILED",
 };
@@ -70,7 +72,7 @@ export const CALENDAR_VIEW = {
 
 export const DEFAULT_CALENDAR_FILTERS = {
   organization: "",
-  platform: "",
+  socialAccount: "",
   contentType: "",
   status: "",
 };

@@ -1,4 +1,5 @@
 import json
+import logging
 from urllib.parse import urlsplit, urlunsplit
 
 from apps.integrations.instagram.client import InstagramAPIClient
@@ -14,6 +15,9 @@ from .exceptions import (
     ProviderPublishingError,
     PublishingValidationError,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class MetaPublisher(BasePublisher):
@@ -77,6 +81,63 @@ class MetaPublisher(BasePublisher):
                 "Instagram image media is not available for processing yet."
             ) from exc
         raise exc
+
+    @staticmethod
+    def _instagram_diagnostic_fields(payload):
+        """Return only allowlisted, non-sensitive provider diagnostics."""
+        payload = payload if isinstance(payload, dict) else {}
+        provider_error = payload.get("error")
+        provider_error = provider_error if isinstance(provider_error, dict) else {}
+
+        def value(field):
+            return payload.get(field, provider_error.get(field))
+
+        return {
+            "message": value("message"),
+            "code": value("code"),
+            "error_subcode": value("error_subcode"),
+            "type": value("type"),
+            "fbtrace_id": value("fbtrace_id"),
+        }
+
+    @classmethod
+    def _log_instagram_container_status(cls, *, post_platform, api, state):
+        diagnostics = cls._instagram_diagnostic_fields(state)
+        logger.info(
+            "Instagram container status target_id=%s container_id=%s http_status=%s "
+            "status_code=%s status=%s message=%s code=%s error_subcode=%s "
+            "type=%s fbtrace_id=%s",
+            getattr(post_platform, "id", None),
+            getattr(post_platform, "provider_container_id", None),
+            getattr(api, "last_response_status_code", None),
+            state.get("status_code") if isinstance(state, dict) else None,
+            state.get("status") if isinstance(state, dict) else None,
+            diagnostics["message"],
+            diagnostics["code"],
+            diagnostics["error_subcode"],
+            diagnostics["type"],
+            diagnostics["fbtrace_id"],
+        )
+
+    @classmethod
+    def _log_instagram_media_publish_failure(cls, *, post_platform, exc):
+        diagnostics = cls._instagram_diagnostic_fields(
+            getattr(exc, "error_payload", None),
+        )
+        logger.warning(
+            "Instagram media_publish failed target_id=%s container_id=%s http_status=%s "
+            "message=%s code=%s error_subcode=%s type=%s fbtrace_id=%s "
+            "usage_diagnostics=%s",
+            getattr(post_platform, "id", None),
+            getattr(post_platform, "provider_container_id", None),
+            getattr(exc, "status_code", None),
+            diagnostics["message"],
+            diagnostics["code"],
+            diagnostics["error_subcode"],
+            diagnostics["type"],
+            diagnostics["fbtrace_id"],
+            getattr(exc, "usage_diagnostics", {}),
+        )
 
     def publish_facebook(self, *, post_platform):
         account = post_platform.social_account
@@ -201,6 +262,73 @@ class MetaPublisher(BasePublisher):
         return {"external_post_id": str(external_id)}
 
     def publish_instagram(self, *, post_platform):
+        """Publish or resume one Instagram target without duplicating containers."""
+        try:
+            return self._publish_instagram(post_platform=post_platform)
+        except InstagramAPIError as exc:
+            self._retry_transient_instagram_error(exc)
+
+    @staticmethod
+    def _retry_transient_instagram_error(exc):
+        """Route only known transient Instagram API limits through retry."""
+        error = getattr(exc, "error_payload", {}).get("error", {})
+        message = str(error.get("message") or exc).lower()
+        error_subcode = str(error.get("error_subcode") or "")
+        clearly_rate_limited = (
+            getattr(exc, "status_code", None) == 429
+            or "rate limit" in message
+            or "rate limited" in message
+            or "request limit" in message
+            or "too many requests" in message
+        )
+        if (
+            str(error.get("code")) == "4"
+            and error_subcode != "2207051"
+            and clearly_rate_limited
+        ):
+            raise MediaProcessingPending(
+                "Instagram API rate limit reached; publishing will resume.",
+                rate_limited=True,
+            ) from exc
+        raise exc
+
+    @staticmethod
+    def _is_instagram_media_publish_restriction(exc):
+        """Return whether Meta rejected this publication as an app restriction."""
+        error = getattr(exc, "error_payload", {}).get("error", {})
+        return (
+            str(error.get("code")) == "4"
+            and str(error.get("error_subcode")) == "2207051"
+        )
+
+    @classmethod
+    def _ambiguous_instagram_media_publish_error(cls, exc):
+        """Surface an unresolved provider outcome without retrying the container."""
+        diagnostics = cls._instagram_diagnostic_fields(
+            getattr(exc, "error_payload", None),
+        )
+        fields = (
+            ("provider_message", diagnostics["message"]),
+            ("provider_code", diagnostics["code"]),
+            ("error_subcode", diagnostics["error_subcode"]),
+            ("http_status", getattr(exc, "status_code", None)),
+            ("fbtrace_id", diagnostics["fbtrace_id"]),
+        )
+        details = [
+            f"{name}={value}"
+            for name, value in fields
+            if value not in (None, "")
+        ]
+        outcome = ProviderPublishingError(" ".join([
+            "Instagram publish outcome could not be confirmed. The existing "
+            "provider container was preserved; manual reconciliation may be "
+            "required.",
+            *details,
+        ]))
+        outcome.ambiguous_media_publish = True
+        return outcome
+
+    def _publish_instagram(self, *, post_platform):
         account = post_platform.social_account
         credential = get_active_instagram_credential(social_account=account)
         if not credential:
@@ -347,14 +475,63 @@ class MetaPublisher(BasePublisher):
     @staticmethod
     def _publish_instagram_container(*, api, token, account_id, post_platform):
         container_id = post_platform.provider_container_id
-        state = api.graph_get(container_id, access_token=token, params={"fields": "status_code"})
-        if state.get("status_code") not in {"FINISHED", "PUBLISHED"}:
-            raise MediaProcessingPending("Instagram media is still processing.")
-        result = api.graph_post(
-            f"{account_id}/media_publish",
+        state = api.graph_get(
+            container_id,
             access_token=token,
-            data={"creation_id": str(container_id)},
+            params={"fields": "status_code,status"},
         )
+        MetaPublisher._log_instagram_container_status(
+            post_platform=post_platform,
+            api=api,
+            state=state,
+        )
+        status_code = state.get("status_code")
+        if status_code == "IN_PROGRESS":
+            raise MediaProcessingPending("Instagram media is still processing.")
+        if status_code == "PUBLISHED":
+            # The exact stored container is already terminal at Meta. Do not
+            # replay media_publish: Meta did not provide a Media ID here, so
+            # retain an empty external ID rather than inventing one.
+            return {
+                "external_post_id": "",
+                "provider_container_id": str(container_id),
+            }
+        if status_code == "ERROR":
+            status_detail = str(state.get("status") or "").strip()
+            if status_detail:
+                raise ProviderPublishingError(
+                    f"Instagram media container is error: {status_detail}"
+                )
+            raise ProviderPublishingError("Instagram media container is error.")
+        if status_code == "EXPIRED":
+            raise ProviderPublishingError(
+                f"Instagram media container is {status_code.lower()}."
+            )
+        if status_code != "FINISHED":
+            raise ProviderPublishingError(
+                f"Instagram media container returned an unknown status: {status_code!r}."
+            )
+        try:
+            result = api.graph_post(
+                f"{account_id}/media_publish",
+                access_token=token,
+                data={"creation_id": str(container_id)},
+            )
+        except InstagramAPIError as exc:
+            MetaPublisher._log_instagram_media_publish_failure(
+                post_platform=post_platform,
+                exc=exc,
+            )
+            if MetaPublisher._is_instagram_media_publish_restriction(exc):
+                raise MetaPublisher._ambiguous_instagram_media_publish_error(exc) from exc
+            raise
         if not result.get("id"):
             raise ProviderPublishingError("Instagram did not return a publication ID.")
+        logger.info(
+            "Instagram media_publish succeeded target_id=%s container_id=%s http_status=%s media_id=%s",
+            getattr(post_platform, "id", None),
+            container_id,
+            getattr(api, "last_response_status_code", None),
+            result.get("id"),
+        )
         return {"external_post_id": str(result["id"]), "provider_container_id": str(container_id)}

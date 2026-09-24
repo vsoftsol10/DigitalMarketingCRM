@@ -24,6 +24,7 @@ class PostStatus(models.TextChoices):
     DRAFT = "DRAFT", "Draft"
     SCHEDULED = "SCHEDULED", "Scheduled"
     PUBLISHING = "PUBLISHING", "Publishing"
+    UNRESOLVED = "UNRESOLVED", "Unresolved"
     PUBLISHED = "PUBLISHED", "Published"
     PARTIALLY_PUBLISHED = "PARTIALLY_PUBLISHED", "Partially Published"
     FAILED = "FAILED", "Failed"
@@ -238,6 +239,20 @@ class PostPlatform(BaseModel):
         choices=PostStatus.choices,
         default=PostStatus.DRAFT,
         db_index=True,
+    )
+
+    # Calendar can schedule one exact connected-account target without
+    # changing sibling destinations on the same Post.
+    scheduled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+
+    scheduled_timezone = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
     )
 
     external_post_id = models.CharField(

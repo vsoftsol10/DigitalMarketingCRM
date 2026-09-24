@@ -6,7 +6,7 @@ from apps.organizations.models import Organization
 from .models import ContentIdea
 
 
-def content_idea_queryset():
+def content_idea_queryset(*, user):
     """
     Base queryset for Content Planner read operations.
 
@@ -18,19 +18,21 @@ def content_idea_queryset():
     return ContentIdea.objects.filter(
         is_deleted=False,
         organization__is_deleted=False,
-    ).select_related("organization")
+        organization__created_by=user,
+    ).select_related("organization").prefetch_related("selected_social_accounts")
 
 
 def get_content_ideas(
     *,
     search=None,
     organization_id=None,
+    user,
 ):
     """
     Return content ideas with optional search and organization filters.
     """
 
-    queryset = content_idea_queryset()
+    queryset = content_idea_queryset(user=user)
 
     # =========================================================
     # SEARCH
@@ -41,12 +43,10 @@ def get_content_ideas(
 
         if search:
             queryset = queryset.filter(
-                Q(title__icontains=search)
+                Q(caption__icontains=search)
                 | Q(description__icontains=search)
                 | Q(organization__name__icontains=search)
-                | Q(platform__icontains=search)
                 | Q(content_type__icontains=search)
-                | Q(campaign_goal__icontains=search)
             )
 
     # =========================================================
@@ -71,13 +71,14 @@ def get_content_ideas(
 def get_content_idea_by_id(
     *,
     idea_id,
+    user,
 ):
     """
     Return a single non-deleted content idea.
     """
 
     return (
-        content_idea_queryset()
+        content_idea_queryset(user=user)
         .filter(
             id=idea_id,
         )
@@ -85,7 +86,7 @@ def get_content_idea_by_id(
     )
 
 
-def get_content_planner_organizations():
+def get_content_planner_organizations(*, user):
     """
     Return active organizations for the Content Planner
     organization filter and create/edit forms.
@@ -96,16 +97,18 @@ def get_content_planner_organizations():
     return (
         Organization.objects.filter(
             is_deleted=False,
+            created_by=user,
         )
         .order_by("name")
         .values(
             "id",
+            "organization_id",
             "name",
         )
     )
 
 
-def get_content_planner_statistics():
+def get_content_planner_statistics(*, user):
     """
     Return Content Planner dashboard statistics.
 
@@ -147,17 +150,20 @@ def get_content_planner_statistics():
     total_ideas = ContentIdea.objects.filter(
         is_deleted=False,
         organization__is_deleted=False,
+        organization__created_by=user,
     ).count()
 
     planned_this_month = ContentIdea.objects.filter(
         is_deleted=False,
         organization__is_deleted=False,
+        organization__created_by=user,
         target_publish_date__gte=month_start,
         target_publish_date__lt=next_month_start,
     ).count()
 
     organization_statistics = Organization.objects.filter(
         is_deleted=False,
+        created_by=user,
     ).annotate(
         active_content_ideas=Count(
             "content_ideas",

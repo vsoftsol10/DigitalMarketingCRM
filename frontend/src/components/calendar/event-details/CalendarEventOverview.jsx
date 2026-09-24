@@ -2,14 +2,13 @@ import { Box, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
-import PermMediaRoundedIcon from "@mui/icons-material/PermMediaRounded";
+import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import TodayRoundedIcon from "@mui/icons-material/TodayRounded";
 
 import dayjs from "dayjs";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
-import { getPlatformMeta } from "./platformMeta";
 
 function formatDate(date) {
   if (!date) {
@@ -106,10 +105,14 @@ export default function CalendarEventOverview({
   }
 
   const eventDate = formatDate(event.date);
-  const contentType =
-    event.contentType || event.content_type;
-  const platformMeta = getPlatformMeta(event.platform);
-  const PlatformIcon = platformMeta?.icon;
+  const connectedAccount =
+    event.socialAccount?.name ||
+    event.social_account?.name ||
+    event.socialAccount?.username ||
+    event.social_account?.username ||
+    event.socialAccount?.platform_account_id ||
+    event.social_account?.platform_account_id ||
+    "";
 
   return (
     <Box
@@ -153,23 +156,10 @@ export default function CalendarEventOverview({
 
         <OverviewCard
           icon={
-            PlatformIcon && (
-              <PlatformIcon sx={{ fontSize: 12 }} />
-            )
+            <AccountCircleRoundedIcon sx={{ fontSize: 17 }} />
           }
-          iconColor={platformMeta?.color}
-          label="Platform"
-          value={platformMeta?.label}
-        />
-
-        <OverviewCard
-          icon={
-            <PermMediaRoundedIcon
-              sx={{ fontSize: 17 }}
-            />
-          }
-          label="Content type"
-          value={contentType}
+          label="Connected Account"
+          value={connectedAccount}
         />
 
         <OverviewCard

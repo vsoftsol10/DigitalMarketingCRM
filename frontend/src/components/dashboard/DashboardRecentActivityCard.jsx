@@ -18,6 +18,7 @@ export default function DashboardRecentActivityCard({
 
         display: "flex",
         flexDirection: "column",
+        minHeight: 0,
       }}
     >
       <CardContent
@@ -28,6 +29,7 @@ export default function DashboardRecentActivityCard({
           flexDirection: "column",
 
           flex: 1,
+          minHeight: 0,
 
           "&:last-child": {
             pb: 3,
@@ -56,6 +58,7 @@ export default function DashboardRecentActivityCard({
           <Box
             sx={{
               flex: 1,
+              minHeight: 0,
 
               display: "flex",
               justifyContent: "center",
@@ -72,6 +75,7 @@ export default function DashboardRecentActivityCard({
           <Box
             sx={{
               flex: 1,
+              minHeight: 0,
 
               overflowY: "auto",
 

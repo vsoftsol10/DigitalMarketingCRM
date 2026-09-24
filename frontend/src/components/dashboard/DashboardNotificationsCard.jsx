@@ -18,6 +18,7 @@ export default function DashboardNotificationsCard({
 
         display: "flex",
         flexDirection: "column",
+        minHeight: 0,
       }}
     >
       <CardContent
@@ -28,6 +29,7 @@ export default function DashboardNotificationsCard({
           flexDirection: "column",
 
           flex: 1,
+          minHeight: 0,
 
           "&:last-child": {
             pb: 3,
@@ -53,7 +55,8 @@ export default function DashboardNotificationsCard({
         {notifications.length === 0 ? (
           <Box
             sx={{
-              height: 380,
+              flex: 1,
+              minHeight: 0,
 
               display: "flex",
               justifyContent: "center",
@@ -70,6 +73,7 @@ export default function DashboardNotificationsCard({
           <Box
             sx={{
               flex: 1,
+              minHeight: 0,
 
               overflowY: "auto",
 

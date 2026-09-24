@@ -2,9 +2,7 @@ import { Grid } from "@mui/material";
 
 import FormSection from "../../ui/form/FormSection";
 import FormSelect from "../../ui/form/FormSelect";
-import FormTextField from "../../ui/form/FormTextField";
-
-import { PLATFORM_OPTIONS } from "../../../constants/form-options/platformOptions";
+import PublishAccountsField from "./PublishAccountsField";
 
 export default function IdeaDetailsForm({ organizations = [] }) {
   return (
@@ -28,39 +26,8 @@ export default function IdeaDetailsForm({ organizations = [] }) {
           />
         </Grid>
 
-        {/* Platform */}
-
-        <Grid size={{ xs: 12, md: 6 }}>
-          <FormSelect
-            name="platform"
-            label="Platform"
-            required
-            placeholder="Select Platform"
-            options={PLATFORM_OPTIONS}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 6 }}>
-          <FormTextField
-            name="target_publish_date"
-            label="Target Publish Date"
-            required
-            type="date"
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
-        </Grid>
-
-        {/* Title */}
-
         <Grid size={{ xs: 12 }}>
-          <FormTextField
-            name="title"
-            label="Idea Title"
-            required
-            placeholder="Morning Coffee Routine"
-          />
+          <PublishAccountsField organizations={organizations} />
         </Grid>
       </Grid>
     </FormSection>

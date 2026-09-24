@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "django_extensions",
     # Local Apps
     "apps.common",
+    "apps.activities",
     "apps.accounts",
     "apps.organizations",
     "apps.brand_assets",
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     "apps.ai",
     "apps.notifications",
     "apps.plans",
+    "apps.dashboard",
     # "apps.integrations.meta",
     "apps.integrations.meta.apps.MetaIntegrationConfig",
     "apps.integrations.instagram.apps.InstagramIntegrationConfig",
@@ -208,6 +210,13 @@ CELERY_TASK_TIME_LIMIT = 30 * 60
 
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
 
+# Minimum spacing between outbound Instagram Graph API requests across workers.
+INSTAGRAM_GRAPH_REQUEST_INTERVAL_SECONDS = config(
+    "INSTAGRAM_GRAPH_REQUEST_INTERVAL_SECONDS",
+    default=1.0,
+    cast=float,
+)
+
 # ============================================================
 # CELERY BEAT
 # ============================================================
@@ -216,6 +225,10 @@ CELERY_BEAT_SCHEDULE = {
     "dispatch-due-posts": {
         "task": "apps.posts.tasks.dispatch_due_posts_task",
         "schedule": 60.0,
+    },
+    "reconcile-ambiguous-instagram-publishes": {
+        "task": "apps.posts.tasks.reconcile_ambiguous_instagram_publishes_task",
+        "schedule": 300.0,
     },
     "activate-scheduled-subscriptions": {
         "task": ("apps.organizations.tasks." "activate_scheduled_subscriptions_task"),

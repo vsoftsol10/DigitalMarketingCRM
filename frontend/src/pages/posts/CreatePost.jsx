@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { Box, Grid } from "@mui/material";
 
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -29,10 +30,15 @@ import { createPostDefaultValues } from "../../constants/forms/createPostDefault
 import { createPostSchema } from "../../validation/createPost.schema";
 
 import { buildCreatePostPayload } from "../../utils/post/createPostPayload";
+import { getPlatformStates } from "../../utils/post/platformCapability.utils";
 
 import { CREATE_POST } from "../../data/post";
 
 export default function CreatePost() {
+  const location = useLocation();
+  const plannerPrefill = location.state?.plannerPrefill;
+  const hasAppliedPlannerBasePrefill = useRef(false);
+  const hasAppliedPlannerAccountsPrefill = useRef(false);
   // ============================================================
   // FORM
   // ============================================================
@@ -65,6 +71,11 @@ export default function CreatePost() {
     control: methods.control,
     name: "organization",
   }) || "";
+
+  const media = useWatch({
+    control: methods.control,
+    name: "media",
+  }) || [];
 
   const {
     data: organizationsResponse,
@@ -103,6 +114,116 @@ export default function CreatePost() {
         accountName: account.pageName,
       }))
     : [];
+
+  // ============================================================
+  // CONTENT PLANNER PREFILL
+  // ============================================================
+  //
+  // Planner only supplies draft form values. The existing Create Post form,
+  // account loader, media rules, validation, and submit flow remain the
+  // source of truth.
+
+  useEffect(() => {
+    if (
+      hasAppliedPlannerBasePrefill.current ||
+      !plannerPrefill ||
+      !organizationsResponse?.success ||
+      !organizations.some(
+        (organization) => organization.id === plannerPrefill.organization,
+      )
+    ) {
+      return;
+    }
+
+    setValue("organization", plannerPrefill.organization, {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    setValue("caption", plannerPrefill.caption || "", {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    setValue("publish_type", "SCHEDULE", {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    setValue("publish_date", plannerPrefill.publishDate || "", {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    setValue("publish_time", plannerPrefill.publishTime || "", {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    hasAppliedPlannerBasePrefill.current = true;
+  }, [organizations, organizationsResponse?.success, plannerPrefill, setValue]);
+
+  useEffect(() => {
+    if (
+      hasAppliedPlannerAccountsPrefill.current ||
+      !plannerPrefill ||
+      selectedOrganizationId !== plannerPrefill.organization ||
+      !Array.isArray(socialAccountsResponse?.data) ||
+      !media.length
+    ) {
+      return;
+    }
+
+    const capabilityByPlatform = new Map(
+      getPlatformStates({ media }).map((state) => [state.platform, state]),
+    );
+    const requestedAccountIds = Array.isArray(plannerPrefill.socialAccountIds)
+      ? plannerPrefill.socialAccountIds
+      : [];
+    const availableAccounts = socialAccounts.filter(
+      (account) => {
+        const capability = capabilityByPlatform.get(account.platform);
+        return (
+          account.connected !== false &&
+          account.valid !== false &&
+          capability?.available
+        );
+      },
+    );
+    const selectedAccounts = availableAccounts.filter((account) =>
+      requestedAccountIds.includes(account.id),
+    );
+    const selectedAccountIds = selectedAccounts.map((account) => account.id);
+    const platforms = [...new Set(selectedAccounts.map((account) => account.platform))];
+    const platformContentTypes = Object.fromEntries(
+      platforms
+        .filter((platform) =>
+          capabilityByPlatform
+            .get(platform)
+            ?.contentTypes.some(
+              (option) =>
+                option.value === plannerPrefill.contentType && option.available,
+            ),
+        )
+        .map((platform) => [platform, plannerPrefill.contentType]),
+    );
+
+    setValue("social_account_ids", selectedAccountIds, {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    setValue("platforms", platforms, {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    setValue("platform_content_types", platformContentTypes, {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    hasAppliedPlannerAccountsPrefill.current = true;
+  }, [
+    media,
+    plannerPrefill,
+    selectedOrganizationId,
+    setValue,
+    socialAccounts,
+    socialAccountsResponse?.data,
+  ]);
 
   // ============================================================
   // SUBMIT STATE

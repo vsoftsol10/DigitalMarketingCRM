@@ -2,7 +2,12 @@ import { Box } from "@mui/material";
 
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
-import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
+import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
+import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
+import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
+import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 const CONFIG = {
@@ -18,9 +23,39 @@ const CONFIG = {
     background: "#F8FAFC",
   },
 
-  CAMPAIGN_UPDATED: {
-    icon: CampaignOutlinedIcon,
+  SUBSCRIPTION_ACTIVATED: {
+    icon: WorkspacePremiumOutlinedIcon,
+    color: "#2563EB",
+    background: "#F8FAFC",
+  },
+
+  SUBSCRIPTION_RENEWED: {
+    icon: AutorenewRoundedIcon,
+    color: "#2563EB",
+    background: "#F8FAFC",
+  },
+
+  SUBSCRIPTION_CANCELLED: {
+    icon: CancelOutlinedIcon,
+    color: "#64748B",
+    background: "#F8FAFC",
+  },
+
+  POST_CREATED: {
+    icon: AddCircleOutlineRoundedIcon,
     color: "#F97316",
+    background: "#F8FAFC",
+  },
+
+  POST_SCHEDULED: {
+    icon: ScheduleOutlinedIcon,
+    color: "#2563EB",
+    background: "#F8FAFC",
+  },
+
+  POST_FAILED: {
+    icon: ErrorOutlineRoundedIcon,
+    color: "#EF4444",
     background: "#F8FAFC",
   },
 

@@ -1,5 +1,6 @@
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
+import SyncRoundedIcon from "@mui/icons-material/SyncRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 
@@ -10,6 +11,7 @@ import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 export const STATUS_ORDER = [
   "DRAFT",
   "SCHEDULED",
+  "PUBLISHING",
   "PUBLISHED",
 ];
 
@@ -27,6 +29,20 @@ export const STATUS_META = {
     palette: "primary.main",
     dot: "primary.main",
     icon: ScheduleRoundedIcon,
+  },
+  PUBLISHING: {
+    label: "Publishing",
+    color: "warning",
+    palette: "warning.main",
+    dot: "warning.main",
+    icon: SyncRoundedIcon,
+  },
+  UNRESOLVED: {
+    label: "Unresolved",
+    color: "warning",
+    palette: "warning.main",
+    dot: "warning.main",
+    icon: SyncRoundedIcon,
   },
   PUBLISHED: {
     label: "Published",

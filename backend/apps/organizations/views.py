@@ -238,6 +238,7 @@ class OrganizationSubscriptionRenewAPIView(APIView):
             subscription = renew_subscription(
                 organization=organization,
                 billing_cycle=serializer.validated_data.get("billing_cycle"),
+                actor=request.user,
             )
             organization.refresh_from_db()
         except ValueError as exc:
@@ -332,6 +333,7 @@ class OrganizationSubscriptionCancelAPIView(APIView):
         try:
             cancel_subscription(
                 organization=organization,
+                actor=request.user,
             )
         except ValueError as exc:
             return success_response(
@@ -386,6 +388,7 @@ class OrganizationSubscriptionStartAPIView(APIView):
                 organization=organization,
                 plan=serializer.validated_data["plan"],
                 billing_cycle=serializer.validated_data["billing_cycle"],
+                actor=request.user,
             )
         except ValueError as exc:
             return success_response(

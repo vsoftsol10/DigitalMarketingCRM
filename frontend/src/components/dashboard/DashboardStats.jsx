@@ -25,8 +25,8 @@ export default function DashboardStats({ statistics }) {
       icon: CalendarTodayOutlinedIcon,
     },
     {
-      label: "Active Campaigns",
-      value: statistics?.active_campaigns ?? 0,
+      label: "Published Posts Today",
+      value: statistics?.published_posts_today ?? 0,
       icon: CampaignOutlinedIcon,
     },
   ];

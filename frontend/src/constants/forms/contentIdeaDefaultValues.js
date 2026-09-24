@@ -1,15 +1,15 @@
 export const contentIdeaDefaultValues = {
   organization: "",
 
-  title: "",
+  social_account_ids: [],
 
-  platform: "",
+  caption: "",
 
   target_publish_date: "",
 
   content_type: "",
 
-  campaign_goal: "",
+  target_publish_time: "",
 
   description: "",
 };

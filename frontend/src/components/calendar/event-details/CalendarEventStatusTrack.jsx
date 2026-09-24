@@ -11,8 +11,11 @@ import { STATUS_ORDER, getStatusMeta } from "./statusMeta";
 export default function CalendarEventStatusTrack({ status }) {
   const key = status?.toUpperCase();
   const failed = key === "FAILED";
+  const unresolved = key === "UNRESOLVED";
   const activeIndex = failed
     ? 1
+    : unresolved
+      ? STATUS_ORDER.indexOf("PUBLISHING")
     : STATUS_ORDER.indexOf(key);
 
   return (

@@ -163,26 +163,24 @@ export default function ContentPlannerTable({
           <TableRow>
             <TableCell
               sx={headerStyle({
-                width: "28%",
+                width: "30%",
               })}
             >
-              IDEA
+              CAPTION
             </TableCell>
 
             <TableCell sx={headerStyle()}>ORGANIZATION</TableCell>
 
-            <TableCell sx={headerStyle()}>PLATFORM</TableCell>
+            <TableCell sx={headerStyle()}>PUBLISH ACCOUNTS</TableCell>
 
             <TableCell sx={headerStyle()}>TYPE</TableCell>
 
-            <TableCell sx={headerStyle()}>GOAL</TableCell>
-
             <TableCell
               sx={headerStyle({
-                width: 140,
+                width: 170,
               })}
             >
-              TARGET DATE
+              TARGET DATE & TIME
             </TableCell>
 
             <TableCell
@@ -212,7 +210,7 @@ export default function ContentPlannerTable({
           ) : (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={6}
                 sx={{
                   py: 10,
 

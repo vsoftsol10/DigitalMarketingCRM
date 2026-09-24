@@ -21,7 +21,7 @@ export default function CalendarFilters({
   onApply,
   onClear,
   organizations = [],
-  platforms = [],
+  socialAccounts = [],
   contentTypes = [],
   statuses = [],
 }) {
@@ -229,15 +229,15 @@ export default function CalendarFilters({
             }
           />
 
-          {/* Platform */}
+          {/* Connected Account */}
 
           <CalendarFilterField
-            label="Platform"
-            value={filters.platform}
-            options={platforms}
-            placeholder="All platforms"
+            label="Connected Account"
+            value={filters.socialAccount}
+            options={socialAccounts}
+            placeholder="All connected accounts"
             onChange={(value) =>
-              onFilterChange("platform", value)
+              onFilterChange("socialAccount", value)
             }
           />
 

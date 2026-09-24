@@ -111,10 +111,22 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
 import calendarService from "../../services/calendar.service";
+
+function useDebouncedValue(value, delay = 600) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDebouncedValue(value), delay);
+    return () => window.clearTimeout(timeoutId);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 export default function useCalendar({
   currentDate,
@@ -134,7 +146,7 @@ export default function useCalendar({
   const [filterOptions, setFilterOptions] =
     useState({
       organizations: [],
-      platforms: [],
+      socialAccounts: [],
       contentTypes: [],
       statuses: [],
     });
@@ -144,6 +156,11 @@ export default function useCalendar({
   // ==========================================
 
   const [loading, setLoading] = useState(false);
+
+  const [hasLoadedEvents, setHasLoadedEvents] = useState(false);
+
+  const eventRequestRef = useRef({ id: 0, controller: null });
+  const debouncedSearch = useDebouncedValue(search.trim());
 
   const [filterOptionsLoading, setFilterOptionsLoading] =
     useState(false);
@@ -162,6 +179,11 @@ export default function useCalendar({
   // ==========================================
 
   const fetchEvents = useCallback(async () => {
+    eventRequestRef.current.controller?.abort();
+    const controller = new AbortController();
+    const requestId = eventRequestRef.current.id + 1;
+    eventRequestRef.current = { id: requestId, controller };
+
     setLoading(true);
     setError(null);
 
@@ -169,13 +191,13 @@ export default function useCalendar({
       const params = {
         month: currentDate?.format("YYYY-MM"),
 
-        search: search || undefined,
+        search: debouncedSearch || undefined,
 
         organization:
           filters.organization || undefined,
 
-        platform:
-          filters.platform || undefined,
+        social_account:
+          filters.socialAccount || undefined,
 
         content_type:
           filters.contentType || undefined,
@@ -184,21 +206,28 @@ export default function useCalendar({
           filters.status || undefined,
       };
 
-      const data =
-        await calendarService.getEvents(params);
+      const data = await calendarService.getEvents(params, {
+        signal: controller.signal,
+      });
 
-      setEvents(
-        Array.isArray(data)
-          ? data
-          : []
-      );
+      if (eventRequestRef.current.id !== requestId) {
+        return;
+      }
+
+      const nextEvents = Array.isArray(data) ? data : [];
+
+      setEvents(nextEvents);
+      setHasLoadedEvents(true);
+      return nextEvents;
     } catch (err) {
+      if (controller.signal.aborted || eventRequestRef.current.id !== requestId) {
+        return;
+      }
+
       console.error(
         "Failed to fetch calendar events:",
         err
       );
-
-      setEvents([]);
 
       setError(
         err?.response?.data?.detail ||
@@ -206,15 +235,17 @@ export default function useCalendar({
           "Unable to load calendar events."
       );
     } finally {
-      setLoading(false);
+      if (eventRequestRef.current.id === requestId) {
+        setLoading(false);
+      }
     }
   }, [
     currentDate,
     filters.organization,
-    filters.platform,
+    filters.socialAccount,
     filters.contentType,
     filters.status,
-    search,
+    debouncedSearch,
   ]);
 
   // ==========================================
@@ -236,9 +267,9 @@ export default function useCalendar({
               ? data.organizations
               : [],
 
-          platforms:
-            Array.isArray(data?.platforms)
-              ? data.platforms
+          socialAccounts:
+            Array.isArray(data?.social_accounts)
+              ? data.social_accounts
               : [],
 
           contentTypes:
@@ -259,7 +290,7 @@ export default function useCalendar({
 
         setFilterOptions({
           organizations: [],
-          platforms: [],
+          socialAccounts: [],
           contentTypes: [],
           statuses: [],
         });
@@ -288,7 +319,25 @@ export default function useCalendar({
 
   useEffect(() => {
     fetchEvents();
+    return () => eventRequestRef.current.controller?.abort();
   }, [fetchEvents]);
+
+  // Scheduled targets may be claimed by Celery between user interactions, so
+  // refresh only while the current view contains active lifecycle work.
+  useEffect(() => {
+    const hasActiveLifecycleEvent = events.some(
+      (event) => ["SCHEDULED", "PUBLISHING"].includes(
+        event.status?.toUpperCase(),
+      ),
+    );
+
+    if (!hasActiveLifecycleEvent) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(fetchEvents, 5000);
+    return () => window.clearInterval(intervalId);
+  }, [events, fetchEvents]);
 
   // ==========================================
   // REFRESH EVENTS
@@ -308,6 +357,10 @@ export default function useCalendar({
     filterOptions,
 
     loading,
+
+    isInitialLoading: loading && !hasLoadedEvents,
+
+    isRefreshing: loading && hasLoadedEvents,
 
     filterOptionsLoading,
 

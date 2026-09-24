@@ -4,6 +4,8 @@ from django.utils import timezone
 
 from rest_framework import serializers
 
+from .selectors import get_calendar_event_local_datetime, get_calendar_event_status
+
 from .models import (
     Post,
     PostMedia,
@@ -236,6 +238,58 @@ class PostMediaReadSerializer(
             )
 
         return obj.file.url
+
+
+class CalendarEventSerializer(serializers.Serializer):
+    """Serialize a PostPlatform as the existing Calendar event shape."""
+
+    def to_representation(self, target):
+        post = target.post
+        event_datetime = get_calendar_event_local_datetime(target)
+        timezone_name = target.scheduled_timezone or post.timezone or "UTC"
+        try:
+            ZoneInfo(timezone_name)
+        except ZoneInfoNotFoundError:
+            timezone_name = "UTC"
+
+        caption = post.caption or ""
+        title = caption.strip().splitlines()[0][:80] if caption.strip() else "Untitled Post"
+        account = target.social_account
+
+        return {
+            "id": str(target.id),
+            "post_id": str(post.id),
+            "organization": {
+                "id": post.organization.organization_id,
+                "name": post.organization.name,
+            },
+            "social_account": {
+                "id": str(account.id) if account else None,
+                "name": (account.account_name or account.username or account.platform_account_id) if account else "",
+                "platform": target.platform.upper(),
+            },
+            "title": title,
+            "date": event_datetime.date().isoformat() if event_datetime else None,
+            "time": event_datetime.strftime("%I:%M %p") if event_datetime else None,
+            "platform": target.platform.upper(),
+            "content_type": target.content_type,
+            "status": get_calendar_event_status(target),
+            "caption": caption,
+            "timezone": timezone_name,
+            "error_message": target.error_message or post.error_message,
+            "created_at": post.created_at.isoformat(),
+            "updated_at": target.updated_at.isoformat(),
+            "media": [
+                {
+                    "id": str(media.id),
+                    "type": media.media_type,
+                    "url": media.file.url,
+                    "mime_type": media.mime_type,
+                }
+                for media in post.media.all()
+                if media.file
+            ],
+        }
 
 
 # ============================================================
@@ -552,4 +606,26 @@ class PostUpdateSerializer(
                     {"timezone": ("Timezone is required for scheduled posts.")}
                 )
 
+        return attrs
+
+
+class PostScheduleActionSerializer(serializers.Serializer):
+    """Input shared by the Calendar schedule and reschedule actions."""
+
+    publish_date = serializers.DateField(required=True)
+    publish_time = serializers.TimeField(required=True)
+    timezone = serializers.CharField(required=True, allow_blank=False)
+
+    def validate_timezone(self, value):
+        return validate_timezone_name(value)
+
+    def validate(self, attrs):
+        scheduled_at = timezone.datetime.combine(
+            attrs["publish_date"],
+            attrs["publish_time"],
+        ).replace(tzinfo=ZoneInfo(attrs["timezone"]))
+        if scheduled_at <= timezone.now():
+            raise serializers.ValidationError(
+                {"publish_time": "Scheduled publishing must be in the future."}
+            )
         return attrs

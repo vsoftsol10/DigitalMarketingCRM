@@ -1,10 +1,5 @@
 import calendarApi from "../api/calendar/calendar.api";
 
-import {
-  CALENDAR_EVENTS,
-  CALENDAR_FILTER_OPTIONS,
-} from "../data/calendar";
-
 function normalizeCalendarEvent(event) {
   if (!event) {
     return null;
@@ -12,6 +7,26 @@ function normalizeCalendarEvent(event) {
 
   return {
     id: event.id,
+
+    targetId: event.target_id || event.targetId || event.id,
+
+    target_id: event.target_id || event.targetId || event.id,
+
+    postId: event.post_id || event.postId || null,
+
+    post_id: event.post_id || event.postId || null,
+
+    organizationId:
+      event.organization_id ||
+      event.organizationId ||
+      event.organization?.id ||
+      null,
+
+    organization_id:
+      event.organization_id ||
+      event.organizationId ||
+      event.organization?.id ||
+      null,
 
     title: event.title || "",
 
@@ -22,8 +37,24 @@ function normalizeCalendarEvent(event) {
     organization:
       event.organization || null,
 
-    platform:
-      event.platform || null,
+    platform: event.platform || null,
+
+    socialAccount:
+      event.social_account || event.socialAccount || null,
+
+    socialAccountId:
+      event.social_account_id ||
+      event.socialAccountId ||
+      event.social_account?.id ||
+      event.socialAccount?.id ||
+      null,
+
+    social_account_id:
+      event.social_account_id ||
+      event.socialAccountId ||
+      event.social_account?.id ||
+      event.socialAccount?.id ||
+      null,
 
     contentType:
       event.contentType ||
@@ -44,9 +75,9 @@ function normalizeCalendarEvent(event) {
     caption:
       event.caption || "",
 
-    media: Array.isArray(event.media)
-      ? event.media
-      : [],
+    media: Array.isArray(event.media) ? event.media : [],
+
+    errorMessage: event.error_message || event.errorMessage || "",
 
     timezone:
       event.timezone || null,
@@ -63,143 +94,24 @@ function normalizeCalendarEvent(event) {
   };
 }
 
-function filterMockEvents(
-  events,
-  params = {},
-) {
-  const {
-    month,
-    search,
-    organization,
-    platform,
-    content_type,
-    status,
-  } = params;
-
-  return events.filter((event) => {
-    // ----------------------------------------
-    // Month
-    // ----------------------------------------
-
-    if (
-      month &&
-      !event.date?.startsWith(month)
-    ) {
-      return false;
-    }
-
-    // ----------------------------------------
-    // Search
-    // ----------------------------------------
-
-    if (search) {
-      const query =
-        search.toLowerCase();
-
-      const searchableText = [
-        event.title,
-        event.caption,
-        event.organization?.name,
-        event.platform,
-        event.contentType,
-        event.status,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      if (
-        !searchableText.includes(query)
-      ) {
-        return false;
-      }
-    }
-
-    // ----------------------------------------
-    // Organization
-    // ----------------------------------------
-
-    if (
-      organization &&
-      event.organization?.id !==
-        organization
-    ) {
-      return false;
-    }
-
-    // ----------------------------------------
-    // Platform
-    // ----------------------------------------
-
-    if (
-      platform &&
-      event.platform !== platform
-    ) {
-      return false;
-    }
-
-    // ----------------------------------------
-    // Content Type
-    // ----------------------------------------
-
-    if (
-      content_type &&
-      event.contentType !==
-        content_type
-    ) {
-      return false;
-    }
-
-    // ----------------------------------------
-    // Status
-    // ----------------------------------------
-
-    if (
-      status &&
-      event.status !== status
-    ) {
-      return false;
-    }
-
-    return true;
-  });
-}
-
 const calendarService = {
-  // ==========================================
-  // TEMPORARY MOCK MODE
-  // ==========================================
+  async getEvents(params = {}, { signal } = {}) {
+    const response = await calendarApi.getEvents(params, { signal });
+    const events = Array.isArray(response?.data) ? response.data : [];
 
-  async getEvents(params = {}) {
-    const filteredEvents =
-      filterMockEvents(
-        CALENDAR_EVENTS,
-        params,
-      );
-
-    return filteredEvents
+    return events
       .map(normalizeCalendarEvent)
       .filter(Boolean);
   },
 
   async getFilterOptions() {
-    return CALENDAR_FILTER_OPTIONS;
+    const response = await calendarApi.getFilterOptions();
+    return response?.data || {};
   },
 
   async getEventById(eventId) {
-    const event =
-      CALENDAR_EVENTS.find(
-        (item) =>
-          item.id === eventId,
-      );
-
-    if (!event) {
-      throw new Error(
-        "Calendar event not found.",
-      );
-    }
-
-    return normalizeCalendarEvent(event);
+    const response = await calendarApi.getEventById(eventId);
+    return normalizeCalendarEvent(response?.data);
   },
 };
 

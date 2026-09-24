@@ -12,13 +12,14 @@ const calendarApi = {
    * Fetch calendar events.
    *
    * Backend:
-   * GET /calendar/events/
+   * GET /posts/calendar/events/
    */
-  async getEvents(params = {}) {
+  async getEvents(params = {}, { signal } = {}) {
     const response = await api.get(
-      "/calendar/events/",
+      "/posts/calendar/events/",
       {
         params,
+        signal,
       },
     );
 
@@ -29,11 +30,11 @@ const calendarApi = {
    * Fetch calendar filter options.
    *
    * Backend:
-   * GET /calendar/filters/
+   * GET /posts/calendar/filters/
    */
   async getFilterOptions() {
     const response = await api.get(
-      "/calendar/filters/",
+      "/posts/calendar/filters/",
     );
 
     return response.data;
@@ -43,11 +44,11 @@ const calendarApi = {
    * Fetch a single calendar event.
    *
    * Backend:
-   * GET /calendar/events/:id/
+   * GET /posts/calendar/events/<target_id>/
    */
   async getEventById(eventId) {
     const response = await api.get(
-      `/calendar/events/${eventId}/`,
+      `/posts/calendar/events/${eventId}/`,
     );
 
     return response.data;

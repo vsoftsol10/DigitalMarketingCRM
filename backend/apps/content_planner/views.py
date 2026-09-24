@@ -42,11 +42,12 @@ class ContentPlannerListCreateAPIView(APIView):
         ideas = get_content_ideas(
             search=search,
             organization_id=organization_id,
+            user=request.user,
         )
 
-        organizations = get_content_planner_organizations()
+        organizations = get_content_planner_organizations(user=request.user)
 
-        statistics = get_content_planner_statistics()
+        statistics = get_content_planner_statistics(user=request.user)
 
         idea_serializer = ContentIdeaReadSerializer(
             ideas,
@@ -59,6 +60,7 @@ class ContentPlannerListCreateAPIView(APIView):
         organization_data = [
             {
                 "id": str(organization["id"]),
+                "organization_id": organization["organization_id"],
                 "name": organization["name"],
             }
             for organization in organizations
@@ -83,6 +85,7 @@ class ContentPlannerListCreateAPIView(APIView):
     def post(self, request):
         serializer = ContentIdeaCreateSerializer(
             data=request.data,
+            context={"request": request},
         )
 
         serializer.is_valid(
@@ -123,6 +126,7 @@ class ContentPlannerDetailAPIView(APIView):
     def get_object(self, idea_id):
         content_idea = get_content_idea_by_id(
             idea_id=idea_id,
+            user=self.request.user,
         )
 
         if not content_idea:
@@ -166,6 +170,7 @@ class ContentPlannerDetailAPIView(APIView):
             content_idea,
             data=request.data,
             partial=True,
+            context={"request": request},
         )
 
         serializer.is_valid(

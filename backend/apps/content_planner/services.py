@@ -16,15 +16,18 @@ def create_content_idea(
     """
 
     organization = validated_data["organization"]
+    selected_social_accounts = validated_data.pop("selected_social_accounts")
 
     if organization.is_deleted:
         raise ValueError(
             "The selected organization is not available."
         )
 
-    return ContentIdea.objects.create(
+    content_idea = ContentIdea.objects.create(
         **validated_data,
     )
+    content_idea.selected_social_accounts.set(selected_social_accounts)
+    return content_idea
 
 
 @transaction.atomic
@@ -51,6 +54,8 @@ def update_content_idea(
             "The selected organization is not available."
         )
 
+    selected_social_accounts = validated_data.pop("selected_social_accounts", None)
+
     for field, value in validated_data.items():
         setattr(
             content_idea,
@@ -59,6 +64,9 @@ def update_content_idea(
         )
 
     content_idea.save()
+
+    if selected_social_accounts is not None:
+        content_idea.selected_social_accounts.set(selected_social_accounts)
 
     return content_idea
 

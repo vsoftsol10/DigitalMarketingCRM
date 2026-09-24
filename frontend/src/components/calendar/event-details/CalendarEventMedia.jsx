@@ -60,7 +60,7 @@ function MediaFrame({
       sx={{
         position: "relative",
         width: "100%",
-        aspectRatio,
+        height: aspectRatio === "16 / 10" ? "clamp(180px, 32vh, 280px)" : 88,
         overflow: "hidden",
         borderRadius: rounded,
         bgcolor: "action.hover",
@@ -84,7 +84,7 @@ function MediaFrame({
             width: "100%",
             height: "100%",
             display: "block",
-            objectFit: "cover",
+            objectFit: "contain",
             transition: "transform 260ms ease",
           }}
         />
@@ -100,7 +100,7 @@ function MediaFrame({
             width: "100%",
             height: "100%",
             display: "block",
-            objectFit: "cover",
+            objectFit: "contain",
           }}
         />
       )}

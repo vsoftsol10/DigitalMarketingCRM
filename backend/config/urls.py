@@ -27,6 +27,7 @@ urlpatterns = [
     path("api/integrations/meta/", include("apps.integrations.meta.urls")),
     path("api/integrations/instagram/", include("apps.integrations.instagram.urls")),
     path("api/posts/", include("apps.posts.urls")),
+    path("api/dashboard/", include("apps.dashboard.urls")),
     path("api/ai/", include("apps.ai.urls")),
     path("api/", include("apps.social_accounts.urls")),
 ]

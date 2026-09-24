@@ -3,6 +3,7 @@ import { Box } from "@mui/material";
 import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import BoltOutlinedIcon from "@mui/icons-material/BoltOutlined";
 
 const CONFIG = {
@@ -22,6 +23,12 @@ const CONFIG = {
     icon: BusinessOutlinedIcon,
     color: "#7C3AED",
     background: "#F3E8FF",
+  },
+
+  calendar: {
+    icon: CalendarTodayOutlinedIcon,
+    color: "#D97706",
+    background: "#FFF7ED",
   },
 
   default: {

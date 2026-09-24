@@ -16,3 +16,7 @@ class ProviderPublishingError(PublishingError):
 
 class MediaProcessingPending(PublishingError):
     """Raised when a provider container exists but is not ready to publish."""
+
+    def __init__(self, message, *, rate_limited=False):
+        super().__init__(message)
+        self.rate_limited = rate_limited

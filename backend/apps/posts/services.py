@@ -10,6 +10,8 @@ from apps.social_accounts.models import (
     SocialAccountStatus,
     SocialPlatform,
 )
+from apps.activities.models import ActivityEventType, ActivitySource
+from apps.activities.services import create_activity_log
 
 from .models import (
     Post,
@@ -108,10 +110,48 @@ def create_post(
         targets=targets,
     )
 
+    # The post retains the aggregate schedule for existing post-level
+    # workflows, while each destination owns its executable lifecycle.
+    if publish_type == PostPublishType.SCHEDULE:
+        PostPlatform.objects.filter(
+            post=post,
+            is_deleted=False,
+        ).update(
+            status=PostStatus.SCHEDULED,
+            scheduled_at=scheduled_at,
+            scheduled_timezone=timezone_name,
+        )
+
     create_post_media(
         post=post,
         media_items=media_items,
     )
+
+    create_activity_log(
+        organization=organization,
+        post=post,
+        event_type=ActivityEventType.POST_CREATED,
+        source=ActivitySource.USER if created_by else ActivitySource.SYSTEM,
+        actor=created_by,
+        metadata={"publish_type": post.publish_type},
+    )
+
+    if publish_type == PostPublishType.SCHEDULE:
+        create_activity_log(
+            organization=organization,
+            post=post,
+            event_type=ActivityEventType.POST_SCHEDULED,
+            source=ActivitySource.USER if created_by else ActivitySource.SYSTEM,
+            actor=created_by,
+            metadata={
+                "schedule_scope": "POST",
+                "scheduled_at": scheduled_at.isoformat(),
+                "timezone": timezone_name,
+            },
+            idempotency_key=(
+                f"post:{post.id}:scheduled:aggregate:{scheduled_at.isoformat()}"
+            ),
+        )
 
     if publish_type == PostPublishType.NOW:
         transaction.on_commit(lambda: enqueue_post_publication(post.id))
@@ -614,6 +654,16 @@ def update_post(
             media_items=media_items,
         )
 
+    if publish_type == PostPublishType.SCHEDULE:
+        PostPlatform.objects.filter(
+            post=post,
+            is_deleted=False,
+        ).update(
+            status=PostStatus.SCHEDULED,
+            scheduled_at=post.scheduled_at,
+            scheduled_timezone=timezone_name,
+        )
+
     return post
 
 
@@ -622,6 +672,319 @@ def enqueue_post_publication(post_id):
     from .tasks import publish_post_task
 
     publish_post_task.delay(str(post_id))
+
+
+def enqueue_post_target_publication(post_id, target_id):
+    """Queue one exact destination without widening a retry to other targets."""
+    from .tasks import publish_post_task
+
+    publish_post_task.delay(str(post_id), str(target_id))
+
+
+def _active_target_inputs(post):
+    return [
+        {
+            "social_account": target.social_account_id,
+            "content_type": target.content_type,
+        }
+        for target in PostPlatform.objects.filter(
+            post=post,
+            is_deleted=False,
+        )
+    ]
+
+
+@transaction.atomic
+def schedule_post(
+    *,
+    post_id,
+    organization_id,
+    publish_date,
+    publish_time,
+    timezone_name,
+    reschedule=False,
+    actor=None,
+):
+    """Schedule or reschedule a post while preventing concurrent publication."""
+    post = Post.objects.select_for_update().filter(
+        id=post_id,
+        organization_id=organization_id,
+        is_deleted=False,
+    ).first()
+    if not post:
+        raise ValueError("Post not found.")
+
+    required_status = PostStatus.SCHEDULED if reschedule else PostStatus.DRAFT
+    if post.status != required_status:
+        action = "rescheduled" if reschedule else "scheduled"
+        raise ValueError(f"Only {required_status.lower()} posts can be {action}.")
+
+    scheduled_at = build_scheduled_at(
+        publish_type=PostPublishType.SCHEDULE,
+        publish_date=publish_date,
+        publish_time=publish_time,
+        timezone_name=timezone_name,
+    )
+    if scheduled_at <= timezone.now():
+        raise ValueError("Scheduled publishing must be in the future.")
+
+    validate_target_accounts(
+        organization=post.organization,
+        targets=_active_target_inputs(post),
+        require_publishable=True,
+    )
+    post.publish_type = PostPublishType.SCHEDULE
+    post.status = PostStatus.SCHEDULED
+    post.scheduled_at = scheduled_at
+    post.timezone = timezone_name
+    post.error_message = ""
+    post.save(update_fields=[
+        "publish_type", "status", "scheduled_at", "timezone",
+        "error_message", "updated_at",
+    ])
+    PostPlatform.objects.select_for_update().filter(
+        post=post,
+        is_deleted=False,
+    ).update(
+        status=PostStatus.SCHEDULED,
+        scheduled_at=scheduled_at,
+        scheduled_timezone=timezone_name,
+        error_message="",
+    )
+    create_activity_log(
+        organization=post.organization,
+        post=post,
+        event_type=ActivityEventType.POST_SCHEDULED,
+        source=ActivitySource.USER if actor else ActivitySource.SYSTEM,
+        actor=actor,
+        metadata={
+            "schedule_scope": "POST",
+            "scheduled_at": scheduled_at.isoformat(),
+            "timezone": timezone_name,
+        },
+        idempotency_key=(
+            f"post:{post.id}:scheduled:aggregate:{scheduled_at.isoformat()}"
+        ),
+    )
+    return post
+
+
+@transaction.atomic
+def schedule_post_target(
+    *,
+    post_id,
+    organization_id,
+    target_id,
+    publish_date,
+    publish_time,
+    timezone_name,
+    actor=None,
+):
+    """Schedule one Calendar-selected destination without changing siblings."""
+    post = Post.objects.select_for_update().filter(
+        id=post_id,
+        organization_id=organization_id,
+        is_deleted=False,
+    ).first()
+    if not post:
+        raise ValueError("Post not found.")
+
+    target = PostPlatform.objects.select_for_update().filter(
+        id=target_id,
+        post=post,
+        is_deleted=False,
+        status__in=[PostStatus.DRAFT, PostStatus.SCHEDULED],
+    ).first()
+    if not target:
+        raise ValueError("Only draft or scheduled publishing targets can be scheduled.")
+
+    scheduled_at = build_scheduled_at(
+        publish_type=PostPublishType.SCHEDULE,
+        publish_date=publish_date,
+        publish_time=publish_time,
+        timezone_name=timezone_name,
+    )
+    if scheduled_at <= timezone.now():
+        raise ValueError("Scheduled publishing must be in the future.")
+
+    validate_target_accounts(
+        organization=post.organization,
+        targets=[{
+            "social_account": target.social_account_id,
+            "content_type": target.content_type,
+        }],
+        require_publishable=True,
+    )
+    target.status = PostStatus.SCHEDULED
+    target.scheduled_at = scheduled_at
+    target.scheduled_timezone = timezone_name
+    target.error_message = ""
+    target.save(update_fields=[
+        "status", "scheduled_at", "scheduled_timezone", "error_message", "updated_at",
+    ])
+    create_activity_log(
+        organization=post.organization,
+        post=post,
+        post_platform=target,
+        event_type=ActivityEventType.POST_SCHEDULED,
+        source=ActivitySource.USER if actor else ActivitySource.SYSTEM,
+        actor=actor,
+        metadata={
+            "schedule_scope": "POST_PLATFORM",
+            "platform": target.platform,
+            "scheduled_at": scheduled_at.isoformat(),
+            "timezone": timezone_name,
+        },
+        idempotency_key=(
+            f"post-platform:{target.id}:scheduled:{scheduled_at.isoformat()}"
+        ),
+    )
+    return target
+
+
+@transaction.atomic
+def publish_post_now(*, post_id, organization_id):
+    """Claim a draft or scheduled post for immediate publishing after commit."""
+    post = Post.objects.select_for_update().filter(
+        id=post_id,
+        organization_id=organization_id,
+        is_deleted=False,
+        status__in=[PostStatus.DRAFT, PostStatus.SCHEDULED],
+    ).first()
+    if not post:
+        raise ValueError("Only draft or scheduled posts can be published now.")
+
+    validate_target_accounts(
+        organization=post.organization,
+        targets=_active_target_inputs(post),
+        require_publishable=True,
+    )
+    post.publish_type = PostPublishType.NOW
+    post.status = PostStatus.PUBLISHING
+    post.scheduled_at = None
+    post.error_message = ""
+    post.save(update_fields=[
+        "publish_type", "status", "scheduled_at", "error_message", "updated_at",
+    ])
+    transaction.on_commit(lambda: enqueue_post_publication(post.id))
+    return post
+
+
+@transaction.atomic
+def publish_post_target_now(*, post_id, organization_id, target_id):
+    """Immediately publish one Calendar-selected destination only."""
+    post = Post.objects.select_for_update().filter(
+        id=post_id,
+        organization_id=organization_id,
+        is_deleted=False,
+        status__in=[PostStatus.DRAFT, PostStatus.SCHEDULED],
+    ).first()
+    if not post:
+        raise ValueError("Only draft or scheduled posts can be published now.")
+
+    target = PostPlatform.objects.select_for_update().filter(
+        id=target_id,
+        post=post,
+        is_deleted=False,
+        status__in=[PostStatus.DRAFT, PostStatus.SCHEDULED],
+    ).first()
+    if not target:
+        raise ValueError("Only draft or scheduled publishing targets can be published now.")
+
+    validate_target_accounts(
+        organization=post.organization,
+        targets=[{
+            "social_account": target.social_account_id,
+            "content_type": target.content_type,
+        }],
+        require_publishable=True,
+    )
+    target.scheduled_at = None
+    target.scheduled_timezone = ""
+    target.status = PostStatus.PUBLISHING
+    target.save(update_fields=[
+        "status", "scheduled_at", "scheduled_timezone", "updated_at",
+    ])
+    post.publish_type = PostPublishType.NOW
+    post.status = PostStatus.PUBLISHING
+    post.scheduled_at = None
+    post.error_message = ""
+    post.save(update_fields=[
+        "publish_type", "status", "scheduled_at", "error_message", "updated_at",
+    ])
+    transaction.on_commit(
+        lambda: enqueue_post_target_publication(post.id, target.id)
+    )
+    return post, target
+
+
+@transaction.atomic
+def retry_post_target(*, post_id, organization_id, target_id):
+    """Retry one failed destination while retaining provider resume state."""
+    post = Post.objects.select_for_update().filter(
+        id=post_id,
+        organization_id=organization_id,
+        is_deleted=False,
+    ).first()
+    if not post:
+        raise ValueError("Post not found.")
+
+    target = PostPlatform.objects.select_for_update().filter(
+        id=target_id,
+        post=post,
+        is_deleted=False,
+        status=PostStatus.FAILED,
+    ).first()
+    if not target:
+        raise ValueError("Only failed publishing targets can be retried.")
+
+    # Do not clear provider_container_id or provider_state: publishers use
+    # those values to safely resume asynchronous provider work.
+    target.status = PostStatus.PUBLISHING
+    target.scheduled_at = None
+    target.scheduled_timezone = ""
+    target.error_message = ""
+    target.save(update_fields=[
+        "status", "scheduled_at", "scheduled_timezone", "error_message", "updated_at",
+    ])
+
+    post.status = PostStatus.PUBLISHING
+    post.scheduled_at = None
+    post.error_message = ""
+    post.retry_count += 1
+    post.save(update_fields=[
+        "status", "scheduled_at", "error_message", "retry_count", "updated_at",
+    ])
+    transaction.on_commit(lambda: enqueue_post_target_publication(post.id, target.id))
+    return post, target
+
+
+@transaction.atomic
+def delete_post_target(*, post_id, organization_id, target_id):
+    """Deactivate one destination without deleting its shared post or media."""
+    post = Post.objects.select_for_update().filter(
+        id=post_id,
+        organization_id=organization_id,
+        is_deleted=False,
+    ).first()
+    if not post:
+        raise ValueError("Post not found.")
+
+    target = PostPlatform.objects.select_for_update().filter(
+        id=target_id,
+        post=post,
+        is_deleted=False,
+    ).first()
+    if not target:
+        raise ValueError("Publishing target not found.")
+    if target.status == PostStatus.PUBLISHED:
+        raise ValueError("Published publishing targets cannot be deleted.")
+    if target.status == PostStatus.PUBLISHING:
+        raise ValueError("A publishing target that is currently publishing cannot be deleted.")
+
+    target.is_deleted = True
+    target.save(update_fields=["is_deleted", "updated_at"])
+    return target
 
 
 # ============================================================
@@ -637,6 +1000,23 @@ def delete_post(
     """
     Soft-delete a post and its active child records.
     """
+
+    post = Post.objects.select_for_update().filter(
+        id=post.id,
+        is_deleted=False,
+    ).first()
+    if not post:
+        raise ValueError("Post not found.")
+
+    if post.status == PostStatus.PUBLISHING or PostPlatform.objects.filter(
+        post=post,
+        is_deleted=False,
+        status=PostStatus.PUBLISHING,
+    ).exists():
+        raise ValueError("A post that is currently publishing cannot be deleted.")
+
+    if post.status == PostStatus.PUBLISHED:
+        raise ValueError("Published posts cannot be deleted.")
 
     post.is_deleted = True
 

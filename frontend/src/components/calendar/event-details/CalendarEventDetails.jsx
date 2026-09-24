@@ -187,11 +187,11 @@ export default function CalendarEventDetails({
   open,
   event,
   onClose,
-  onEdit,
   onReschedule,
   onPublishNow,
   onRetry,
   onDelete,
+  actionLoading,
 }) {
   if (!event) {
     return null;
@@ -206,6 +206,8 @@ export default function CalendarEventDetails({
         sx: {
           width: { xs: "100%", sm: 480 },
           maxWidth: 480,
+          height: "100dvh",
+          maxHeight: "100dvh",
           display: "flex",
           flexDirection: "column",
           bgcolor: "background.paper",
@@ -295,6 +297,7 @@ export default function CalendarEventDetails({
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
+          overscrollBehavior: "contain",
           px: { xs: 2.5, sm: 3 },
           pb: 3,
           "&::-webkit-scrollbar": {
@@ -323,11 +326,11 @@ export default function CalendarEventDetails({
 
       <CalendarEventActions
         event={event}
-        onEdit={onEdit}
         onReschedule={onReschedule}
         onPublishNow={onPublishNow}
         onRetry={onRetry}
         onDelete={onDelete}
+        loading={actionLoading}
       />
     </Drawer>
   );

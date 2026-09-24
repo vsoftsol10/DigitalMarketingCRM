@@ -1,26 +1,80 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import DashboardStats from "../../components/dashboard/DashboardStats";
 
 import dashboardService from "../../services/dashboard.service";
 import DashboardScheduleCard from "../../components/dashboard/DashboardScheduleCard";
-import { Box } from "@mui/material";
+import { Box, CircularProgress, Typography } from "@mui/material";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import DashboardNotificationsCard from "../../components/dashboard/DashboardNotificationsCard";
 import DashboardRecentActivityCard from "../../components/dashboard/DashboardRecentActivityCard";
-import DashboardQuickActionsCard from "../../components/dashboard/DashboardQuickActionsCard";
+import QuickActions from "../../components/dashboard/QuickActions";
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    let isMounted = true;
+
+    async function loadDashboard() {
+      try {
+        const response = await dashboardService.getDashboard();
+
+        if (isMounted) {
+          setDashboard(response);
+        }
+      } catch {
+        if (isMounted) {
+          setError("Unable to load the dashboard. Please try again.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
     loadDashboard();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  async function loadDashboard() {
-    const response = await dashboardService.getDashboard();
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: 320,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <CircularProgress size={32} />
+      </Box>
+    );
+  }
 
-    setDashboard(response);
+  if (error) {
+    return (
+      <Box
+        role="alert"
+        sx={{
+          minHeight: 320,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#DC2626",
+        }}
+      >
+        <Typography>{error}</Typography>
+      </Box>
+    );
   }
 
   if (!dashboard) {
@@ -33,7 +87,7 @@ export default function Dashboard() {
         title="Dashboard"
         description="Monitor your marketing activities and today's tasks."
         buttonLabel="Create Post"
-        onButtonClick={() => console.log("Create Post")}
+        onButtonClick={() => navigate("/posts")}
       />
 
       <Box sx={{ mt: 4 }}>
@@ -44,7 +98,7 @@ export default function Dashboard() {
         schedule={
           <DashboardScheduleCard
             schedule={dashboard.today_schedule}
-            onCreatePost={() => console.log("Create Post")}
+            onCreatePost={() => navigate("/posts")}
           />
         }
         notifications={
@@ -59,13 +113,7 @@ export default function Dashboard() {
             onActivityClick={(activity) => console.log(activity)}
           />
         }
-        // quickActions={null}
-        quickActions={
-          <DashboardQuickActionsCard
-            actions={dashboard.quick_actions}
-            onActionClick={(action) => console.log(action)}
-          />
-        }
+        quickActions={<QuickActions />}
       />
     </>
   );

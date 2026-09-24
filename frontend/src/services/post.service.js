@@ -3,6 +3,14 @@ import api from "../api/axios";
 import { CREATE_POST } from "../data/post";
 
 class PostService {
+  getPostPath(organizationId, postId) {
+    if (!organizationId || !postId) {
+      throw new Error("Organization and post IDs are required.");
+    }
+
+    return `/posts/organizations/${organizationId}/${postId}/`;
+  }
+
   // ============================================================
   // CREATE POST PAGE CONFIGURATION
   // ============================================================
@@ -56,6 +64,80 @@ class PostService {
     const response = await api.post(
       `/posts/organizations/${organizationId}/`,
       formData,
+    );
+
+    return response.data;
+  }
+
+  async schedulePost(organizationId, postId, payload) {
+    const response = await api.post(
+      `${this.getPostPath(organizationId, postId)}schedule/`,
+      payload,
+    );
+
+    return response.data;
+  }
+
+  async schedulePostTarget(organizationId, postId, targetId, payload) {
+    if (!targetId) {
+      throw new Error("Publishing target ID is required.");
+    }
+
+    const response = await api.post(
+      `${this.getPostPath(organizationId, postId)}targets/${targetId}/schedule/`,
+      payload,
+    );
+
+    return response.data;
+  }
+
+  async publishPostNow(organizationId, postId) {
+    const response = await api.post(
+      `${this.getPostPath(organizationId, postId)}publish-now/`,
+    );
+
+    return response.data;
+  }
+
+  async publishPostTargetNow(organizationId, postId, targetId) {
+    if (!targetId) {
+      throw new Error("Publishing target ID is required.");
+    }
+
+    const response = await api.post(
+      `${this.getPostPath(organizationId, postId)}targets/${targetId}/publish-now/`,
+    );
+
+    return response.data;
+  }
+
+  async retryPostTarget(organizationId, postId, targetId) {
+    if (!targetId) {
+      throw new Error("Publishing target ID is required.");
+    }
+
+    const response = await api.post(
+      `${this.getPostPath(organizationId, postId)}targets/${targetId}/retry/`,
+    );
+
+    return response.data;
+  }
+
+  async deletePost(organizationId, postId) {
+    const response = await api.delete(
+      this.getPostPath(organizationId, postId),
+    );
+
+    return response.data;
+  }
+
+  async deletePostTarget(organizationId, postId, targetId) {
+    if (!targetId) {
+      throw new Error("Publishing target ID is required.");
+    }
+
+    const response = await api.delete(
+      `${this.getPostPath(organizationId, postId)}targets/${targetId}/`,
     );
 
     return response.data;

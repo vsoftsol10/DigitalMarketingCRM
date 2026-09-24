@@ -27,6 +27,8 @@ from apps.notifications.services import (
 from apps.notifications.recipients import (
     get_organization_billing_recipient,
 )
+from apps.activities.models import ActivityEventType, ActivitySource
+from apps.activities.services import create_activity_log
 
 
 def generate_organization_id():
@@ -391,6 +393,26 @@ def create_organization(
         is_current=True,
     )
 
+    activity_source = ActivitySource.USER if created_by else ActivitySource.SYSTEM
+    create_activity_log(
+        organization=organization,
+        event_type=ActivityEventType.ORGANIZATION_CREATED,
+        source=activity_source,
+        actor=created_by,
+        metadata={"organization_name": organization.name},
+    )
+    create_activity_log(
+        organization=organization,
+        subscription=subscription,
+        event_type=ActivityEventType.SUBSCRIPTION_ACTIVATED,
+        source=activity_source,
+        actor=created_by,
+        metadata={
+            "billing_cycle": subscription.billing_cycle,
+            "plan_id": str(subscription.plan_id),
+        },
+    )
+
     if contact_email:
         queue_email_event(
             organization=organization,
@@ -600,6 +622,7 @@ def renew_subscription(
     *,
     organization,
     billing_cycle=None,
+    actor=None,
 ):
     """
     Renew an organization's subscription.
@@ -789,6 +812,18 @@ def renew_subscription(
         start_date=start_date,
         expiry_date=expiry_date,
         is_current=True,
+    )
+
+    create_activity_log(
+        organization=organization,
+        subscription=new_subscription,
+        event_type=ActivityEventType.SUBSCRIPTION_RENEWED,
+        source=ActivitySource.USER if actor else ActivitySource.SYSTEM,
+        actor=actor,
+        metadata={
+            "billing_cycle": new_subscription.billing_cycle,
+            "plan_id": str(new_subscription.plan_id),
+        },
     )
 
     # =========================================================
@@ -1098,6 +1133,28 @@ def activate_due_scheduled_subscriptions(
             ]
         )
 
+        activity_event_type = (
+            ActivityEventType.SUBSCRIPTION_RENEWED
+            if scheduled_subscription.schedule_type
+            == SubscriptionScheduleType.RENEWAL
+            else ActivityEventType.SUBSCRIPTION_ACTIVATED
+        )
+        create_activity_log(
+            organization=organization,
+            subscription=scheduled_subscription,
+            event_type=activity_event_type,
+            source=ActivitySource.SYSTEM,
+            metadata={
+                "billing_cycle": scheduled_subscription.billing_cycle,
+                "plan_id": str(scheduled_subscription.plan_id),
+                "schedule_type": scheduled_subscription.schedule_type,
+            },
+            idempotency_key=(
+                f"subscription:{scheduled_subscription.id}:"
+                f"{activity_event_type.lower()}"
+            ),
+        )
+
         # =========================================================
         # SCHEDULED PLAN ACTIVATED
         # =========================================================
@@ -1144,6 +1201,7 @@ def activate_due_scheduled_subscriptions(
 def cancel_subscription(
     *,
     organization,
+    actor=None,
 ):
     """
     Immediately cancel the organization's current subscription.
@@ -1225,6 +1283,18 @@ def cancel_subscription(
         )
     )
 
+    create_activity_log(
+        organization=organization,
+        subscription=current_subscription,
+        event_type=ActivityEventType.SUBSCRIPTION_CANCELLED,
+        source=ActivitySource.USER if actor else ActivitySource.SYSTEM,
+        actor=actor,
+        metadata={
+            "billing_cycle": current_subscription.billing_cycle,
+            "plan_id": str(current_subscription.plan_id),
+        },
+    )
+
     # =========================================================
     # CANCELLATION EMAIL
     # =========================================================
@@ -1256,6 +1326,7 @@ def start_new_subscription(
     organization,
     plan,
     billing_cycle,
+    actor=None,
 ):
     """
     Start a completely new subscription for an organization
@@ -1298,6 +1369,18 @@ def start_new_subscription(
         start_date=start_date,
         expiry_date=expiry_date,
         is_current=True,
+    )
+
+    create_activity_log(
+        organization=organization,
+        subscription=new_subscription,
+        event_type=ActivityEventType.SUBSCRIPTION_ACTIVATED,
+        source=ActivitySource.USER if actor else ActivitySource.SYSTEM,
+        actor=actor,
+        metadata={
+            "billing_cycle": new_subscription.billing_cycle,
+            "plan_id": str(new_subscription.plan_id),
+        },
     )
 
     recipient_email, recipient_name = get_organization_billing_recipient(

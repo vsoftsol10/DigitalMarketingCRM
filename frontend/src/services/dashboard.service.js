@@ -1,14 +1,10 @@
-import { DASHBOARD } from "../data/dashboard";
+import api from "../api/axios";
 
 class DashboardService {
   async getDashboard() {
-    /*
-      Later
+    const response = await api.get("/dashboard/");
 
-      GET /api/dashboard/
-    */
-
-    return DASHBOARD;
+    return response.data?.data;
   }
 }
 

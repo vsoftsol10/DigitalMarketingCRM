@@ -2,7 +2,6 @@ import { Box } from "@mui/material";
 
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
-import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 const CONFIG = {
@@ -12,16 +11,16 @@ const CONFIG = {
     background: "#FEF2F2",
   },
 
-  TOKEN_EXPIRING: {
+  SUBSCRIPTION_EXPIRING: {
     icon: NotificationsActiveOutlinedIcon,
     color: "#F59E0B",
     background: "#FFFBEB",
   },
 
-  PENDING_ACTION: {
-    icon: AccessTimeOutlinedIcon,
-    color: "#2563EB",
-    background: "#EFF6FF",
+  SUBSCRIPTION_EXPIRED: {
+    icon: WarningAmberRoundedIcon,
+    color: "#EF4444",
+    background: "#FEF2F2",
   },
 
   DEFAULT: {

@@ -208,11 +208,13 @@ export default function EditContentIdea() {
 
       methods.reset({
         organization: idea.organization_id || "",
-        title: idea.title || "",
-        platform: idea.platform || "",
+        social_account_ids: Array.isArray(idea.selected_social_accounts)
+          ? idea.selected_social_accounts.map((account) => account.id)
+          : [],
+        caption: idea.caption || "",
         target_publish_date: idea.target_publish_date || "",
-        content_type: idea.type || "",
-        campaign_goal: idea.goal || "",
+        target_publish_time: idea.target_publish_time || "",
+        content_type: idea.content_type || idea.type || "",
         description: idea.description || "",
       });
     } catch (error) {

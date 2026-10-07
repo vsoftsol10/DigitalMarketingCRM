@@ -28,6 +28,7 @@ INSTAGRAM_OAUTH_REDIRECT_URI = getattr(
 INSTAGRAM_OAUTH_SCOPES = (
     "instagram_business_basic",
     "instagram_business_content_publish",
+    "instagram_business_manage_insights",
 )
 
 INSTAGRAM_OAUTH_STATE_MAX_AGE_SECONDS = getattr(

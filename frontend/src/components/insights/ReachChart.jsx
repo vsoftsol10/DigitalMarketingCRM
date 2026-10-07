@@ -1,70 +1,43 @@
 import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
   CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
 } from "recharts";
+import dayjs from "dayjs";
 
-export default function ReachChart({
-  data = [],
-}) {
+export default function ReachChart({ data = [] }) {
+  const chartData = data
+    .filter((point) => point.value?.availability === "available" && point.value.value != null)
+    .map((point) => ({
+      date: point.date,
+      followers: point.value.value,
+      label: dayjs(point.date).format("MMM D"),
+    }));
+
+  if (!chartData.length) return null;
+
   return (
-    <ResponsiveContainer
-      width="100%"
-      height={300}
-    >
-      <AreaChart data={data}>
-        <defs>
-          <linearGradient
-            id="reachGradient"
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="1"
-          >
-            <stop
-              offset="5%"
-              stopColor="#2563EB"
-              stopOpacity={0.25}
-            />
-
-            <stop
-              offset="95%"
-              stopColor="#2563EB"
-              stopOpacity={0}
-            />
-          </linearGradient>
-        </defs>
-
-        <CartesianGrid
-          stroke="#F1F5F9"
-          vertical={false}
-        />
-
-        <XAxis
-          dataKey="label"
-          axisLine={false}
-          tickLine={false}
-        />
-
-        <YAxis
-          axisLine={false}
-          tickLine={false}
-        />
-
-        <Tooltip />
-
-        <Area
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={chartData} margin={{ top: 8, right: 10, left: -12, bottom: 0 }}>
+        <CartesianGrid stroke="#EAF0F8" vertical={false} />
+        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#6880A5" }} minTickGap={22} />
+        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#6880A5" }} width={44} />
+        <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date || ""} />
+        <Line
           type="monotone"
-          dataKey="reach"
-          stroke="#2563EB"
-          strokeWidth={3}
-          fill="url(#reachGradient)"
+          dataKey="followers"
+          name="Followers"
+          stroke="#6658EF"
+          strokeWidth={2.75}
+          activeDot={{ r: 4, fill: "#6658EF", stroke: "#fff", strokeWidth: 2 }}
+          dot={{ r: 2, fill: "#6658EF", stroke: "#fff", strokeWidth: 1 }}
+          isAnimationActive={false}
         />
-      </AreaChart>
+      </LineChart>
     </ResponsiveContainer>
   );
 }

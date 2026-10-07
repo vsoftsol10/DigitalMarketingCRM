@@ -1,50 +1,25 @@
 import { Grid } from "@mui/material";
-
 import InsightStatCard from "./InsightStatCard";
 
-export default function InsightsStats({ statistics }) {
-  const items = [
-    {
-      title: "Total Reach",
-      value: "2.7M",
-      change: statistics.total_reach_change,
-      positive: statistics.total_reach_change >= 0,
-    },
+const ITEMS = [
+  { key: "reach", title: "Total Reach" },
+  { key: "engagement", title: "Total Engagement" },
+  { key: "followers", title: "Total Followers" },
+  { key: "views", title: "Total Views" },
+];
 
-    {
-      title: "Engagement",
-      value: "18.1K",
-      change: statistics.engagement_change,
-      positive: statistics.engagement_change >= 0,
-    },
-
-    {
-      title: "Avg. Eng. Rate",
-      value: "4.9%",
-      change: statistics.engagement_rate_change,
-      positive: statistics.engagement_rate_change >= 0,
-    },
-
-    {
-      title: "Followers",
-      value: "341.6K",
-      change: statistics.followers_change,
-      positive: statistics.followers_change >= 0,
-    },
-  ];
-
+export default function InsightsStats({ metrics = {}, loading = false, selected = false }) {
   return (
-    <Grid container spacing={3}>
-      {items.map((item) => (
-        <Grid
-          key={item.title}
-          size={{
-            xs: 12,
-            sm: 6,
-            lg: 3,
-          }}
-        >
-          <InsightStatCard {...item} />
+    <Grid container spacing={1.75}>
+      {ITEMS.map((item) => (
+        <Grid key={item.key} size={{ xs: 12, sm: 6, lg: 3 }}>
+          <InsightStatCard
+            metricKey={item.key}
+            title={item.title}
+            metric={metrics[item.key]}
+            loading={loading}
+            selected={selected}
+          />
         </Grid>
       ))}
     </Grid>

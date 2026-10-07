@@ -1,21 +1,11 @@
-import { Box } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 
-export default function InsightsLayout({
-  statistics,
-  charts,
-  performance,
-}) {
+export default function InsightsLayout({ statistics, charts, performance }) {
   return (
-    <>
+    <Stack spacing={1.75}>
       {statistics}
-
-      <Box sx={{ mt: 4 }}>
-        {charts}
-      </Box>
-
-      <Box sx={{ mt: 4 }}>
-        {performance}
-      </Box>
-    </>
+      {charts}
+      <Box sx={{ minWidth: 0 }}>{performance}</Box>
+    </Stack>
   );
 }

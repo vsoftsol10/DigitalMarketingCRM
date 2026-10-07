@@ -147,10 +147,9 @@ class MetaAPIClient:
             )
 
         except requests.RequestException as exc:
-            logger.exception(
-                "Meta GET request failed: %s",
-                url,
-            )
+            # GET requests carry the access token in query parameters, and
+            # logging request details or a traceback can expose that token.
+            logger.error("Meta GET request failed.")
 
             raise MetaAPIError(
                 "Meta API request failed.",

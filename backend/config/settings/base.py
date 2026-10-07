@@ -2,6 +2,7 @@ from pathlib import Path
 from decouple import config
 from datetime import timedelta
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -10,6 +11,14 @@ SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", cast=bool)
 
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="127.0.0.1,localhost").split(",")
+
+INSIGHTS_MAX_MEDIA_PAGES_PER_ATTEMPT = config(
+    "INSIGHTS_MAX_MEDIA_PAGES_PER_ATTEMPT",
+    default=10,
+    cast=int,
+)
+if INSIGHTS_MAX_MEDIA_PAGES_PER_ATTEMPT < 1:
+    raise ImproperlyConfigured("INSIGHTS_MAX_MEDIA_PAGES_PER_ATTEMPT must be a positive integer.")
 
 INSTALLED_APPS = [
     # Django Apps
@@ -222,6 +231,10 @@ INSTAGRAM_GRAPH_REQUEST_INTERVAL_SECONDS = config(
 # ============================================================
 
 CELERY_BEAT_SCHEDULE = {
+    "reconcile-insights-sync-work": {
+        "task": "apps.insights.tasks.reconcile_insights_sync_work_task",
+        "schedule": 60.0,
+    },
     "dispatch-due-posts": {
         "task": "apps.posts.tasks.dispatch_due_posts_task",
         "schedule": 60.0,
@@ -432,3 +445,30 @@ BREVO_TEMPLATE_CANCELLED = config(
     "BREVO_TEMPLATE_CANCELLED",
     cast=int,
 )
+
+
+# Low-level HTTP debug output can include credential-bearing request details.
+# Filter these loggers before records propagate to Celery or application handlers.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "credential_redaction": {
+            "()": "config.log_filters.CredentialRedactionFilter",
+        },
+    },
+    "loggers": {
+        "urllib3.connectionpool": {
+            "filters": ["credential_redaction"],
+        },
+        "urllib3.connection": {
+            "filters": ["credential_redaction"],
+        },
+        "requests.packages.urllib3.connectionpool": {
+            "filters": ["credential_redaction"],
+        },
+        "http.client": {
+            "filters": ["credential_redaction"],
+        },
+    },
+}

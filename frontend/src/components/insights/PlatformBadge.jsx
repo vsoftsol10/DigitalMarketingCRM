@@ -41,8 +41,9 @@ const PLATFORM_CONFIG = {
 export default function PlatformBadge({
   platform,
 }) {
+  const normalizedPlatform = String(platform || "").toUpperCase();
   const config =
-    PLATFORM_CONFIG[platform] ||
+    PLATFORM_CONFIG[normalizedPlatform] ||
     PLATFORM_CONFIG.DEFAULT;
 
   return (

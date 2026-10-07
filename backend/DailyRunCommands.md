@@ -11,6 +11,7 @@ Terminal 2 — WSL(Celery Worker)
 cd "/mnt/c/Users/S MUTHU KRISHNAN/Desktop/digital-marketing-platform/backend"
 source celery-venv/bin/activate
 celery -A config worker --loglevel=info
+celery -A config worker --loglevel=DEBUG 2>&1 | tee celery-insights-debug.log
 
 ---------------------------------------------------------
 
@@ -28,6 +29,7 @@ cd "C:\Users\S MUTHU KRISHNAN\Desktop\digital-marketing-platform\backend"
 .\venv\Scripts\Activate.ps1
 python manage.py check
 python manage.py runserver
+python manage.py runserver_plus --cert-file localhost.crt
 
 ---------------------------------------------------------
 

@@ -241,6 +241,7 @@ class SocialAccount(BaseModel):
     )
 
     profile_image = models.URLField(
+        max_length=2048,
         blank=True,
     )
 

@@ -1,13 +1,18 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from django.test import SimpleTestCase
+from cryptography.fernet import Fernet
+from django.test import SimpleTestCase, TestCase
 from django.test import override_settings
 
+from apps.accounts.models import User
+from apps.organizations.models import Organization
 from apps.posts.publishing.meta import MetaPublisher
+from apps.social_accounts.models import SocialAccount, SocialAccountStatus, SocialPlatform
 
 from .client import InstagramAPIClient
 from .exceptions import InstagramAPIError
+from .services import InstagramOAuthService
 
 
 class InstagramAPIClientObservabilityTests(SimpleTestCase):
@@ -202,3 +207,58 @@ class InstagramAPIClientObservabilityTests(SimpleTestCase):
             "Private detail",
         ):
             self.assertNotIn(secret, output)
+
+
+class InstagramOAuthProfileImageLengthTests(TestCase):
+    @override_settings(META_CREDENTIAL_ENCRYPTION_KEY=Fernet.generate_key().decode())
+    @patch.object(InstagramOAuthService, "__init__", return_value=None)
+    def test_callback_stores_profile_picture_url_longer_than_200_characters(
+        self,
+        _service_init,
+    ):
+        user = User.objects.create_user(
+            email="instagram-length@example.com",
+            password="test-password",
+            first_name="Instagram",
+        )
+        organization = Organization.objects.create(
+            organization_id="ORG-IG-LENGTH",
+            name="Instagram URL Length Test",
+            slug="instagram-url-length-test",
+            industry="Retail",
+            created_by=user,
+        )
+        profile_picture_url = "https://cdn.instagram.example/" + "a" * 240
+        service = InstagramOAuthService()
+        service.client = MagicMock()
+        service.client.exchange_code.return_value = {"access_token": "short-token"}
+        service.client.exchange_long_lived_token.return_value = {
+            "access_token": "long-lived-token",
+            "expires_in": 3600,
+        }
+        service.client.get_profile.return_value = {
+            "id": "instagram-user-123",
+            "username": "test_account",
+            "name": "Test Account",
+            "profile_picture_url": profile_picture_url,
+        }
+
+        social_account = service.handle_callback(
+            code="authorization-code",
+            organization=organization,
+            user=user,
+        )
+
+        self.assertEqual(len(profile_picture_url), 270)
+        self.assertGreater(len(profile_picture_url), 200)
+        self.assertEqual(social_account.profile_image, profile_picture_url)
+        self.assertEqual(social_account.status, SocialAccountStatus.CONNECTED)
+        self.assertTrue(social_account.is_valid)
+        self.assertEqual(
+            SocialAccount.objects.filter(
+                organization=organization,
+                platform=SocialPlatform.INSTAGRAM,
+                platform_account_id="instagram-user-123",
+            ).count(),
+            1,
+        )

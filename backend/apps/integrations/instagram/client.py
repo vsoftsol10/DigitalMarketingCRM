@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from datetime import timedelta
 
@@ -17,6 +18,9 @@ from .exceptions import (
     InstagramAPIError,
     InstagramOAuthConfigurationError,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class InstagramAPIClient:
@@ -57,6 +61,10 @@ return slot_ms - now_ms
         # Diagnostic metadata only; response payloads remain unchanged.
         self.last_response_status_code = None
         self.last_response_usage_diagnostics = {}
+        self.last_pacer_wait_seconds = 0.0
+        self.last_http_duration_seconds = 0.0
+        self.last_http_status_code = None
+        self.last_response_parse_duration_seconds = 0.0
         self.client_id = getattr(
             settings,
             "INSTAGRAM_APP_ID",
@@ -180,7 +188,11 @@ return slot_ms - now_ms
 
     def _pace_graph_request(self):
         """Wait for the shared application-wide request reservation."""
-        self._reserve_graph_request_slot()
+        started = time.monotonic()
+        try:
+            self._reserve_graph_request_slot()
+        finally:
+            self.last_pacer_wait_seconds = time.monotonic() - started
 
     # ========================================================
     # AUTHORIZATION CODE → SHORT TOKEN
@@ -315,10 +327,40 @@ return slot_ms - now_ms
     def graph_get(self, path, *, access_token, params=None):
         if not access_token:
             raise InstagramAPIError("Instagram access token is missing.")
+        self.last_http_duration_seconds = 0.0
+        self.last_http_status_code = None
+        self.last_response_parse_duration_seconds = 0.0
         self._pace_graph_request()
-        response = requests.get(
-            f"{INSTAGRAM_GRAPH_BASE_URL}/{INSTAGRAM_GRAPH_API_VERSION}/{path.lstrip('/')}",
-            params={**(params or {}), "access_token": access_token},
-            timeout=self.timeout,
+        normalized_path = str(path).strip("/").split("/")
+        operation = (
+            "instagram_media_list"
+            if normalized_path and normalized_path[-1] == "media"
+            else "instagram_media_insights"
+            if normalized_path and normalized_path[-1] == "insights"
+            else "instagram_graph_get"
         )
-        return self._handle_response(response, operation="Instagram content publishing")
+        response = None
+        request_started = time.monotonic()
+        try:
+            response = requests.get(
+                f"{INSTAGRAM_GRAPH_BASE_URL}/{INSTAGRAM_GRAPH_API_VERSION}/{path.lstrip('/')}",
+                params={**(params or {}), "access_token": access_token},
+                timeout=self.timeout,
+            )
+        finally:
+            self.last_http_duration_seconds = time.monotonic() - request_started
+            self.last_http_status_code = getattr(response, "status_code", None)
+            # Per-media logs would be noisy; Insights aggregates these timings
+            # at batch level. A page request is infrequent and useful alone.
+            if operation != "instagram_media_insights":
+                logger.debug(
+                    "INSIGHTS_INSTAGRAM_HTTP operation=%s duration_seconds=%.6f http_status=%s",
+                    operation,
+                    self.last_http_duration_seconds,
+                    self.last_http_status_code or "unavailable",
+                )
+        parse_started = time.monotonic()
+        try:
+            return self._handle_response(response, operation="Instagram content publishing")
+        finally:
+            self.last_response_parse_duration_seconds = time.monotonic() - parse_started

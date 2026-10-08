@@ -2,6 +2,7 @@ from pathlib import Path
 from decouple import config
 from datetime import timedelta
 import dj_database_url
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -231,6 +232,10 @@ INSTAGRAM_GRAPH_REQUEST_INTERVAL_SECONDS = config(
 # ============================================================
 
 CELERY_BEAT_SCHEDULE = {
+    "daily-insights-dispatcher": {
+        "task": "apps.insights.tasks.daily_insights_dispatcher_task",
+        "schedule": crontab(hour=8, minute=0),
+    },
     "reconcile-insights-sync-work": {
         "task": "apps.insights.tasks.reconcile_insights_sync_work_task",
         "schedule": 60.0,

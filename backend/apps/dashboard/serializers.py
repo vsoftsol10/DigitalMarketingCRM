@@ -31,6 +31,7 @@ class DashboardNotificationSerializer(serializers.Serializer):
     organization_name = serializers.CharField()
     plan_name = serializers.CharField(required=False)
     expiry_date = serializers.DateField(required=False)
+    subscription_id = serializers.UUIDField(required=False)
     post_id = serializers.UUIDField(required=False)
     target_id = serializers.UUIDField(required=False)
     platform = serializers.CharField(required=False)

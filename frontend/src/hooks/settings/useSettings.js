@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import settingsService from "../../services/settings.service";
 import toast from "react-hot-toast";
+import { useAuthContext } from "../../context/AuthContext";
 
 export default function useSettings() {
+  const { setUser } = useAuthContext();
   // ==========================================
   // PROFILE
   // ==========================================
@@ -86,6 +88,14 @@ export default function useSettings() {
       const updatedProfile = await settingsService.updateProfile(data);
 
       setProfile(updatedProfile);
+      setUser((currentUser) => currentUser ? {
+        ...currentUser,
+        first_name: updatedProfile.firstName,
+        last_name: updatedProfile.lastName,
+        full_name: updatedProfile.fullName,
+        phone: updatedProfile.phone,
+        profile_image: updatedProfile.profileImage,
+      } : currentUser);
 
       return {
         success: true,
@@ -109,7 +119,7 @@ export default function useSettings() {
     } finally {
       setProfileUpdating(false);
     }
-  }, []);
+  }, [setUser]);
 
   // ==========================================
   // CHANGE PASSWORD

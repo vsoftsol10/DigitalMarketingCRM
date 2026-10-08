@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import QueryStatsRoundedIcon from "@mui/icons-material/QueryStatsRounded";
+import companyLogo from "../../reports/vsoft-logo.png?inline";
 
 export default function SidebarHeader() {
   return (
@@ -17,14 +17,28 @@ export default function SidebarHeader() {
           width: 44,
           height: 44,
           borderRadius: "14px",
-          bgcolor: "#2563EB",
+          bgcolor: "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#fff",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <QueryStatsRoundedIcon />
+        <Box
+          component="img"
+          src={companyLogo}
+          alt="The Vsoft"
+          sx={{
+            position: "absolute",
+            width: 130,
+            height: 130,
+            maxWidth: "none",
+            left: -40,
+            top: -40,
+            objectFit: "contain",
+          }}
+        />
       </Box>
 
       <Box>

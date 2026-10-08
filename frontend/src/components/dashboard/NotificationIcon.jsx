@@ -3,6 +3,7 @@ import { Box } from "@mui/material";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 
 const CONFIG = {
   FAILED_POST: {
@@ -21,6 +22,18 @@ const CONFIG = {
     icon: WarningAmberRoundedIcon,
     color: "#EF4444",
     background: "#FEF2F2",
+  },
+
+  POST_PUBLISHED: {
+    icon: CheckCircleOutlineRoundedIcon,
+    color: "#16A34A",
+    background: "#F0FDF4",
+  },
+
+  SUBSCRIPTION_ACTIVATED: {
+    icon: CheckCircleOutlineRoundedIcon,
+    color: "#16A34A",
+    background: "#F0FDF4",
   },
 
   DEFAULT: {

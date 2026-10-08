@@ -2,7 +2,6 @@ import { Drawer, Box, Divider } from "@mui/material";
 
 import SidebarHeader from "./SidebarHeader";
 import SidebarSection from "./SidebarSection";
-import SidebarFooter from "./SidebarFooter";
 
 import { navigation } from "../../../constants/navigation";
 
@@ -45,9 +44,6 @@ export default function Sidebar() {
         ))}
       </Box>
 
-      <Divider />
-
-      <SidebarFooter />
     </Drawer>
   );
 }

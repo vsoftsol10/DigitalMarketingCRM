@@ -38,7 +38,7 @@ export default function DashboardNotificationsCard({
       >
         {/* Header */}
 
-        <Typography sx={TYPOGRAPHY.sectionTitle}>Notifications</Typography>
+        <Typography sx={TYPOGRAPHY.sectionTitle}>Need Attention</Typography>
 
         <Typography
           sx={{
@@ -67,7 +67,7 @@ export default function DashboardNotificationsCard({
               fontSize: 15,
             }}
           >
-            No notifications
+            Nothing needs attention
           </Box>
         ) : (
           <Box

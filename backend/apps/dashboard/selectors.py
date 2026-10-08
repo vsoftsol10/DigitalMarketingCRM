@@ -7,6 +7,7 @@ from django.utils.dateparse import parse_datetime
 
 from apps.organizations.models import Organization, OrganizationSubscription, SubscriptionStatus
 from apps.activities.models import ActivityLog
+from apps.notifications.models import UserNotification, UserNotificationType
 from apps.posts.models import PostPlatform, PostStatus
 from apps.posts.selectors import get_calendar_event_local_datetime
 from apps.social_accounts.models import SocialAccount, SocialAccountStatus
@@ -187,7 +188,7 @@ def _recent_activities(*, user):
     return recent_activities
 
 
-def _subscription_notification(subscription, *, notification_type, title, message, days_remaining=None):
+def _subscription_notification(subscription, *, notification_type, title, message):
     notification = {
         "id": f"{notification_type.lower().replace('_', '-')}:{subscription.id}",
         "type": notification_type,
@@ -195,15 +196,13 @@ def _subscription_notification(subscription, *, notification_type, title, messag
         "message": message,
         "organization_id": subscription.organization.organization_id,
         "organization_name": subscription.organization.name,
+        "subscription_id": subscription.id,
         "expiry_date": subscription.expiry_date,
         "created_at": subscription.updated_at,
     }
 
     if not subscription.plan.is_deleted:
         notification["plan_name"] = subscription.plan.name
-    if days_remaining is not None:
-        notification["days_remaining"] = days_remaining
-
     return notification
 
 
@@ -212,7 +211,6 @@ def get_dashboard_data(*, user):
 
     now = timezone.now()
     today = timezone.localdate()
-    reminder_end = today + timedelta(days=3)
     utc_start, utc_end = _utc_bounds_for_current_local_days(now)
 
     organizations = Organization.objects.filter(
@@ -264,19 +262,6 @@ def get_dashboard_data(*, user):
         if _is_target_today(target, now)
     ]
 
-    expiring_subscriptions = (
-        OrganizationSubscription.objects.filter(
-            organization__created_by=user,
-            organization__is_deleted=False,
-            is_deleted=False,
-            is_current=True,
-            status=SubscriptionStatus.ACTIVE,
-            expiry_date__gte=today,
-            expiry_date__lte=reminder_end,
-        )
-        .select_related("organization", "plan")
-        .order_by("-updated_at", "-id")[:DASHBOARD_NOTIFICATION_LIMIT]
-    )
     active_current_subscription = OrganizationSubscription.objects.filter(
         organization_id=OuterRef("organization_id"),
         is_deleted=False,
@@ -307,25 +292,26 @@ def get_dashboard_data(*, user):
         .select_related("organization", "plan")
         .order_by("-updated_at", "-id")[:DASHBOARD_NOTIFICATION_LIMIT]
     )
+    unresolved_failed_notification = UserNotification.objects.filter(
+        post_platform_id=OuterRef("pk"),
+        event_type=UserNotificationType.FAILED_POST,
+        is_deleted=False,
+        resolved_at__isnull=True,
+    )
     failed_targets = (
-        target_base_queryset.filter(status=PostStatus.FAILED)
+        target_base_queryset.annotate(
+            has_unresolved_failed_notification=Exists(unresolved_failed_notification),
+        ).filter(
+            Q(status=PostStatus.FAILED)
+            | Q(
+                status=PostStatus.PUBLISHING,
+                has_unresolved_failed_notification=True,
+            )
+        )
         .order_by("-updated_at", "-id")[:DASHBOARD_NOTIFICATION_LIMIT]
     )
 
     notifications = [
-        _subscription_notification(
-            subscription,
-            notification_type="SUBSCRIPTION_EXPIRING",
-            title="Subscription Expiring Soon",
-            message=(
-                f"{subscription.plan.name if not subscription.plan.is_deleted else 'Subscription'} "
-                f"expires on {subscription.expiry_date.isoformat()}."
-            ),
-            days_remaining=(subscription.expiry_date - today).days,
-        )
-        for subscription in expiring_subscriptions
-    ]
-    notifications.extend(
         _subscription_notification(
             subscription,
             notification_type="SUBSCRIPTION_EXPIRED",
@@ -336,7 +322,7 @@ def get_dashboard_data(*, user):
             ),
         )
         for subscription in expired_subscriptions
-    )
+    ]
     notifications.extend(
         {
             "id": f"failed-post:{target.id}",

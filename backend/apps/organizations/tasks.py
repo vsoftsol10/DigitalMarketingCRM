@@ -19,6 +19,8 @@ from apps.notifications.services import (
 from apps.notifications.recipients import (
     get_organization_billing_recipient,
 )
+from apps.activities.models import ActivityEventType, ActivitySource
+from apps.activities.services import create_activity_log
 
 from .models import (
     OrganizationSubscription,
@@ -97,6 +99,18 @@ def send_plan_expiry_reminders_task(
 
     for subscription in subscriptions:
         organization = subscription.organization
+
+        create_activity_log(
+            organization=organization,
+            subscription=subscription,
+            event_type=ActivityEventType.SUBSCRIPTION_EXPIRING,
+            source=ActivitySource.SYSTEM,
+            metadata={
+                "expiry_date": subscription.expiry_date.isoformat(),
+                "plan_id": str(subscription.plan_id),
+            },
+            idempotency_key=f"subscription:{subscription.id}:expiring",
+        )
 
         recipient_email, recipient_name = get_organization_billing_recipient(
             organization,

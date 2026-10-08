@@ -5,6 +5,7 @@ import time
 
 from celery import shared_task
 
+from .daily_dispatch import dispatch_daily_insights_syncs
 from .models import InsightsSyncStatus, InsightsSyncWorkStage
 from .sync_service import (
     StaleInsightsWorkClaim,
@@ -180,3 +181,8 @@ def sync_instagram_content_batch_task(self, *, work_id, generation):
 @shared_task(name="apps.insights.tasks.reconcile_insights_sync_work_task")
 def reconcile_insights_sync_work_task():
     return reconcile_insights_sync_work()
+
+
+@shared_task(name="apps.insights.tasks.daily_insights_dispatcher_task")
+def daily_insights_dispatcher_task():
+    return dispatch_daily_insights_syncs()

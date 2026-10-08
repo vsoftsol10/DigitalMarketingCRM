@@ -8,10 +8,151 @@ from .constants import EMAIL_TEMPLATE_MAP
 from .models import (
     EmailDeliveryStatus,
     EmailEvent,
+    UserNotification,
+    UserNotificationType,
 )
 
 
 BREVO_SEND_EMAIL_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+def _resolve_notifications(*, organization, event_types, post_platform=None, subscription=None):
+    notifications = UserNotification.objects.filter(
+        organization=organization,
+        event_type__in=event_types,
+        is_deleted=False,
+        resolved_at__isnull=True,
+    )
+    if post_platform is not None:
+        notifications = notifications.filter(post_platform=post_platform)
+    if subscription is not None:
+        notifications = notifications.filter(subscription=subscription)
+    now = timezone.now()
+    notifications.update(resolved_at=now, updated_at=now)
+
+
+def _record_user_notification(
+    *, activity, event_type, event_key, title, message, post_platform=None, subscription=None,
+    reopen=False,
+):
+    organization = activity.organization
+    recipient_id = organization.created_by_id
+    if not recipient_id:
+        return None
+
+    defaults = {
+        "recipient_id": recipient_id,
+        "organization": organization,
+        "source_activity": activity,
+        "post_platform": post_platform,
+        "subscription": subscription,
+        "event_type": event_type,
+        "title": title,
+        "message": message,
+        "resolved_at": None,
+    }
+    if reopen:
+        defaults["read_at"] = None
+
+    notification, created = UserNotification.objects.get_or_create(
+        event_key=event_key,
+        is_deleted=False,
+        defaults=defaults,
+    )
+    if not created and reopen:
+        for field, value in defaults.items():
+            setattr(notification, field, value)
+        notification.save(update_fields=[*defaults.keys(), "updated_at"])
+    return notification
+
+
+def record_activity_notification(activity):
+    """Persist the notification counterpart of a real business lifecycle event."""
+    from apps.activities.models import ActivityEventType
+
+    event_type = activity.event_type
+    target = activity.post_platform
+    subscription = activity.subscription
+    organization = activity.organization
+
+    if event_type == ActivityEventType.POST_FAILED and target:
+        return _record_user_notification(
+            activity=activity,
+            event_type=UserNotificationType.FAILED_POST,
+            event_key=f"failed-post:{target.id}",
+            title="Failed Post",
+            message="Publishing failed. Review the target and retry it from Calendar.",
+            post_platform=target,
+            reopen=True,
+        )
+
+    if event_type == ActivityEventType.POST_PUBLISHED and target:
+        _resolve_notifications(
+            organization=organization,
+            event_types=[UserNotificationType.FAILED_POST],
+            post_platform=target,
+        )
+        return _record_user_notification(
+            activity=activity,
+            event_type=UserNotificationType.POST_PUBLISHED,
+            event_key=f"post-published:{target.id}",
+            title="Post Published",
+            message="Your post was published successfully.",
+            post_platform=target,
+        )
+
+    if event_type == ActivityEventType.SUBSCRIPTION_EXPIRING and subscription:
+        return _record_user_notification(
+            activity=activity,
+            event_type=UserNotificationType.SUBSCRIPTION_EXPIRING,
+            event_key=f"subscription-expiring:{subscription.id}",
+            title="Subscription Expiring Soon",
+            message=f"Subscription expires on {subscription.expiry_date.isoformat()}.",
+            subscription=subscription,
+        )
+
+    if event_type == ActivityEventType.SUBSCRIPTION_EXPIRED and subscription:
+        _resolve_notifications(
+            organization=organization,
+            event_types=[UserNotificationType.SUBSCRIPTION_EXPIRING],
+            subscription=subscription,
+        )
+        return _record_user_notification(
+            activity=activity,
+            event_type=UserNotificationType.SUBSCRIPTION_EXPIRED,
+            event_key=f"subscription-expired:{subscription.id}",
+            title="Subscription Expired",
+            message=f"Subscription expired on {subscription.expiry_date.isoformat()}.",
+            subscription=subscription,
+        )
+
+    if event_type in {
+        ActivityEventType.SUBSCRIPTION_ACTIVATED,
+        ActivityEventType.SUBSCRIPTION_RENEWED,
+    } and subscription:
+        _resolve_notifications(
+            organization=organization,
+            event_types=[
+                UserNotificationType.SUBSCRIPTION_EXPIRED,
+                UserNotificationType.SUBSCRIPTION_EXPIRING,
+            ],
+        )
+        return _record_user_notification(
+            activity=activity,
+            event_type=UserNotificationType.SUBSCRIPTION_ACTIVATED,
+            event_key=f"subscription-activated:{subscription.id}",
+            title="Subscription Activated",
+            message="The organization subscription is active.",
+            subscription=subscription,
+        )
+
+    if event_type == ActivityEventType.SUBSCRIPTION_CANCELLED:
+        _resolve_notifications(
+            organization=organization,
+            event_types=[UserNotificationType.SUBSCRIPTION_EXPIRING],
+        )
+
+    return None
 
 
 class BrevoEmailError(Exception):

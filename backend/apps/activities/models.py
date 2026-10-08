@@ -14,6 +14,8 @@ class ActivityEventType(models.TextChoices):
     POST_FAILED = "POST_FAILED", "Post Failed"
     SUBSCRIPTION_RENEWED = "SUBSCRIPTION_RENEWED", "Subscription Renewed"
     SUBSCRIPTION_CANCELLED = "SUBSCRIPTION_CANCELLED", "Subscription Cancelled"
+    SUBSCRIPTION_EXPIRING = "SUBSCRIPTION_EXPIRING", "Subscription Expiring Soon"
+    SUBSCRIPTION_EXPIRED = "SUBSCRIPTION_EXPIRED", "Subscription Expired"
 
 
 class ActivitySource(models.TextChoices):

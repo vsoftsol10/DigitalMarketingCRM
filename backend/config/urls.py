@@ -28,6 +28,7 @@ urlpatterns = [
     path("api/integrations/instagram/", include("apps.integrations.instagram.urls")),
     path("api/posts/", include("apps.posts.urls")),
     path("api/dashboard/", include("apps.dashboard.urls")),
+    path("api/notifications/", include("apps.notifications.urls")),
     path("api/insights/", include("apps.insights.urls")),
     path("api/reports/", include("apps.reports.urls")),
     path("api/ai/", include("apps.ai.urls")),

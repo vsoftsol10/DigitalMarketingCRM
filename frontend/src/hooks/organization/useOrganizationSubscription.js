@@ -1,11 +1,14 @@
 import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import organizationService from "../../services/organization/organization.service";
+import { NOTIFICATION_QUERY_KEY } from "../../services/notification.service";
 
 export default function useOrganizationSubscription({
   organizationId,
   onSuccess,
 }) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState(null);
@@ -25,7 +28,7 @@ export default function useOrganizationSubscription({
   // ============================================================
 
   const execute = useCallback(
-    async (callback) => {
+    async (callback, { refreshNotifications = false } = {}) => {
       if (!organizationId) {
         setError("Organization ID is required.");
 
@@ -46,6 +49,10 @@ export default function useOrganizationSubscription({
           throw new Error(response?.message || "Subscription action failed.");
         }
 
+        if (refreshNotifications) {
+          void queryClient.invalidateQueries({ queryKey: NOTIFICATION_QUERY_KEY });
+        }
+
         await onSuccess?.(response);
 
         return response;
@@ -64,7 +71,7 @@ export default function useOrganizationSubscription({
         setLoading(false);
       }
     },
-    [organizationId, loading, onSuccess],
+    [organizationId, loading, onSuccess, queryClient],
   );
 
   // ============================================================
@@ -73,8 +80,8 @@ export default function useOrganizationSubscription({
 
   const renew = useCallback(
     async ({ billingCycle } = {}) => {
-      return execute(() =>
-        organizationService.renewSubscription(
+      return execute(
+        () => organizationService.renewSubscription(
           organizationId,
           billingCycle
             ? {
@@ -82,6 +89,7 @@ export default function useOrganizationSubscription({
               }
             : {},
         ),
+        { refreshNotifications: true },
       );
     },
     [organizationId, execute],
@@ -109,11 +117,12 @@ export default function useOrganizationSubscription({
 
   const start = useCallback(
     async ({ plan, billingCycle }) => {
-      return execute(() =>
-        organizationService.startSubscription(organizationId, {
+      return execute(
+        () => organizationService.startSubscription(organizationId, {
           plan,
           billing_cycle: billingCycle,
         }),
+        { refreshNotifications: true },
       );
     },
     [organizationId, execute],

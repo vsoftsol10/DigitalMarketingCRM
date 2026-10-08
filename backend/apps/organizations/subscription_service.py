@@ -15,6 +15,8 @@ from apps.notifications.services import (
 from apps.notifications.recipients import (
     get_organization_billing_recipient,
 )
+from apps.activities.models import ActivityEventType, ActivitySource
+from apps.activities.services import create_activity_log
 
 from .models import (
     OrganizationSubscription,
@@ -68,6 +70,18 @@ def expire_due_subscriptions():
                 "is_current",
                 "updated_at",
             ],
+        )
+
+        create_activity_log(
+            organization=subscription.organization,
+            subscription=subscription,
+            event_type=ActivityEventType.SUBSCRIPTION_EXPIRED,
+            source=ActivitySource.SYSTEM,
+            metadata={
+                "expiry_date": subscription.expiry_date.isoformat(),
+                "plan_id": str(subscription.plan_id),
+            },
+            idempotency_key=f"subscription:{subscription.id}:expired",
         )
 
         # --------------------------------------------------------

@@ -80,7 +80,9 @@ export default function ReportDocument({ report }) {
   return (
     <article id="report-document" className="report-document">
       <header className="report-header">
-        <img className="report-brand-logo" src={companyLogo} alt="The Vsoft" />
+        <span className="report-brand-logo-frame">
+          <img className="report-brand-logo" src={companyLogo} alt="The Vsoft" />
+        </span>
         <div className={`report-header-meta${report.mode === "add_ads" ? " add-ads" : ""}`}>
           <strong>{reportTitle}</strong>
           <span>{shortDate(report.date_range.since)} – {shortDate(report.date_range.until)}</span>

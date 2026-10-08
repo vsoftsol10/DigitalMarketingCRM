@@ -430,7 +430,7 @@ class DashboardAPIViewTests(TestCase):
             [item["id"] for item in response.data["data"]["recent_activities"]],
         )
 
-    def test_active_subscription_hides_historical_expired_notification(self):
+    def test_need_attention_excludes_expiring_soon_and_hides_expired_when_active(self):
         active_subscription = OrganizationSubscription.objects.create(
             organization=self.organization,
             plan=self.plan,
@@ -451,16 +451,10 @@ class DashboardAPIViewTests(TestCase):
         response = self.get_dashboard()
         notifications = response.data["data"]["notifications"]
 
-        self.assertIn(
+        self.assertNotIn(
             f"subscription-expiring:{active_subscription.id}",
             [item["id"] for item in notifications],
         )
-        expiring_notification = next(
-            item
-            for item in notifications
-            if item["id"] == f"subscription-expiring:{active_subscription.id}"
-        )
-        self.assertEqual(expiring_notification["days_remaining"], 3)
         self.assertNotIn(
             f"subscription-expired:{expired_subscription.id}",
             [item["id"] for item in notifications],
@@ -501,7 +495,7 @@ class DashboardAPIViewTests(TestCase):
             f"subscription-expired:{older_subscription.id}",
         )
 
-    def test_deleted_plan_metadata_is_not_exposed(self):
+    def test_need_attention_does_not_include_subscription_expiring_soon(self):
         subscription = OrganizationSubscription.objects.create(
             organization=self.organization,
             plan=self.plan,
@@ -510,14 +504,10 @@ class DashboardAPIViewTests(TestCase):
             start_date=timezone.localdate(),
             expiry_date=timezone.localdate() + timedelta(days=1),
         )
-        self.plan.soft_delete()
-
         response = self.get_dashboard()
-        notification = next(
-            item
-            for item in response.data["data"]["notifications"]
-            if item["id"] == f"subscription-expiring:{subscription.id}"
+        self.assertFalse(
+            any(
+                item["type"] == "SUBSCRIPTION_EXPIRING"
+                for item in response.data["data"]["notifications"]
+            )
         )
-        self.assertEqual(notification["organization_id"], self.organization.organization_id)
-        self.assertNotIn("plan_name", notification)
-        self.assertNotIn(self.plan.name, notification["message"])

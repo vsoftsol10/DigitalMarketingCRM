@@ -1,0 +1,156 @@
+name: Phase 2 Meta database tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  meta-database-tests:
+    name: Isolated Meta lifecycle tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # The repository contains no PostgreSQL deployment/version declaration.
+    # PostgreSQL 16 is therefore a provisional disposable CI version.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: phase2_ci
+          POSTGRES_USER: phase2_ci
+          # Unique per workflow run/attempt; this service exists only on the
+          # ephemeral GitHub-hosted runner and is not a repository secret.
+          POSTGRES_PASSWORD: phase2-${{ github.run_id }}-${{ github.run_attempt }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U phase2_ci -d phase2_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    # These are test-only placeholders. No repository .env file or production
+    # service configuration is read by this workflow.
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DEBUG: "False"
+      SECRET_KEY: phase2-ci-test-only
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: postgresql://phase2_ci:phase2-${{ github.run_id }}-${{ github.run_attempt }}@127.0.0.1:5432/phase2_ci
+      CELERY_BROKER_URL: redis://127.0.0.1:6379/0
+      CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/1
+      DJANGO_CACHE_REDIS_URL: redis://127.0.0.1:6379/2
+      INSIGHTS_MAX_MEDIA_PAGES_PER_ATTEMPT: "10"
+      INSTAGRAM_GRAPH_REQUEST_INTERVAL_SECONDS: "1.0"
+      CLOUDINARY_CLOUD_NAME: ci-unused
+      CLOUDINARY_API_KEY: ci-unused
+      CLOUDINARY_API_SECRET: ci-unused
+      META_APP_ID: ci-unused
+      META_APP_SECRET: ci-unused
+      META_GRAPH_API_VERSION: v26.0
+      META_OAUTH_REDIRECT_URI: http://localhost/ci
+      META_BUSINESS_LOGIN_CONFIG_ID: ""
+      META_HTTP_TIMEOUT_SECONDS: "30"
+      META_TOKEN_LIFECYCLE_LOCK_TIMEOUT_SECONDS: "300"
+      FRONTEND_URL: http://localhost:5173
+      INSTAGRAM_APP_ID: ci-unused
+      INSTAGRAM_APP_SECRET: ci-unused
+      INSTAGRAM_GRAPH_API_VERSION: v26.0
+      INSTAGRAM_OAUTH_REDIRECT_URI: http://localhost/ci
+      INSTAGRAM_OAUTH_STATE_MAX_AGE_SECONDS: "600"
+      INSTAGRAM_HTTP_TIMEOUT_SECONDS: "30"
+      INSTAGRAM_TOKEN_REFRESH_WINDOW_SECONDS: "604800"
+      GROQ_API_KEY: ci-unused
+      GROQ_MODEL: ci-unused
+      BREVO_API_KEY: ci-unused
+      BREVO_SENDER_EMAIL: ci-unused@example.test
+      BREVO_SENDER_NAME: CI tests
+      BREVO_TEMPLATE_WELCOME: "1"
+      BREVO_TEMPLATE_EXPIRY_REMINDER: "1"
+      BREVO_TEMPLATE_EXPIRED: "1"
+      BREVO_TEMPLATE_RENEWED: "1"
+      BREVO_TEMPLATE_ACTIVATED: "1"
+      BREVO_TEMPLATE_CANCELLED: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Refuse repository .env files
+        shell: bash
+        run: |
+          if find .. -type f -name '.env' -print -quit | grep -q .; then
+            echo "::error::A .env file exists in the CI checkout; refusing to run tests."
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend requirements
+        run: python -m pip install -r requirements.txt
+
+      - name: Run Django checks and Meta tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          export META_CREDENTIAL_ENCRYPTION_KEY="$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
+          cat > "$RUNNER_TEMP/ci_settings.py" <<'PY'
+          from config.settings import *
+
+          # Reuse the workflow's disposable PostgreSQL database as Django's
+          # test database so the migration bootstrap below is preserved.
+          DATABASES["default"].setdefault("TEST", {})["NAME"] = DATABASES["default"]["NAME"]
+          PY
+          export PYTHONPATH="$RUNNER_TEMP${PYTHONPATH:+:$PYTHONPATH}"
+          export DJANGO_SETTINGS_MODULE=ci_settings
+
+          python manage.py check
+
+          # Migration 0008 requires Plan rows. Prepare only the disposable CI
+          # database through 0007, then seed the exact rows required by 0008.
+          python manage.py migrate organizations 0007 --noinput
+          python manage.py shell -c '
+          from apps.plans.models import Plan
+
+          required_plans = [
+              ("basic", "Basic", "BASIC", "CI migration prerequisite."),
+              ("advanced", "Advanced", "ADVANCED", "CI migration prerequisite."),
+              ("legacy-custom", "Legacy Custom", "CUSTOM", "CI migration prerequisite."),
+          ]
+          for code, name, plan_type, description in required_plans:
+              Plan.objects.get_or_create(
+                  code=code,
+                  defaults={
+                      "name": name,
+                      "plan_type": plan_type,
+                      "description": description,
+                  },
+              )
+          '
+
+          # --keepdb reuses the prepared disposable database; Django applies
+          # the remaining migrations, including organizations.0008, on setup.
+          python manage.py test apps.integrations.meta.tests.MetaParentCredentialLifecycleTests --verbosity=2 --keepdb
+          python manage.py test apps.integrations.meta.tests.MetaTokenMaintenanceTaskTests --verbosity=2 --keepdb
+          python manage.py test apps.integrations.instagram.tests.InstagramTokenLifecycleServiceTests --verbosity=2 --keepdb
+          python manage.py test apps.integrations.meta.tests --verbosity=2 --keepdb

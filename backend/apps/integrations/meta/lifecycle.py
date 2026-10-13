@@ -1,4 +1,6 @@
 import logging
+import re
+from datetime import datetime, timezone as datetime_timezone
 from typing import Dict, Optional
 
 from django.conf import settings
@@ -18,10 +20,18 @@ from .models import (
     MetaAccountCredential,
     MetaCredentialStatus,
     MetaCredentialType,
+    MetaTokenMaintenanceRun,
 )
 from .selectors import get_meta_connection_credential
 
 logger = logging.getLogger(__name__)
+
+_RELEASE_LOCK_SCRIPT = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+    return redis.call('DEL', KEYS[1])
+end
+return 0
+"""
 
 
 class MetaTokenLifecycleService:
@@ -71,6 +81,260 @@ class MetaTokenLifecycleService:
     ):
         self.api = api_client or MetaAPIClient()
 
+    @staticmethod
+    def _safe_parent_permissions(response, *, sensitive_values=()):
+        """Keep only permission names and normalized provider statuses."""
+        if not isinstance(response, dict) or not isinstance(response.get("data"), list):
+            return None
+        safe = []
+        for item in response["data"]:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("permission")
+            if not isinstance(name, str) or not re.fullmatch(
+                r"[a-z][a-z0-9_]{0,99}",
+                name,
+            ):
+                continue
+            if name in sensitive_values:
+                continue
+            status = item.get("status")
+            if (
+                not isinstance(status, str)
+                or status.lower() not in {"granted", "declined", "expired"}
+            ):
+                status = "unknown"
+            safe.append({"permission": name, "status": status.lower()})
+        return safe
+
+    @staticmethod
+    def _provider_datetime(value):
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return datetime.fromtimestamp(value, tz=datetime_timezone.utc)
+        return None
+
+    @staticmethod
+    def _parent_error_is_definitive(error):
+        details = MetaAPIClient.safe_error_metadata(error)
+        return (
+            details["http_status"] in {401, 403}
+            or details["graph_error_code"] in {10, 190, 200}
+        )
+
+    @staticmethod
+    def _save_parent_health_if_current(
+        credential,
+        *,
+        expected_access_token,
+        expected_updated_at,
+        expected_last_verified_at,
+        **updates,
+    ):
+        """Save health data only if this is still the credential checked."""
+        with transaction.atomic():
+            current = (
+                MetaAccountCredential.objects.select_for_update()
+                .filter(
+                    pk=credential.pk,
+                    credential_type=MetaCredentialType.USER,
+                    is_deleted=False,
+                )
+                .first()
+            )
+            if (
+                current is None
+                or current.access_token != expected_access_token
+                or current.updated_at != expected_updated_at
+                or current.last_verified_at != expected_last_verified_at
+            ):
+                return None
+
+            for field, value in updates.items():
+                setattr(current, field, value)
+            current.save(update_fields=[*updates, "updated_at"])
+            return current.updated_at
+
+    def _check_parent_user_credential(self, credential):
+        """Health-check one USER credential without changing its token/expiry."""
+        expected_access_token = credential.access_token
+        expected_updated_at = credential.updated_at
+        expected_last_verified_at = credential.last_verified_at
+        health_updated_at = expected_updated_at
+        try:
+            user_token = decrypt_token(expected_access_token)
+            if not user_token:
+                raise MetaAPIError("Meta USER credential is empty.")
+            debug = self.api.diagnose_token(access_token=user_token)
+            if not isinstance(debug, dict) or not isinstance(debug.get("is_valid"), bool):
+                logger.warning(
+                    "Meta parent credential diagnostic was incomplete. credential_id=%s",
+                    credential.id,
+                )
+                return "retry"
+
+            token_type = debug.get("type")
+            allowed_types = {"USER", "PAGE", "APP", "CLIENT_APP", "SYSTEM_USER"}
+            token_type = (
+                token_type.upper()
+                if isinstance(token_type, str) and token_type.upper() in allowed_types
+                else "unknown"
+            )
+            expires_at = self._provider_datetime(debug.get("expires_at"))
+            data_expires_at = self._provider_datetime(debug.get("data_access_expires_at"))
+            checked_at = timezone.now()
+
+            if not debug["is_valid"]:
+                health_updated_at = self._save_parent_health_if_current(
+                    credential,
+                    expected_access_token=expected_access_token,
+                    expected_updated_at=expected_updated_at,
+                    expected_last_verified_at=expected_last_verified_at,
+                    provider_token_type=token_type,
+                    provider_is_valid=debug["is_valid"],
+                    provider_expires_at=expires_at,
+                    data_access_expires_at=data_expires_at,
+                    last_health_check_at=checked_at,
+                    status=MetaCredentialStatus.INVALID,
+                )
+                if health_updated_at is None:
+                    return "retry"
+                logger.warning(
+                    "Meta parent token is invalid and requires reconnect. credential_id=%s",
+                    credential.id,
+                )
+                return "reconnect_needed"
+
+            health_updated_at = self._save_parent_health_if_current(
+                credential,
+                expected_access_token=expected_access_token,
+                expected_updated_at=expected_updated_at,
+                expected_last_verified_at=expected_last_verified_at,
+                provider_token_type=token_type,
+                provider_is_valid=debug["is_valid"],
+                provider_expires_at=expires_at,
+                data_access_expires_at=data_expires_at,
+            )
+            if health_updated_at is None:
+                return "retry"
+
+            permissions_response = self.api.get_user_permissions(access_token=user_token)
+            permissions = self._safe_parent_permissions(
+                permissions_response,
+                sensitive_values={
+                    user_token,
+                    getattr(settings, "META_APP_SECRET", ""),
+                },
+            )
+            if permissions is None:
+                logger.warning(
+                    "Meta parent permissions diagnostic was incomplete. credential_id=%s",
+                    credential.id,
+                )
+                return "retry"
+
+            prior_grants = {
+                entry.get("permission")
+                for entry in credential.granted_permissions
+                if isinstance(entry, dict) and entry.get("status") == "granted"
+            }
+            current_grants = {
+                entry["permission"]
+                for entry in permissions
+                if entry["status"] == "granted"
+            }
+            required_permission_missing = "pages_show_list" not in current_grants
+            permission_lost = (
+                "pages_show_list" in prior_grants
+                and "pages_show_list" not in current_grants
+            )
+            expired = bool(
+                (expires_at and expires_at <= checked_at)
+                or (data_expires_at and data_expires_at <= checked_at)
+            )
+            if token_type not in {"USER", "SYSTEM_USER"}:
+                health_status = MetaCredentialStatus.ERROR
+                outcome = "reconnect_needed"
+            elif expired:
+                health_status = MetaCredentialStatus.EXPIRED
+                outcome = "reconnect_needed"
+            elif required_permission_missing or permission_lost:
+                health_status = MetaCredentialStatus.ERROR
+                outcome = "reconnect_needed"
+            else:
+                health_status = MetaCredentialStatus.ACTIVE
+                outcome = "valid"
+
+            health_updated_at = self._save_parent_health_if_current(
+                credential,
+                expected_access_token=expected_access_token,
+                expected_updated_at=health_updated_at,
+                expected_last_verified_at=expected_last_verified_at,
+                granted_permissions=permissions,
+                last_health_check_at=checked_at,
+                status=health_status,
+            )
+            if health_updated_at is None:
+                return "retry"
+            logger.info(
+                "Meta parent credential health checked. credential_id=%s outcome=%s token_type=%s permission_count=%s",
+                credential.id,
+                outcome,
+                token_type,
+                len(permissions),
+            )
+            return outcome
+        except MetaAPIError as exc:
+            details = self.api.safe_error_metadata(exc)
+            if self._is_temporary_error(exc) or not self._parent_error_is_definitive(exc):
+                logger.warning(
+                    "Meta parent credential health check will retry. credential_id=%s http_status=%s graph_error_code=%s graph_error_subcode=%s",
+                    credential.id,
+                    details["http_status"],
+                    details["graph_error_code"],
+                    details["graph_error_subcode"],
+                )
+                return "retry"
+            health_status = (
+                MetaCredentialStatus.INVALID
+                if details["graph_error_code"] == 190
+                else MetaCredentialStatus.ERROR
+            )
+            health_updated_at = self._save_parent_health_if_current(
+                credential,
+                expected_access_token=expected_access_token,
+                expected_updated_at=health_updated_at,
+                expected_last_verified_at=expected_last_verified_at,
+                status=health_status,
+            )
+            if health_updated_at is None:
+                return "retry"
+            logger.warning(
+                "Meta parent credential requires reconnect. credential_id=%s http_status=%s graph_error_code=%s graph_error_subcode=%s",
+                credential.id,
+                details["http_status"],
+                details["graph_error_code"],
+                details["graph_error_subcode"],
+            )
+            return "reconnect_needed"
+        except Exception:
+            logger.warning(
+                "Meta parent credential health check failed safely. credential_id=%s",
+                credential.id,
+            )
+            return "retry"
+
+    def _mark_parent_reconnect_needed(self, page_credential, error):
+        parent = self._get_parent_user_credential(page_credential=page_credential)
+        if parent is None:
+            return
+        details = self.api.safe_error_metadata(error)
+        parent.status = (
+            MetaCredentialStatus.INVALID
+            if details["graph_error_code"] == 190
+            else MetaCredentialStatus.ERROR
+        )
+        parent.save(update_fields=["status", "updated_at"])
+
     # ========================================================
     # REDIS DISTRIBUTED LOCK
     # ========================================================
@@ -112,13 +376,17 @@ class MetaTokenLifecycleService:
         lock_key = f"meta:page-token-lifecycle:{credential_id}"
 
         try:
-            current_token = cache.get(lock_key)
-
-            if current_token == lock_token:
-                cache.delete(lock_key)
+            redis_client = cache._cache.get_client(write=True)
+            serialized_lock_token = cache._cache._serializer.dumps(lock_token)
+            redis_client.eval(
+                _RELEASE_LOCK_SCRIPT,
+                1,
+                cache.make_key(lock_key),
+                serialized_lock_token,
+            )
 
         except Exception:
-            logger.exception(
+            logger.error(
                 "Failed to release Meta lifecycle lock. " "credential_id=%s",
                 credential_id,
             )
@@ -293,7 +561,7 @@ class MetaTokenLifecycleService:
             )
 
         except Exception:
-            logger.exception(
+            logger.error(
                 "Unable to resolve parent Meta USER credential. "
                 "page_credential_id=%s",
                 page_credential.id,
@@ -356,7 +624,7 @@ class MetaTokenLifecycleService:
             )
 
         except Exception as exc:
-            logger.exception(
+            logger.error(
                 "Failed to decrypt Meta USER access token. " "credential_id=%s",
                 user_credential.id,
             )
@@ -624,7 +892,7 @@ class MetaTokenLifecycleService:
                 )
 
             except Exception:
-                logger.exception(
+                logger.error(
                     "Failed to decrypt Facebook Page token. " "credential_id=%s",
                     credential.id,
                 )
@@ -679,24 +947,32 @@ class MetaTokenLifecycleService:
 
                 # Temporary Meta/network issue.
                 if self._is_temporary_error(exc):
+                    error_details = self.api.safe_error_metadata(exc)
                     logger.warning(
                         "Temporary Meta error while validating "
                         "Facebook Page token. "
-                        "credential_id=%s error=%s",
+                        "credential_id=%s http_status=%s "
+                        "graph_error_code=%s graph_error_subcode=%s",
                         credential.id,
-                        exc,
+                        error_details["http_status"],
+                        error_details["graph_error_code"],
+                        error_details["graph_error_subcode"],
                     )
 
                     return "retry"
 
                 # Unexpected non-authentication error.
                 if not self._is_authentication_error(exc):
+                    error_details = self.api.safe_error_metadata(exc)
                     logger.error(
                         "Unexpected Meta error while validating "
                         "Facebook Page token. "
-                        "credential_id=%s error=%s",
+                        "credential_id=%s http_status=%s "
+                        "graph_error_code=%s graph_error_subcode=%s",
                         credential.id,
-                        exc,
+                        error_details["http_status"],
+                        error_details["graph_error_code"],
+                        error_details["graph_error_subcode"],
                     )
 
                     return "retry"
@@ -714,11 +990,52 @@ class MetaTokenLifecycleService:
             # Recover Page token using USER token
             # ------------------------------------------------
 
+            parent_credential = self._get_parent_user_credential(
+                page_credential=credential,
+            )
+            if (
+                parent_credential is None
+                or parent_credential.status != MetaCredentialStatus.ACTIVE
+            ):
+                logger.warning(
+                    "Facebook Page recovery deferred because parent Meta credential needs reconnect. credential_id=%s",
+                    credential.id,
+                )
+                return "reconnect_needed"
+
             try:
                 new_page_token = self._reissue_page_token(
                     page_credential=credential,
                 )
+            except MetaAPIError as exc:
+                if self._is_temporary_error(exc):
+                    details = self.api.safe_error_metadata(exc)
+                    logger.warning(
+                    "Temporary Meta error while recovering Facebook Page token. "
+                    "credential_id=%s http_status=%s graph_error_code=%s "
+                    "graph_error_subcode=%s",
+                    credential.id,
+                    details["http_status"],
+                    details["graph_error_code"],
+                    details["graph_error_subcode"],
+                    )
+                    return "retry"
+                if self._parent_error_is_definitive(exc):
+                    self._mark_parent_reconnect_needed(credential, exc)
+                    details = self.api.safe_error_metadata(exc)
+                    logger.warning(
+                    "Parent Meta credential requires reconnect after Page recovery failure. "
+                    "credential_id=%s http_status=%s graph_error_code=%s "
+                    "graph_error_subcode=%s",
+                    credential.id,
+                    details["http_status"],
+                    details["graph_error_code"],
+                    details["graph_error_subcode"],
+                    )
+                    return "reconnect_needed"
+                return "retry"
 
+            try:
                 # ------------------------------------------------
                 # STEP 3
                 # Validate newly issued token
@@ -753,23 +1070,31 @@ class MetaTokenLifecycleService:
             except MetaAPIError as exc:
 
                 if self._is_temporary_error(exc):
+                    error_details = self.api.safe_error_metadata(exc)
                     logger.warning(
                         "Temporary Meta error while recovering "
                         "Facebook Page token. "
-                        "credential_id=%s error=%s",
+                        "credential_id=%s http_status=%s "
+                        "graph_error_code=%s graph_error_subcode=%s",
                         credential.id,
-                        exc,
+                        error_details["http_status"],
+                        error_details["graph_error_code"],
+                        error_details["graph_error_subcode"],
                     )
 
                     return "retry"
 
                 if self._is_authentication_error(exc):
+                    error_details = self.api.safe_error_metadata(exc)
                     logger.warning(
                         "Facebook Page token recovery failed. "
                         "Reconnect required. "
-                        "credential_id=%s error=%s",
+                        "credential_id=%s http_status=%s "
+                        "graph_error_code=%s graph_error_subcode=%s",
                         credential.id,
-                        exc,
+                        error_details["http_status"],
+                        error_details["graph_error_code"],
+                        error_details["graph_error_subcode"],
                     )
 
                     self._mark_page_invalid(
@@ -780,17 +1105,21 @@ class MetaTokenLifecycleService:
 
                     return "invalid"
 
+                error_details = self.api.safe_error_metadata(exc)
                 logger.error(
                     "Unexpected Meta error during Page token "
-                    "recovery. credential_id=%s error=%s",
+                    "recovery. credential_id=%s http_status=%s "
+                    "graph_error_code=%s graph_error_subcode=%s",
                     credential.id,
-                    exc,
+                    error_details["http_status"],
+                    error_details["graph_error_code"],
+                    error_details["graph_error_subcode"],
                 )
 
                 return "retry"
 
             except Exception:
-                logger.exception(
+                logger.error(
                     "Unexpected exception during Facebook "
                     "Page token lifecycle. credential_id=%s",
                     credential.id,
@@ -824,9 +1153,15 @@ class MetaTokenLifecycleService:
             "checked": 0,
             "verified": 0,
             "refreshed": 0,
+            "valid": 0,
             "invalid": 0,
             "revoked": 0,
             "retry": 0,
+            "reconnect_needed": 0,
+            "parent_checked": 0,
+            "parent_valid": 0,
+            "parent_invalid": 0,
+            "parent_retry": 0,
             "skipped": 0,
             "locked": 0,
         }
@@ -846,6 +1181,40 @@ class MetaTokenLifecycleService:
             .order_by("id")
         )
 
+        # Resolve each selected parent USER credential once, then run a single
+        # health probe per credential for this maintenance cycle.
+        parents = {}
+        for page_credential in credentials:
+            parent = self._get_parent_user_credential(page_credential=page_credential)
+            if parent:
+                parents.setdefault(str(parent.id), parent)
+        reconnect_parent_ids = set()
+        for parent_id, parent in parents.items():
+            if parent.status != MetaCredentialStatus.ACTIVE:
+                if parent.status in {
+                    MetaCredentialStatus.EXPIRED,
+                    MetaCredentialStatus.REVOKED,
+                    MetaCredentialStatus.INVALID,
+                    MetaCredentialStatus.ERROR,
+                }:
+                    result["parent_invalid"] += 1
+                    result["invalid"] += 1
+                    reconnect_parent_ids.add(parent_id)
+                continue
+            result["parent_checked"] += 1
+            result["checked"] += 1
+            parent_outcome = self._check_parent_user_credential(parent)
+            if parent_outcome == "valid":
+                result["parent_valid"] += 1
+                result["valid"] += 1
+            elif parent_outcome == "reconnect_needed":
+                result["parent_invalid"] += 1
+                result["invalid"] += 1
+                reconnect_parent_ids.add(parent_id)
+            else:
+                result["parent_retry"] += 1
+                result["retry"] += 1
+
         for credential in credentials:
             result["checked"] += 1
 
@@ -855,18 +1224,35 @@ class MetaTokenLifecycleService:
                 )
 
             except Exception:
-                logger.exception(
-                    "Unhandled Meta lifecycle error. " "credential_id=%s",
-                    credential.id,
-                )
+                logger.error("Unhandled Meta lifecycle error. credential_id=%s", credential.id)
 
                 result["retry"] += 1
                 continue
 
-            if outcome in result:
+            if outcome in {
+                "verified",
+                "refreshed",
+                "invalid",
+                "revoked",
+                "retry",
+                "skipped",
+                "locked",
+            }:
                 result[outcome] += 1
-            else:
-                result["skipped"] += 1
+
+            if outcome in {"verified", "refreshed"}:
+                result["valid"] += 1
+            elif outcome == "reconnect_needed":
+                parent = self._get_parent_user_credential(page_credential=credential)
+                if parent:
+                    reconnect_parent_ids.add(str(parent.id))
+                else:
+                    connection_id = getattr(credential.social_account, "connection_id", None)
+                    reconnect_parent_ids.add(f"missing-parent:{connection_id or credential.id}")
+
+        # Parent failures make this run partial even when the Page-token probe
+        # itself did not need recovery.
+        result["reconnect_needed"] = len(reconnect_parent_ids)
 
         logger.info(
             "Meta Facebook Page token lifecycle completed: %s",

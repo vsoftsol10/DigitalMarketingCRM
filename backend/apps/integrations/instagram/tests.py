@@ -1,9 +1,11 @@
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from cryptography.fernet import Fernet
 from django.test import SimpleTestCase, TestCase
 from django.test import override_settings
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.organizations.models import Organization
@@ -11,7 +13,10 @@ from apps.posts.publishing.meta import MetaPublisher
 from apps.social_accounts.models import SocialAccount, SocialAccountStatus, SocialPlatform
 
 from .client import InstagramAPIClient
+from .crypto import decrypt_token, encrypt_token
 from .exceptions import InstagramAPIError
+from .lifecycle import InstagramTokenLifecycleService
+from .models import InstagramAccountCredential, InstagramCredentialStatus
 from .services import InstagramOAuthService
 
 
@@ -207,6 +212,221 @@ class InstagramAPIClientObservabilityTests(SimpleTestCase):
             "Private detail",
         ):
             self.assertNotIn(secret, output)
+
+
+@override_settings(
+    META_CREDENTIAL_ENCRYPTION_KEY=Fernet.generate_key().decode(),
+    INSTAGRAM_TOKEN_REFRESH_WINDOW_SECONDS=7 * 24 * 60 * 60,
+)
+class InstagramTokenLifecycleServiceTests(TestCase):
+    original_token = "synthetic-instagram-token-original"
+    replacement_token = "synthetic-instagram-token-replacement"
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            email="instagram-lifecycle-owner@example.com",
+            password="test-password",
+            first_name="Instagram Lifecycle Owner",
+        )
+        self.organization = Organization.objects.create(
+            organization_id="ORG-IG-LIFECYCLE",
+            name="Instagram Lifecycle Test",
+            slug="instagram-lifecycle-test",
+            industry="Retail",
+            created_by=self.owner,
+        )
+        self.social_account = SocialAccount.objects.create(
+            organization=self.organization,
+            platform=SocialPlatform.INSTAGRAM,
+            platform_account_id="instagram-lifecycle-account",
+            username="lifecycle_test_account",
+            status=SocialAccountStatus.CONNECTED,
+            is_valid=True,
+        )
+        self.credential = InstagramAccountCredential.objects.create(
+            social_account=self.social_account,
+            encrypted_access_token=encrypt_token(self.original_token),
+            token_expires_at=timezone.now() + timedelta(days=3),
+            status=InstagramCredentialStatus.ACTIVE,
+        )
+
+        # Lifecycle lock behavior is verified with a deterministic mock so
+        # these tests never need a live Redis service.
+        self.cache_add_patcher = patch(
+            "apps.integrations.instagram.lifecycle.cache.add",
+            return_value=True,
+        )
+        self.cache_delete_patcher = patch(
+            "apps.integrations.instagram.lifecycle.cache.delete",
+        )
+        self.cache_add = self.cache_add_patcher.start()
+        self.cache_delete = self.cache_delete_patcher.start()
+        self.addCleanup(self.cache_add_patcher.stop)
+        self.addCleanup(self.cache_delete_patcher.stop)
+
+        self.service = InstagramTokenLifecycleService.__new__(
+            InstagramTokenLifecycleService,
+        )
+        self.service.client = MagicMock()
+
+    def test_active_credential_outside_refresh_window_is_skipped(self):
+        self.credential.token_expires_at = timezone.now() + timedelta(days=14)
+        self.credential.save(update_fields=["token_expires_at"])
+
+        result = self.service.refresh_due_credentials()
+
+        self.assertEqual(
+            result,
+            {
+                "checked": 1,
+                "refreshed": 0,
+                "expired": 0,
+                "errors": 0,
+                "skipped": 1,
+                "locked": 0,
+                "retry": 0,
+            },
+        )
+        self.cache_add.assert_not_called()
+        self.service.client.refresh_long_lived_token.assert_not_called()
+        self.credential.refresh_from_db()
+        self.assertEqual(self.credential.status, InstagramCredentialStatus.ACTIVE)
+
+    def test_credential_inside_refresh_window_calls_mocked_refresh_api(self):
+        self.service.client.refresh_long_lived_token.return_value = {
+            "access_token": self.replacement_token,
+            "expires_in": 60 * 24 * 60 * 60,
+        }
+
+        result = self.service.refresh_due_credentials()
+
+        self.assertEqual(result["refreshed"], 1)
+        self.service.client.refresh_long_lived_token.assert_called_once_with(
+            access_token=self.original_token,
+        )
+
+    def test_successful_refresh_encrypts_token_and_persists_new_expiry(self):
+        self.service.client.refresh_long_lived_token.return_value = {
+            "access_token": self.replacement_token,
+            "expires_in": 60 * 24 * 60 * 60,
+        }
+        before_refresh = timezone.now()
+
+        result = self.service.refresh_credential(self.credential.id)
+
+        after_refresh = timezone.now()
+        self.assertEqual(result["status"], "refreshed")
+        self.credential.refresh_from_db()
+        self.social_account.refresh_from_db()
+
+        # The stored value must remain ciphertext. Decryption below is limited
+        # to this synthetic fixture token and verifies the production encryptor.
+        self.assertNotEqual(
+            self.credential.encrypted_access_token,
+            self.replacement_token,
+        )
+        self.assertEqual(
+            decrypt_token(self.credential.encrypted_access_token),
+            self.replacement_token,
+        )
+        self.assertGreaterEqual(
+            self.credential.token_expires_at,
+            before_refresh + timedelta(days=60),
+        )
+        self.assertLessEqual(
+            self.credential.token_expires_at,
+            after_refresh + timedelta(days=60),
+        )
+        self.assertEqual(self.credential.status, InstagramCredentialStatus.ACTIVE)
+        self.assertIsNotNone(self.credential.last_verified_at)
+        self.assertEqual(self.social_account.status, SocialAccountStatus.CONNECTED)
+        self.assertTrue(self.social_account.is_valid)
+
+    def test_temporary_provider_error_preserves_credential_and_allows_retry(self):
+        original_expiry = self.credential.token_expires_at
+        original_ciphertext = self.credential.encrypted_access_token
+        self.service.client.refresh_long_lived_token.side_effect = [
+            InstagramAPIError(
+                "Temporary Instagram API failure.",
+                status_code=429,
+            ),
+            {
+                "access_token": self.replacement_token,
+                "expires_in": 60 * 24 * 60 * 60,
+            },
+        ]
+
+        first_result = self.service.refresh_credential(self.credential.id)
+        self.credential.refresh_from_db()
+        self.assertEqual(first_result["status"], "retry")
+        self.assertEqual(self.credential.status, InstagramCredentialStatus.ACTIVE)
+        self.assertEqual(self.credential.encrypted_access_token, original_ciphertext)
+        self.assertEqual(self.credential.token_expires_at, original_expiry)
+
+        second_result = self.service.refresh_credential(self.credential.id)
+
+        self.assertEqual(second_result["status"], "refreshed")
+        self.assertEqual(
+            self.service.client.refresh_long_lived_token.call_count,
+            2,
+        )
+
+    def test_already_expired_credential_is_marked_expired_without_refresh(self):
+        self.credential.token_expires_at = timezone.now() - timedelta(seconds=1)
+        self.credential.save(update_fields=["token_expires_at"])
+
+        result = self.service.refresh_credential(self.credential.id)
+
+        self.assertEqual(result["status"], "expired")
+        self.service.client.refresh_long_lived_token.assert_not_called()
+        self.credential.refresh_from_db()
+        self.social_account.refresh_from_db()
+        self.assertEqual(self.credential.status, InstagramCredentialStatus.EXPIRED)
+        self.assertEqual(self.social_account.status, SocialAccountStatus.EXPIRED)
+        self.assertFalse(self.social_account.is_valid)
+
+    def test_revoked_and_other_non_active_credentials_are_not_refreshed(self):
+        for status, expected_result in (
+            (InstagramCredentialStatus.REVOKED, "revoked"),
+            (InstagramCredentialStatus.EXPIRED, "skipped"),
+            (InstagramCredentialStatus.ERROR, "skipped"),
+        ):
+            with self.subTest(status=status):
+                self.credential.status = status
+                self.credential.save(update_fields=["status"])
+
+                result = self.service.refresh_credential(self.credential.id)
+
+                self.assertEqual(result["status"], expected_result)
+                self.service.client.refresh_long_lived_token.assert_not_called()
+
+    def test_active_credential_without_expiry_is_refreshed(self):
+        self.credential.token_expires_at = None
+        self.credential.save(update_fields=["token_expires_at"])
+        self.service.client.refresh_long_lived_token.return_value = {
+            "access_token": self.replacement_token,
+            "expires_in": 60 * 24 * 60 * 60,
+        }
+
+        result = self.service.refresh_due_credentials()
+
+        self.assertEqual(result["refreshed"], 1)
+        self.service.client.refresh_long_lived_token.assert_called_once_with(
+            access_token=self.original_token,
+        )
+        self.credential.refresh_from_db()
+        self.assertIsNotNone(self.credential.token_expires_at)
+        self.assertEqual(self.credential.status, InstagramCredentialStatus.ACTIVE)
+
+    def test_redis_lock_contention_returns_locked_without_provider_call(self):
+        self.cache_add.return_value = False
+
+        result = self.service.refresh_credential(self.credential.id)
+
+        self.assertEqual(result["status"], "locked")
+        self.cache_add.assert_called_once()
+        self.cache_delete.assert_not_called()
+        self.service.client.refresh_long_lived_token.assert_not_called()
 
 
 class InstagramOAuthProfileImageLengthTests(TestCase):

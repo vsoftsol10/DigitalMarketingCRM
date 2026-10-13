@@ -1484,9 +1484,11 @@ import logging
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import List
+from uuid import uuid4
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Case, IntegerField, Value, When
 from django.utils import timezone
 
 from apps.social_accounts.models import (
@@ -1499,6 +1501,7 @@ from apps.social_accounts.models import (
 )
 
 from .client import MetaAPIClient
+from .constants import META_PAGE_FIELDS
 from .crypto import decrypt_token, encrypt_token
 from .exceptions import MetaAPIError
 from .oauth import OAUTH_ACTION_CONNECT, OAUTH_ACTION_RECONNECT
@@ -1583,11 +1586,20 @@ class MetaAccountDiscoveryService:
             -> Instagram SocialAccount
     """
 
-    def __init__(self, access_token: str):
+    def __init__(self, access_token: str, *, sensitive_values=()):
         self.access_token = access_token
+        self.sensitive_values = tuple(
+            value
+            for value in (access_token, *sensitive_values)
+            if isinstance(value, str) and value
+        )
         self.client = MetaAPIClient()
 
-    def discover_accounts(self) -> MetaDiscoveryResult:
+    def discover_accounts(
+        self,
+        *,
+        correlation_id: str = "",
+    ) -> MetaDiscoveryResult:
         """
         Discover usable Facebook Pages.
 
@@ -1598,9 +1610,19 @@ class MetaAccountDiscoveryService:
         # CURRENT META USER
         # ----------------------------------------------------
 
-        current_user = self.client.get_current_user(
-            access_token=self.access_token,
-        )
+        correlation_id = correlation_id or uuid4().hex
+
+        try:
+            current_user = self.client.get_current_user(
+                access_token=self.access_token,
+            )
+        except MetaAPIError as exc:
+            self._log_graph_error(
+                "current_user",
+                exc,
+                correlation_id,
+            )
+            raise
 
         if not isinstance(current_user, dict):
             raise MetaAPIError(
@@ -1620,20 +1642,93 @@ class MetaAccountDiscoveryService:
         # FACEBOOK PAGES
         # ----------------------------------------------------
 
-        pages = self.client.get_pages(
-            access_token=self.access_token,
+        page_response_metadata = {}
+        try:
+            pages = self.client.get_pages(
+                access_token=self.access_token,
+                response_metadata=page_response_metadata,
+            )
+        except MetaAPIError as exc:
+            error_metadata = self.client.safe_error_metadata(exc)
+            page_response_metadata.setdefault(
+                "http_status_code",
+                error_metadata["http_status"],
+            )
+            page_response_metadata.setdefault(
+                "graph_error_code",
+                error_metadata["graph_error_code"],
+            )
+            page_response_metadata.setdefault(
+                "graph_error_subcode",
+                error_metadata["graph_error_subcode"],
+            )
+            page_response_metadata.setdefault(
+                "response_case",
+                "api_request_failure",
+            )
+            self._log_pages_response_diagnostics(
+                correlation_id,
+                page_response_metadata,
+                level=(
+                    logging.WARNING
+                    if page_response_metadata["response_case"]
+                    in {"api_request_failure", "unexpected_response_structure"}
+                    else logging.INFO
+                ),
+            )
+            raise
+        except Exception:
+            page_response_metadata.setdefault("http_status_code", None)
+            page_response_metadata.setdefault("graph_error_code", None)
+            page_response_metadata.setdefault("graph_error_subcode", None)
+            page_response_metadata["response_case"] = "api_request_failure"
+            self._log_pages_response_diagnostics(
+                correlation_id,
+                page_response_metadata,
+                level=logging.WARNING,
+            )
+            raise
+
+        self._log_pages_response_diagnostics(
+            correlation_id,
+            page_response_metadata,
+            level=(
+                logging.WARNING
+                if page_response_metadata.get("response_case")
+                == "unexpected_response_structure"
+                else logging.INFO
+            ),
+        )
+
+        raw_page_count = len(pages)
+        usable_page_count = 0
+        page_token_values = tuple(
+            page.get("access_token", "").strip()
+            for page in pages
+            if isinstance(page, dict)
+            and isinstance(page.get("access_token"), str)
+            and page.get("access_token", "").strip()
+        )
+        sensitive_log_values = (*self.sensitive_values, *page_token_values)
+
+        logger.info(
+            "Meta Facebook Page discovery started correlation_id=%s "
+            "raw_page_count=%s.",
+            correlation_id,
+            raw_page_count,
         )
 
         if not pages:
+            logger.info(
+                "Meta Facebook Page discovery completed correlation_id=%s "
+                "raw_page_count=%s usable_page_count=%s.",
+                correlation_id,
+                raw_page_count,
+                usable_page_count,
+            )
             raise MetaAPIError(
                 "Meta did not return any Facebook Pages for " "this authorization.",
             )
-
-        logger.info(
-            "Meta returned %s Facebook Page(s) for provider_user_id=%s.",
-            len(pages),
-            provider_user_id,
-        )
 
         accounts: List[MetaAccountData] = []
 
@@ -1644,7 +1739,9 @@ class MetaAccountDiscoveryService:
         for page in pages:
             if not isinstance(page, dict):
                 logger.warning(
-                    "Skipping invalid Meta Page payload.",
+                    "Meta Facebook Page discovery entry "
+                    "correlation_id=%s outcome=skipped_invalid_entry.",
+                    correlation_id,
                 )
                 continue
 
@@ -1666,7 +1763,16 @@ class MetaAccountDiscoveryService:
 
             if not page_id:
                 logger.warning(
-                    "Skipping Meta Page without an ID.",
+                    "Meta Facebook Page discovery entry "
+                    "correlation_id=%s page_name=%s "
+                    "page_access_token_present=%s "
+                    "outcome=skipped_missing_id.",
+                    correlation_id,
+                    self._safe_log_value(
+                        page_name,
+                        sensitive_values=sensitive_log_values,
+                    ),
+                    bool(page_access_token),
                 )
                 continue
 
@@ -1676,9 +1782,20 @@ class MetaAccountDiscoveryService:
 
             if not page_access_token:
                 logger.warning(
-                    "Skipping Meta Page %s because no Page "
-                    "access token was returned.",
-                    page_id,
+                    "Meta Facebook Page discovery entry "
+                    "correlation_id=%s page_id=%s page_name=%s "
+                    "page_access_token_present=%s "
+                    "outcome=skipped_missing_page_token.",
+                    correlation_id,
+                    self._safe_log_value(
+                        page_id,
+                        sensitive_values=sensitive_log_values,
+                    ),
+                    self._safe_log_value(
+                        page_name,
+                        sensitive_values=sensitive_log_values,
+                    ),
+                    False,
                 )
                 continue
 
@@ -1695,6 +1812,31 @@ class MetaAccountDiscoveryService:
                     credential_type=MetaCredentialType.PAGE,
                 )
             )
+            usable_page_count += 1
+
+            logger.info(
+                "Meta Facebook Page discovery entry correlation_id=%s "
+                "page_id=%s page_name=%s page_access_token_present=%s "
+                "outcome=kept.",
+                correlation_id,
+                self._safe_log_value(
+                    page_id,
+                    sensitive_values=sensitive_log_values,
+                ),
+                self._safe_log_value(
+                    page_name,
+                    sensitive_values=sensitive_log_values,
+                ),
+                True,
+            )
+
+        logger.info(
+            "Meta Facebook Page discovery completed correlation_id=%s "
+            "raw_page_count=%s usable_page_count=%s.",
+            correlation_id,
+            raw_page_count,
+            usable_page_count,
+        )
 
         if not accounts:
             raise MetaAPIError(
@@ -1704,6 +1846,80 @@ class MetaAccountDiscoveryService:
         return MetaDiscoveryResult(
             provider_user_id=provider_user_id,
             accounts=accounts,
+        )
+
+    @staticmethod
+    def _safe_log_value(
+        value: str,
+        *,
+        limit: int = 160,
+        sensitive_values=(),
+    ) -> str:
+        """Bound and strip control characters from provider metadata."""
+        if not isinstance(value, str):
+            return ""
+        for sensitive_value in sensitive_values:
+            if isinstance(sensitive_value, str) and sensitive_value:
+                value = value.replace(sensitive_value, "[redacted]")
+        return "".join(
+            character
+            for character in value
+            if character.isprintable()
+        )[:limit]
+
+    def _log_graph_error(
+        self,
+        request_name: str,
+        error: MetaAPIError,
+        correlation_id: str,
+    ) -> None:
+        details = self.client.safe_error_metadata(error)
+        logger.warning(
+            "Meta Facebook OAuth Graph request failed "
+            "correlation_id=%s request=%s http_status=%s "
+            "graph_error_code=%s graph_error_subcode=%s.",
+            correlation_id,
+            request_name,
+            details["http_status"],
+            details["graph_error_code"],
+            details["graph_error_subcode"],
+        )
+
+    @staticmethod
+    def _log_pages_response_diagnostics(
+        correlation_id: str,
+        metadata: dict,
+        *,
+        level: int,
+    ) -> None:
+        """Log only allowlisted metadata for the /me/accounts response."""
+        config_id = MetaAccountDiscoveryService._safe_log_value(
+            str(getattr(settings, "META_BUSINESS_LOGIN_CONFIG_ID", "") or "")
+        )
+        api_version = MetaAccountDiscoveryService._safe_log_value(
+            str(getattr(settings, "META_GRAPH_API_VERSION", "") or "")
+        )
+        logger.log(
+            level,
+            "Meta Facebook /me/accounts diagnostic "
+            "correlation_id=%s config_id=%s http_status_code=%s "
+            "graph_api_version=%s requested_field_names=%s "
+            "data_present=%s data_type=%s parsed_page_count=%s "
+            "paging_present=%s paging_next_present=%s "
+            "graph_error_code=%s graph_error_subcode=%s response_case=%s.",
+            correlation_id,
+            config_id,
+            metadata.get("http_status_code"),
+            api_version,
+            tuple(META_PAGE_FIELDS.split(",")),
+            metadata.get("data_present"),
+            metadata.get("data_type"),
+            metadata.get("parsed_page_count"),
+            metadata.get("paging_present"),
+            metadata.get("paging_next_present"),
+            metadata.get("graph_error_code"),
+            metadata.get("graph_error_subcode"),
+            metadata.get("response_case", "response_metadata_unavailable"),
         )
 
 
@@ -1851,9 +2067,20 @@ class MetaSocialAccountService:
             MetaAccountCredential.objects.filter(
                 social_connection=connection,
                 credential_type=MetaCredentialType.USER,
+                is_deleted=False,
             )
             .order_by(
+                Case(
+                    When(
+                        status=MetaCredentialStatus.ACTIVE,
+                        access_token__gt="",
+                        then=Value(0),
+                    ),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                ),
                 "-created_at",
+                "-id",
             )
             .first()
         )
@@ -1876,6 +2103,12 @@ class MetaSocialAccountService:
             credential.last_verified_at = now
             credential.is_deleted = False
             credential.deleted_at = None
+            credential.provider_token_type = ""
+            credential.provider_is_valid = None
+            credential.provider_expires_at = None
+            credential.data_access_expires_at = None
+            credential.last_health_check_at = None
+            credential.granted_permissions = []
 
             credential.save()
 
@@ -2231,6 +2464,167 @@ class MetaOAuthService:
     """
 
     SESSION_TTL_SECONDS = 600
+
+    @staticmethod
+    def _safe_permission_records(response, *, sensitive_values=()) -> list:
+        if not isinstance(response, dict):
+            return []
+
+        data = response.get("data")
+        if not isinstance(data, list):
+            return []
+
+        records = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+
+            permission = item.get("permission")
+            if (
+                not isinstance(permission, str)
+                or not permission
+                or len(permission) > 100
+                or permission in sensitive_values
+                or permission[0] not in "abcdefghijklmnopqrstuvwxyz"
+                or not all(
+                    character in "abcdefghijklmnopqrstuvwxyz0123456789_"
+                    for character in permission
+                )
+            ):
+                continue
+
+            status = item.get("status")
+            status = (
+                status.lower()
+                if isinstance(status, str)
+                and status.lower() in {"granted", "declined", "expired"}
+                else "unknown"
+            )
+            records.append(
+                {
+                    "permission": permission,
+                    "status": status,
+                }
+            )
+
+        return records
+
+    @staticmethod
+    def _safe_expiry(value):
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            return value
+        return None
+
+    @staticmethod
+    def _safe_token_type(value):
+        """Return a recognized Meta token type, never arbitrary provider text."""
+        allowed_types = {"USER", "PAGE", "APP", "CLIENT_APP", "SYSTEM_USER"}
+        if isinstance(value, str) and value.upper() in allowed_types:
+            return value.upper()
+        return "unknown"
+
+    def _log_token_diagnostics(
+        self,
+        *,
+        access_token: str,
+        correlation_id: str,
+        sensitive_values=(),
+    ) -> None:
+        """Log allowlisted token metadata; diagnostic failures are non-fatal."""
+        try:
+            permissions = self.client.get_user_permissions(
+                access_token=access_token,
+            )
+            records = self._safe_permission_records(
+                permissions,
+                sensitive_values=(access_token, *sensitive_values),
+            )
+            logger.info(
+                "Meta OAuth permission diagnostics correlation_id=%s "
+                "permissions=%s.",
+                correlation_id,
+                records,
+            )
+        except MetaAPIError as exc:
+            details = self.client.safe_error_metadata(exc)
+            logger.warning(
+                "Meta OAuth diagnostic unavailable correlation_id=%s "
+                "diagnostic=permissions http_status=%s "
+                "graph_error_code=%s graph_error_subcode=%s.",
+                correlation_id,
+                details["http_status"],
+                details["graph_error_code"],
+                details["graph_error_subcode"],
+            )
+        except Exception:
+            logger.warning(
+                "Meta OAuth diagnostic unavailable correlation_id=%s "
+                "diagnostic=permissions.",
+                correlation_id,
+            )
+
+        try:
+            token_data = self.client.diagnose_token(
+                access_token=access_token,
+            )
+            if not isinstance(token_data, dict):
+                token_data = {}
+
+            scopes = token_data.get("scopes")
+            safe_scopes = []
+            sensitive_values = {
+                access_token,
+                getattr(settings, "META_APP_SECRET", ""),
+                *sensitive_values,
+            }
+            if isinstance(scopes, list):
+                safe_scopes = [
+                    scope
+                    for scope in scopes
+                    if isinstance(scope, str)
+                    and scope
+                    and len(scope) <= 100
+                    and scope not in sensitive_values
+                    and scope[0] in "abcdefghijklmnopqrstuvwxyz"
+                    and all(
+                        character in "abcdefghijklmnopqrstuvwxyz0123456789_"
+                        for character in scope
+                    )
+                ]
+
+            is_valid = token_data.get("is_valid")
+            if not isinstance(is_valid, bool):
+                is_valid = None
+            token_type = self._safe_token_type(token_data.get("type"))
+
+            logger.info(
+                "Meta OAuth token diagnostics correlation_id=%s "
+                "token_type=%s is_valid=%s expires_at=%s "
+                "data_access_expires_at=%s scopes=%s.",
+                correlation_id,
+                token_type,
+                is_valid,
+                self._safe_expiry(token_data.get("expires_at")),
+                self._safe_expiry(token_data.get("data_access_expires_at")),
+                safe_scopes,
+            )
+        except MetaAPIError as exc:
+            details = self.client.safe_error_metadata(exc)
+            logger.warning(
+                "Meta OAuth diagnostic unavailable correlation_id=%s "
+                "diagnostic=debug_token http_status=%s "
+                "graph_error_code=%s graph_error_subcode=%s.",
+                correlation_id,
+                details["http_status"],
+                details["graph_error_code"],
+                details["graph_error_subcode"],
+            )
+        except Exception:
+            logger.warning(
+                "Meta OAuth diagnostic unavailable correlation_id=%s "
+                "diagnostic=debug_token.",
+                correlation_id,
+            )
 
     def __init__(self):
         self.client = MetaAPIClient()
@@ -2674,6 +3068,7 @@ class MetaOAuthService:
         user,
         action: str = OAUTH_ACTION_CONNECT,
         social_account_id=None,
+        correlation_id: str = "",
     ):
         """
         Complete Meta OAuth.
@@ -2772,6 +3167,8 @@ class MetaOAuthService:
                 "META_OAUTH_REDIRECT_URI is not configured.",
             )
 
+        correlation_id = correlation_id or uuid4().hex
+
         # ----------------------------------------------------
         # CODE → META USER ACCESS TOKEN
         # ----------------------------------------------------
@@ -2801,13 +3198,20 @@ class MetaOAuthService:
             token_response,
         )
 
+        self._log_token_diagnostics(
+            access_token=access_token,
+            correlation_id=correlation_id,
+            sensitive_values=(code, settings.META_APP_SECRET),
+        )
+
         # ----------------------------------------------------
         # DISCOVER FACEBOOK PAGES ONLY
         # ----------------------------------------------------
 
         discovery = MetaAccountDiscoveryService(
             access_token=access_token,
-        ).discover_accounts()
+            sensitive_values=(code, settings.META_APP_SECRET),
+        ).discover_accounts(correlation_id=correlation_id)
 
         facebook_accounts = [
             account

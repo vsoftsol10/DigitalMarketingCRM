@@ -93,6 +93,25 @@ class SocialAccountLifecycleStatus:
         return None
 
     @staticmethod
+    def parent_meta_credential_needs_reconnect(social_account):
+        if social_account.platform != SocialPlatform.FACEBOOK or not social_account.connection_id:
+            return False
+        from apps.integrations.meta.selectors import get_meta_connection_credential
+
+        parent = get_meta_connection_credential(
+            social_connection=social_account.connection,
+        )
+        return bool(
+            parent
+            and parent.status in {
+                MetaCredentialStatus.EXPIRED,
+                MetaCredentialStatus.REVOKED,
+                MetaCredentialStatus.INVALID,
+                MetaCredentialStatus.ERROR,
+            }
+        )
+
+    @staticmethod
     def needs_reconnect(
         social_account,
         credential_status,
@@ -120,6 +139,11 @@ class SocialAccountLifecycleStatus:
             MetaCredentialStatus.INVALID.lower(),
             MetaCredentialStatus.ERROR.lower(),
         }:
+            return True
+
+        if SocialAccountLifecycleStatus.parent_meta_credential_needs_reconnect(
+            social_account,
+        ):
             return True
 
         return False

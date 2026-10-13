@@ -8,7 +8,9 @@ class CredentialRedactionFilter(logging.Filter):
     """Redact credentials from low-level HTTP library log records."""
 
     _SECRET_ASSIGNMENT = re.compile(
-        r"(?i)(\b(?:access_token|refresh_token)\s*[=:]\s*)[^\s&,'\";]+"
+        r"(?i)(\b(?:access_token|refresh_token|input_token|fb_exchange_token|"
+        r"client_secret|app_secret|appsecret_proof|oauth_code|code|"
+        r"id_token|signed_request)\s*[=:]\s*)[^\s&,'\";]+"
     )
     _AUTHORIZATION = re.compile(
         r"(?i)(\b(?:proxy-)?authorization\s*[:=]\s*)"

@@ -1,3 +1,5 @@
+from django.db.models import Case, IntegerField, Value, When
+
 from apps.social_accounts.models import (
     SocialAccount,
     SocialConnection,
@@ -6,6 +8,7 @@ from apps.social_accounts.models import (
 
 from .models import (
     MetaAccountCredential,
+    MetaCredentialStatus,
     MetaCredentialType,
 )
 
@@ -111,6 +114,19 @@ def get_meta_connection_credential(
             social_connection=social_connection,
             credential_type=MetaCredentialType.USER,
             is_deleted=False,
+        )
+        .order_by(
+            Case(
+                When(
+                    status=MetaCredentialStatus.ACTIVE,
+                    access_token__gt="",
+                    then=Value(0),
+                ),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            "-created_at",
+            "-id",
         )
         .select_related(
             "social_connection",

@@ -1342,6 +1342,7 @@
 
 import logging
 from urllib.parse import urlencode
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -1357,7 +1358,7 @@ from apps.social_accounts.models import (
     SocialPlatform,
 )
 
-from .client import MetaAPIError
+from .client import MetaAPIClient, MetaAPIError
 from .constants import (
     META_OAUTH_AUTHORIZE_URL,
     META_OAUTH_STATE_MAX_AGE_SECONDS,
@@ -1638,10 +1639,9 @@ class MetaOAuthCallbackAPIView(APIView):
                 max_age=META_OAUTH_STATE_MAX_AGE_SECONDS,
             )
 
-        except MetaOAuthStateError as exc:
+        except MetaOAuthStateError:
             logger.warning(
                 "Invalid Meta OAuth state.",
-                exc_info=True,
             )
 
             return _frontend_redirect(
@@ -1649,7 +1649,7 @@ class MetaOAuthCallbackAPIView(APIView):
                 {
                     "social_connect": "error",
                     "platform": "meta",
-                    "reason": str(exc),
+                    "reason": "Invalid Meta OAuth callback.",
                 },
             )
 
@@ -1736,19 +1736,12 @@ class MetaOAuthCallbackAPIView(APIView):
         error = (request.query_params.get("error") or "").strip()
 
         if error:
-            error_description = (
-                request.query_params.get(
-                    "error_description",
-                )
-                or "Meta authorization was cancelled."
-            )
-
             return _frontend_redirect(
                 overview_path,
                 {
                     "social_connect": "error",
                     "platform": "meta",
-                    "reason": error_description,
+                    "reason": "Meta authorization was cancelled.",
                 },
             )
 
@@ -1818,6 +1811,8 @@ class MetaOAuthCallbackAPIView(APIView):
         # COMPLETE FACEBOOK OAUTH
         # ====================================================
 
+        correlation_id = uuid4().hex
+
         try:
             result = MetaOAuthService().prepare_oauth(
                 code=code,
@@ -1825,6 +1820,7 @@ class MetaOAuthCallbackAPIView(APIView):
                 user=user,
                 action=action,
                 social_account_id=social_account_id or None,
+                correlation_id=correlation_id,
             )
 
             # =================================================
@@ -1920,9 +1916,16 @@ class MetaOAuthCallbackAPIView(APIView):
             )
 
         except MetaAPIError as exc:
-            logger.exception(
-                "Meta OAuth API failure for organization=%s",
+            error_metadata = MetaAPIClient.safe_error_metadata(exc)
+            logger.warning(
+                "Meta OAuth API failure correlation_id=%s "
+                "organization_id=%s http_status=%s "
+                "graph_error_code=%s graph_error_subcode=%s.",
+                correlation_id,
                 organization_id,
+                error_metadata["http_status"],
+                error_metadata["graph_error_code"],
+                error_metadata["graph_error_subcode"],
             )
 
             return _frontend_redirect(
@@ -1930,13 +1933,15 @@ class MetaOAuthCallbackAPIView(APIView):
                 {
                     "social_connect": "error",
                     "platform": "meta",
-                    "reason": str(exc),
+                    "reason": "Unable to connect Facebook Page.",
                 },
             )
 
         except Exception:
-            logger.exception(
-                "Unexpected Meta OAuth failure for organization=%s",
+            logger.error(
+                "Unexpected Meta OAuth failure correlation_id=%s "
+                "organization_id=%s.",
+                correlation_id,
                 organization_id,
             )
 
@@ -2060,11 +2065,11 @@ class MetaOAuthSelectionAPIView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        except MetaAPIError as exc:
+        except MetaAPIError:
             return Response(
                 {
                     "success": False,
-                    "message": str(exc),
+                    "message": "Unable to load Facebook Pages.",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -2233,11 +2238,11 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        except MetaAPIError as exc:
+        except MetaAPIError:
             return Response(
                 {
                     "success": False,
-                    "message": str(exc),
+                    "message": "Unable to connect Facebook Page.",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

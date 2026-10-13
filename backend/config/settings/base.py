@@ -461,8 +461,38 @@ LOGGING = {
         "credential_redaction": {
             "()": "config.log_filters.CredentialRedactionFilter",
         },
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
+    },
+    "handlers": {
+        "meta_diagnostics_console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "filters": ["require_debug_true", "credential_redaction"],
+        },
+        "meta_maintenance_console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "filters": ["credential_redaction"],
+        },
     },
     "loggers": {
+        "apps.integrations.meta.services": {
+            "handlers": ["meta_diagnostics_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps.integrations.meta.tasks": {
+            "handlers": ["meta_maintenance_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps.integrations.meta.lifecycle": {
+            "handlers": ["meta_maintenance_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "urllib3.connectionpool": {
             "filters": ["credential_redaction"],
         },

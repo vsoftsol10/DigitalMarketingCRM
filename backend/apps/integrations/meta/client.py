@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
 import requests
 from django.conf import settings
@@ -80,18 +80,27 @@ class MetaAPIClient:
     @staticmethod
     def _safe_response(
         response: requests.Response,
+        response_metadata: Optional[Dict[str, Any]] = None,
     ) -> dict:
         try:
             payload = response.json()
 
             if isinstance(payload, dict):
+                if response_metadata is not None:
+                    response_metadata["_provider_data_key_present"] = "data" in payload
                 return payload
 
+            if response_metadata is not None:
+                response_metadata["_provider_data_key_present"] = False
+                response_metadata["_unexpected_response_structure"] = True
             return {
                 "data": payload,
             }
 
         except ValueError:
+            if response_metadata is not None:
+                response_metadata["_provider_data_key_present"] = False
+                response_metadata["_unexpected_response_structure"] = True
             return {
                 "error": {"message": (response.text or "Invalid response from Meta.")}
             }
@@ -99,8 +108,9 @@ class MetaAPIClient:
     def _handle_response(
         self,
         response: requests.Response,
+        response_metadata: Optional[Dict[str, Any]] = None,
     ) -> dict:
-        payload = self._safe_response(response)
+        payload = self._safe_response(response, response_metadata)
 
         if not response.ok:
             message = self._extract_error_message(
@@ -115,6 +125,27 @@ class MetaAPIClient:
 
         return payload
 
+    @staticmethod
+    def safe_error_metadata(error: MetaAPIError) -> dict:
+        """Return only non-sensitive HTTP and Graph error identifiers."""
+        payload = getattr(error, "error_payload", None)
+        graph_error = payload.get("error") if isinstance(payload, dict) else None
+        if not isinstance(graph_error, dict):
+            graph_error = {}
+
+        def safe_integer(value):
+            if isinstance(value, int) and not isinstance(value, bool):
+                return value
+            return None
+
+        return {
+            "http_status": safe_integer(getattr(error, "status_code", None)),
+            "graph_error_code": safe_integer(graph_error.get("code")),
+            "graph_error_subcode": safe_integer(
+                graph_error.get("error_subcode"),
+            ),
+        }
+
     # ========================================================
     # GET
     # ========================================================
@@ -125,7 +156,9 @@ class MetaAPIClient:
         *,
         access_token: str,
         params: Optional[Dict[str, Any]] = None,
-    ) -> dict:
+        return_http_status: bool = False,
+        response_metadata: Optional[Dict[str, Any]] = None,
+    ) -> Union[dict, Tuple[dict, int]]:
         if not access_token:
             raise MetaAPIError(
                 "Meta access token is required.",
@@ -146,18 +179,22 @@ class MetaAPIClient:
                 timeout=self.timeout,
             )
 
-        except requests.RequestException as exc:
+        except requests.RequestException:
             # GET requests carry the access token in query parameters, and
             # logging request details or a traceback can expose that token.
             logger.error("Meta GET request failed.")
 
             raise MetaAPIError(
                 "Meta API request failed.",
-            ) from exc
+            ) from None
 
-        return self._handle_response(
+        payload = self._handle_response(
             response,
+            response_metadata,
         )
+        if return_http_status:
+            return payload, response.status_code
+        return payload
 
     def post(self, path: str, *, access_token: str, data=None) -> dict:
         """POST to Graph without ever logging credentials or request bodies."""
@@ -170,9 +207,9 @@ class MetaAPIClient:
 
         try:
             response = requests.post(url, data=payload, timeout=self.timeout)
-        except requests.RequestException as exc:
-            logger.exception("Meta POST request failed: %s", url)
-            raise MetaAPIError("Meta API request failed.") from exc
+        except requests.RequestException:
+            logger.error("Meta POST request failed.")
+            raise MetaAPIError("Meta API request failed.") from None
 
         return self._handle_response(response)
 
@@ -202,9 +239,9 @@ class MetaAPIClient:
                 },
                 timeout=self.timeout,
             )
-        except requests.RequestException as exc:
-            logger.exception("Meta Reel video upload failed.")
-            raise MetaAPIError("Meta Reel video upload failed.") from exc
+        except requests.RequestException:
+            logger.error("Meta Reel video upload failed.")
+            raise MetaAPIError("Meta Reel video upload failed.") from None
 
         return self._handle_response(response)
 
@@ -272,14 +309,14 @@ class MetaAPIClient:
                 timeout=self.timeout,
             )
 
-        except requests.RequestException as exc:
-            logger.exception(
-                "Meta OAuth token exchange failed.",
-            )
+        except requests.RequestException:
+            # The request URL contains the app secret and OAuth code. Do not
+            # log the request exception or chain it into later traceback logs.
+            logger.error("Meta OAuth token exchange request failed.")
 
             raise MetaAPIError(
                 "Meta token exchange request failed.",
-            ) from exc
+            ) from None
 
         return self._handle_response(
             response,
@@ -360,24 +397,81 @@ class MetaAPIClient:
         self,
         *,
         access_token: str,
+        response_metadata: Optional[Dict[str, Any]] = None,
     ) -> list:
-        response = self.get(
-            "/me/accounts",
-            access_token=access_token,
-            params={
-                "fields": META_PAGE_FIELDS,
-            },
-        )
+        try:
+            response, http_status_code = self.get(
+                "/me/accounts",
+                access_token=access_token,
+                params={
+                    "fields": META_PAGE_FIELDS,
+                },
+                return_http_status=True,
+                response_metadata=response_metadata,
+            )
+        except MetaAPIError as exc:
+            if response_metadata is not None:
+                error_metadata = self.safe_error_metadata(exc)
+                response_metadata.update(
+                    {
+                        "http_status_code": error_metadata["http_status"],
+                        "graph_error_code": error_metadata["graph_error_code"],
+                        "graph_error_subcode": error_metadata[
+                            "graph_error_subcode"
+                        ],
+                        "response_case": "api_request_failure",
+                    }
+                )
+            raise
 
-        pages = response.get(
-            "data",
-            [],
+        provider_data_key_present = (
+            response_metadata.pop("_provider_data_key_present", "data" in response)
+            if response_metadata is not None
+            else "data" in response
         )
+        unexpected_response_structure = (
+            response_metadata.pop("_unexpected_response_structure", False)
+            if response_metadata is not None
+            else False
+        )
+        data_present = bool(provider_data_key_present)
+        data_value = response.get("data")
+        pages = data_value if "data" in response else []
+        paging_present = "paging" in response
+        paging = response.get("paging")
+        paging_is_dict = isinstance(paging, dict)
+        paging_next_present = bool(paging.get("next")) if paging_is_dict else False
+        pages_is_list = isinstance(pages, list)
 
-        if not isinstance(
-            pages,
-            list,
-        ):
+        if unexpected_response_structure:
+            response_case = "unexpected_response_structure"
+        elif not data_present:
+            response_case = "missing_data_key"
+        elif not pages_is_list or (paging_present and not paging_is_dict):
+            response_case = "unexpected_response_structure"
+        elif not pages:
+            response_case = "explicitly_empty_data"
+        elif paging_next_present:
+            response_case = "response_contains_additional_pages"
+        else:
+            response_case = "pages_returned"
+
+        if response_metadata is not None:
+            response_metadata.update(
+                {
+                    "http_status_code": http_status_code,
+                    "data_present": data_present,
+                    "data_type": type(data_value).__name__ if data_present else "missing",
+                    "parsed_page_count": len(pages) if pages_is_list else None,
+                    "paging_present": paging_present,
+                    "paging_next_present": paging_next_present,
+                    "response_case": response_case,
+                    "graph_error_code": None,
+                    "graph_error_subcode": None,
+                }
+            )
+
+        if not pages_is_list:
             raise MetaAPIError(
                 "Meta returned an invalid Pages response.",
             )

@@ -92,6 +92,15 @@ class MetaAccountCredential(BaseModel):
         blank=True,
     )
 
+    # Parent USER-token diagnostics are deliberately separate from the
+    # existing token_expires_at field, which retains its original meaning.
+    provider_token_type = models.CharField(max_length=20, blank=True)
+    provider_is_valid = models.BooleanField(null=True, blank=True)
+    provider_expires_at = models.DateTimeField(null=True, blank=True)
+    data_access_expires_at = models.DateTimeField(null=True, blank=True)
+    last_health_check_at = models.DateTimeField(null=True, blank=True)
+    granted_permissions = models.JSONField(default=list, blank=True)
+
     class Meta:
         db_table = "meta_account_credentials"
 
@@ -371,3 +380,28 @@ class MetaOAuthSession(BaseModel):
 
     def __str__(self):
         return f"Meta OAuth session {self.selection_key}"
+
+
+class MetaTokenMaintenanceRun(models.Model):
+    """Durable, credential-free summary of a scheduled maintenance run."""
+
+    class Outcome(models.TextChoices):
+        RUNNING = "RUNNING", "Running"
+        SUCCESS = "SUCCESS", "Success"
+        PARTIAL = "PARTIAL", "Partial"
+        FAILED = "FAILED", "Failed"
+
+    run_id = models.UUIDField(primary_key=True, editable=False)
+    started_at = models.DateTimeField()
+    finished_at = models.DateTimeField(null=True, blank=True)
+    duration_ms = models.PositiveIntegerField(null=True, blank=True)
+    outcome = models.CharField(max_length=10, choices=Outcome.choices)
+    checked = models.PositiveIntegerField(default=0)
+    valid = models.PositiveIntegerField(default=0)
+    invalid = models.PositiveIntegerField(default=0)
+    retry = models.PositiveIntegerField(default=0)
+    reconnect_needed = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "meta_token_maintenance_runs"
+        ordering = ["-started_at"]

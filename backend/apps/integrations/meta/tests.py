@@ -818,11 +818,24 @@ class MetaParentCredentialLifecycleTests(TestCase):
         class FakeRedisClient:
             def __init__(self):
                 self.values = {}
+                self.eval_calls = []
 
             def eval(self, script, key_count, key, expected_value):
                 self.script = script
                 self.key_count = key_count
-                if self.values.get(key) == expected_value:
+                stored_value_before = self.values.get(key)
+                deleted = stored_value_before == expected_value
+                self.eval_calls.append(
+                    {
+                        "script": script,
+                        "key_count": key_count,
+                        "key": key,
+                        "serialized_owner_token": expected_value,
+                        "stored_value_before": stored_value_before,
+                        "deleted": deleted,
+                    }
+                )
+                if deleted:
                     del self.values[key]
                     return 1
                 return 0
@@ -833,9 +846,12 @@ class MetaParentCredentialLifecycleTests(TestCase):
         other_owner = cache._cache._serializer.dumps("owner-b")
         redis_client.values[lock_key] = other_owner
 
-        with patch(
-            "apps.integrations.meta.lifecycle.cache._cache.get_client",
-            return_value=redis_client,
+        with (
+            patch(
+                "apps.integrations.meta.lifecycle.cache._cache.get_client",
+                return_value=redis_client,
+            ),
+            patch("apps.integrations.meta.lifecycle.logger.error") as release_error_log,
         ):
             self.service._release_lock("page-1", "owner-a")
             self.assertEqual(redis_client.values[lock_key], other_owner)
@@ -843,6 +859,23 @@ class MetaParentCredentialLifecycleTests(TestCase):
             redis_client.values[lock_key] = expected_owner
             self.service._release_lock("page-1", "owner-a")
 
+        self.assertFalse(release_error_log.called, release_error_log.call_args_list)
+        self.assertEqual(
+            [
+                (
+                    call["key"],
+                    call["serialized_owner_token"],
+                    call["stored_value_before"],
+                    call["deleted"],
+                )
+                for call in redis_client.eval_calls
+            ],
+            [
+                (lock_key, expected_owner, other_owner, False),
+                (lock_key, expected_owner, expected_owner, True),
+            ],
+        )
+        self.assertEqual(len(redis_client.eval_calls), 2)
         self.assertNotIn(lock_key, redis_client.values)
         self.assertEqual(redis_client.key_count, 1)
         self.assertIn("redis.call('GET'", redis_client.script)

@@ -845,6 +845,10 @@ class MetaParentCredentialLifecycleTests(TestCase):
         expected_owner = cache._cache._serializer.dumps("owner-a")
         other_owner = cache._cache._serializer.dumps("owner-b")
         redis_client.values[lock_key] = other_owner
+        release_lock = MetaTokenLifecycleService._release_lock.__get__(
+            self.service,
+            type(self.service),
+        )
 
         with (
             patch(
@@ -853,11 +857,11 @@ class MetaParentCredentialLifecycleTests(TestCase):
             ),
             patch("apps.integrations.meta.lifecycle.logger.error") as release_error_log,
         ):
-            self.service._release_lock("page-1", "owner-a")
+            release_lock("page-1", "owner-a")
             self.assertEqual(redis_client.values[lock_key], other_owner)
 
             redis_client.values[lock_key] = expected_owner
-            self.service._release_lock("page-1", "owner-a")
+            release_lock("page-1", "owner-a")
 
         self.assertFalse(release_error_log.called, release_error_log.call_args_list)
         self.assertEqual(

@@ -19,7 +19,9 @@ INSIGHTS_MAX_MEDIA_PAGES_PER_ATTEMPT = config(
     cast=int,
 )
 if INSIGHTS_MAX_MEDIA_PAGES_PER_ATTEMPT < 1:
-    raise ImproperlyConfigured("INSIGHTS_MAX_MEDIA_PAGES_PER_ATTEMPT must be a positive integer.")
+    raise ImproperlyConfigured(
+        "INSIGHTS_MAX_MEDIA_PAGES_PER_ATTEMPT must be a positive integer."
+    )
 
 INSTALLED_APPS = [
     # Django Apps
@@ -180,8 +182,19 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
 }
 
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:5173",
+# ]
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    # frontend deploy aana apram unga real URL add pannunga
+    # "https://your-frontend-domain.com",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://digitalmarketingcrm.onrender.com",
+    # "https://your-frontend-domain.com",
 ]
 
 SPECTACULAR_SETTINGS = {

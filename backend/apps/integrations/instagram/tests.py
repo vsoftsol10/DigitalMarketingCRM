@@ -2,6 +2,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import requests
 from cryptography.fernet import Fernet
 from django.test import SimpleTestCase, TestCase
 from django.test import override_settings
@@ -71,6 +72,25 @@ class InstagramAPIClientObservabilityTests(SimpleTestCase):
             data={"creation_id": "container-1", "access_token": "token"},
             timeout=10,
         )
+
+    @patch("apps.integrations.instagram.client.requests.get")
+    def test_refresh_network_error_is_sanitized(self, get):
+        token_canary = "ACCESS_TOKEN_NETWORK_FAILURE_CANARY"
+        get.side_effect = requests.ConnectionError(
+            f"Connection failed for URL with access_token={token_canary}"
+        )
+        client = self.make_client()
+
+        with patch.object(client, "_pace_graph_request"):
+            with self.assertRaises(InstagramAPIError) as raised:
+                client.refresh_long_lived_token(access_token=token_canary)
+
+        self.assertEqual(
+            str(raised.exception),
+            "Instagram token refresh request failed.",
+        )
+        self.assertNotIn(token_canary, str(raised.exception))
+        self.assertTrue(raised.exception.__suppress_context__)
 
     @override_settings(INSTAGRAM_GRAPH_REQUEST_INTERVAL_SECONDS=0.25)
     @patch("apps.integrations.instagram.client.time.sleep")
@@ -370,6 +390,39 @@ class InstagramTokenLifecycleServiceTests(TestCase):
             self.service.client.refresh_long_lived_token.call_count,
             2,
         )
+
+    @patch("apps.integrations.instagram.client.requests.get")
+    def test_refresh_network_error_retries_without_logging_or_changing_credential(
+        self,
+        get,
+    ):
+        original_expiry = self.credential.token_expires_at
+        original_ciphertext = self.credential.encrypted_access_token
+        get.side_effect = requests.ConnectionError(
+            "Connection failed for URL with "
+            f"access_token={self.original_token}"
+        )
+        client = InstagramAPIClient.__new__(InstagramAPIClient)
+        client.timeout = 10
+        client._pace_graph_request = MagicMock()
+        self.service.client = client
+
+        with self.assertLogs(
+            "apps.integrations.instagram.lifecycle",
+            level="WARNING",
+        ) as logs:
+            result = self.service.refresh_credential(self.credential.id)
+
+        output = "\n".join(logs.output)
+        self.assertEqual(result["status"], "retry")
+        self.assertNotIn(self.original_token, output)
+        self.assertNotIn("Connection failed for URL", output)
+        get.assert_called_once()
+
+        self.credential.refresh_from_db()
+        self.assertEqual(self.credential.status, InstagramCredentialStatus.ACTIVE)
+        self.assertEqual(self.credential.encrypted_access_token, original_ciphertext)
+        self.assertEqual(self.credential.token_expires_at, original_expiry)
 
     def test_already_expired_credential_is_marked_expired_without_refresh(self):
         self.credential.token_expires_at = timezone.now() - timedelta(seconds=1)

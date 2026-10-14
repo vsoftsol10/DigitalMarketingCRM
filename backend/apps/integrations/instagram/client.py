@@ -272,14 +272,21 @@ return slot_ms - now_ms
 
         self._pace_graph_request()
 
-        response = requests.get(
-            f"{INSTAGRAM_GRAPH_BASE_URL}/refresh_access_token",
-            params={
-                "grant_type": "ig_refresh_token",
-                "access_token": access_token,
-            },
-            timeout=self.timeout,
-        )
+        try:
+            response = requests.get(
+                f"{INSTAGRAM_GRAPH_BASE_URL}/refresh_access_token",
+                params={
+                    "grant_type": "ig_refresh_token",
+                    "access_token": access_token,
+                },
+                timeout=self.timeout,
+            )
+        except requests.RequestException:
+            # Request exceptions can include the full URL, including the
+            # access_token query parameter. Do not retain or log that detail.
+            raise InstagramAPIError(
+                "Instagram token refresh request failed."
+            ) from None
 
         return self._handle_response(
             response,

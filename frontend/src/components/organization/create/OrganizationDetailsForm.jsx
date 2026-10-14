@@ -2,10 +2,7 @@ import { Grid } from "@mui/material";
 
 import FormSection from "../../ui/form/FormSection";
 import FormTextField from "../../ui/form/FormTextField";
-import FormSelect from "../../ui/form/FormSelect";
 import FormTextArea from "../../ui/form/FormTextArea";
-
-import { INDUSTRY_OPTIONS } from "../../../constants/form-options/industryOptions";
 
 export default function OrganizationDetailsForm() {
   return (
@@ -24,12 +21,11 @@ export default function OrganizationDetailsForm() {
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <FormSelect
+          <FormTextField
             name="industry"
             label="Industry"
             required
-            placeholder="Select Industry"
-            options={INDUSTRY_OPTIONS}
+            placeholder="Enter industry"
           />
         </Grid>
 

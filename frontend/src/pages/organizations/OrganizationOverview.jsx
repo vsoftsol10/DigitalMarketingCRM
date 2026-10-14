@@ -1291,7 +1291,6 @@ import OrganizationProfileCard from "../../components/organization/overview/card
 import BrandInformationCard from "../../components/organization/overview/cards/BrandInformationCard";
 import ContactInformationCard from "../../components/organization/overview/cards/ContactInformationCard";
 import SubscriptionCard from "../../components/organization/overview/cards/SubscriptionCard";
-import ActivityTimelineCard from "../../components/organization/overview/cards/ActivityTimelineCard";
 
 // ============================================================
 // SOCIAL ACCOUNTS
@@ -2350,7 +2349,6 @@ export default function OrganizationOverview() {
             refreshKey={socialAccountsRefreshKey}
           />
         }
-        activityTimeline={<ActivityTimelineCard organization={organization} />}
         profile={<OrganizationProfileCard organization={organization} />}
         subscription={
           <SubscriptionCard

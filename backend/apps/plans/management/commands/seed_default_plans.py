@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from apps.plans.models import (
-    BillingCycle,
+    # BillingCycle,
     Plan,
     PlanStatus,
 )
@@ -16,7 +16,7 @@ DEFAULT_PLANS = [
             "looking to build their online presence."
         ),
         "status": PlanStatus.ACTIVE,
-        "billing_cycle": BillingCycle.MONTHLY,
+        # "billing_cycle": BillingCycle.MONTHLY,
         "monthly_price": 9999,
         "yearly_price": 99999,
         "accounts_limit": 3,
@@ -37,7 +37,7 @@ DEFAULT_PLANS = [
             "clients with high content volume."
         ),
         "status": PlanStatus.ACTIVE,
-        "billing_cycle": BillingCycle.MONTHLY,
+        # "billing_cycle": BillingCycle.MONTHLY,
         "monthly_price": 29999,
         "yearly_price": 299999,
         "accounts_limit": 15,
@@ -57,7 +57,7 @@ DEFAULT_PLANS = [
             "For large teams with advanced workflows " "and higher content demands."
         ),
         "status": PlanStatus.ACTIVE,
-        "billing_cycle": BillingCycle.MONTHLY,
+        # "billing_cycle": BillingCycle.MONTHLY,
         "monthly_price": 49999,
         "yearly_price": 499999,
         "accounts_limit": 30,

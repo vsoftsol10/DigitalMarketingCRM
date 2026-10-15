@@ -188,13 +188,12 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
-    # frontend deploy aana apram unga real URL add pannunga
-    # "https://your-frontend-domain.com",
+    "https://digitalmarketing.thevsoft.com",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://digitalmarketingcrm.onrender.com",
-    # "https://your-frontend-domain.com",
+    "https://digitalmarketing.thevsoft.com",
 ]
 
 SPECTACULAR_SETTINGS = {

@@ -250,7 +250,15 @@ class RequiredSubscriptionPlanMigrationTests(TransactionTestCase):
             description="Existing approved Basic configuration.",
             status="inactive",
             monthly_price=1234,
+            yearly_price=12345,
+            accounts_limit=7,
+            posts_limit=77,
+            videos_limit=27,
+            ads_limit=8,
+            dm_automations_limit=12,
+            highlights="Existing Basic highlights",
             is_system=False,
+            is_custom=True,
         )
 
         self.migrate_forward()
@@ -258,15 +266,41 @@ class RequiredSubscriptionPlanMigrationTests(TransactionTestCase):
         Plan = self.apps.get_model("plans", "Plan")
         existing_basic.refresh_from_db()
         advanced = Plan.objects.get(code="advanced")
+        self.assertEqual(existing_basic.plan_type, "BASIC")
         self.assertEqual(
             existing_basic.description,
             "Existing approved Basic configuration.",
         )
         self.assertEqual(existing_basic.status, "inactive")
         self.assertEqual(existing_basic.monthly_price, 1234)
+        self.assertEqual(existing_basic.yearly_price, 12345)
+        self.assertEqual(existing_basic.accounts_limit, 7)
+        self.assertEqual(existing_basic.posts_limit, 77)
+        self.assertEqual(existing_basic.videos_limit, 27)
+        self.assertEqual(existing_basic.ads_limit, 8)
+        self.assertEqual(existing_basic.dm_automations_limit, 12)
+        self.assertEqual(existing_basic.highlights, "Existing Basic highlights")
         self.assertFalse(existing_basic.is_system)
+        self.assertTrue(existing_basic.is_custom)
         self.assertEqual(advanced.plan_type, "ADVANCED")
         self.assertFalse(Plan.objects.filter(code="legacy-custom").exists())
+
+    def test_migration_seeds_basic_and_advanced_when_both_are_missing(self):
+        self.migrate_forward()
+
+        Plan = self.apps.get_model("plans", "Plan")
+        basic = Plan.objects.get(code="basic")
+        advanced = Plan.objects.get(code="advanced")
+        self.assertEqual(basic.name, "Basic")
+        self.assertEqual(basic.plan_type, "BASIC")
+        self.assertEqual(basic.status, "active")
+        self.assertEqual(basic.monthly_price, 9999)
+        self.assertEqual(advanced.name, "Advanced")
+        self.assertEqual(advanced.plan_type, "ADVANCED")
+        self.assertEqual(advanced.status, "active")
+        self.assertEqual(advanced.monthly_price, 49999)
+        self.assertEqual(Plan.objects.filter(code="basic").count(), 1)
+        self.assertEqual(Plan.objects.filter(code="advanced").count(), 1)
 
     def test_migration_preserves_existing_advanced_plan_configuration(self):
         Plan = self.apps.get_model("plans", "Plan")

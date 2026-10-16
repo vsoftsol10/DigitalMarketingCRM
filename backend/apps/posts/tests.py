@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import timedelta
 from io import BytesIO
 from types import SimpleNamespace
@@ -80,6 +81,22 @@ class CalendarPostActionTests(TestCase):
             status=PostStatus.DRAFT,
         )
         return post, target
+
+    def dispatch_after_soft_deleting_org_before_claim(self):
+        atomic = transaction.atomic
+        claim_transactions = []
+
+        @contextmanager
+        def soft_delete_before_claim():
+            claim_transactions.append(True)
+            with atomic():
+                self.organization.soft_delete()
+                yield
+
+        with patch("apps.posts.tasks.transaction.atomic", new=soft_delete_before_claim):
+            dispatch_due_posts_task.run()
+
+        self.assertEqual(len(claim_transactions), 1)
 
     @patch("apps.posts.services.validate_target_accounts")
     def test_draft_can_be_scheduled_only_for_a_future_time(self, validate_targets):
@@ -520,6 +537,76 @@ class CalendarPostActionTests(TestCase):
         facebook_target.refresh_from_db()
         self.assertEqual(facebook_target.status, PostStatus.PUBLISHING)
         delay.assert_called_once_with(str(post.id), str(facebook_target.id))
+
+    @patch("apps.posts.tasks.publish_post_task.delay")
+    def test_due_dispatch_skips_soft_deleted_organization(self, delay):
+        target_post, target = self.create_post(status=PostStatus.SCHEDULED)
+        target_post.publish_type = PostPublishType.SCHEDULE
+        target_post.scheduled_at = timezone.now() - timedelta(minutes=2)
+        target_post.save()
+        target.status = PostStatus.SCHEDULED
+        target.scheduled_at = timezone.now() - timedelta(minutes=1)
+        target.save()
+
+        legacy_post = Post.objects.create(
+            organization=self.organization,
+            created_by=self.user,
+            publish_type=PostPublishType.SCHEDULE,
+            status=PostStatus.SCHEDULED,
+            scheduled_at=timezone.now() - timedelta(minutes=1),
+        )
+        legacy_target = PostPlatform.objects.create(
+            post=legacy_post,
+            social_account=self.account,
+            platform=SocialPlatform.FACEBOOK,
+            content_type="POST",
+            status=PostStatus.DRAFT,
+        )
+        self.organization.soft_delete()
+
+        dispatch_due_posts_task.run()
+
+        target.refresh_from_db()
+        target_post.refresh_from_db()
+        legacy_post.refresh_from_db()
+        self.assertEqual(target.status, PostStatus.SCHEDULED)
+        self.assertEqual(target_post.status, PostStatus.SCHEDULED)
+        self.assertEqual(legacy_post.status, PostStatus.SCHEDULED)
+        self.assertEqual(legacy_target.status, PostStatus.DRAFT)
+        delay.assert_not_called()
+
+    @patch("apps.posts.tasks.publish_post_task.delay")
+    def test_legacy_due_post_claim_rechecks_organization_soft_delete(self, delay):
+        post, target = self.create_post(status=PostStatus.SCHEDULED)
+        post.publish_type = PostPublishType.SCHEDULE
+        post.scheduled_at = timezone.now() - timedelta(minutes=1)
+        post.save()
+
+        self.dispatch_after_soft_deleting_org_before_claim()
+
+        post.refresh_from_db()
+        target.refresh_from_db()
+        self.assertEqual(post.status, PostStatus.SCHEDULED)
+        self.assertEqual(target.status, PostStatus.DRAFT)
+        delay.assert_not_called()
+
+    @patch("apps.posts.tasks.publish_post_task.delay")
+    def test_target_due_claim_rechecks_organization_soft_delete(self, delay):
+        post, target = self.create_post(status=PostStatus.SCHEDULED)
+        post.publish_type = PostPublishType.SCHEDULE
+        post.scheduled_at = timezone.now() - timedelta(minutes=2)
+        post.save()
+        target.status = PostStatus.SCHEDULED
+        target.scheduled_at = timezone.now() - timedelta(minutes=1)
+        target.save()
+
+        self.dispatch_after_soft_deleting_org_before_claim()
+
+        post.refresh_from_db()
+        target.refresh_from_db()
+        self.assertEqual(post.status, PostStatus.SCHEDULED)
+        self.assertEqual(target.status, PostStatus.SCHEDULED)
+        delay.assert_not_called()
 
     @patch("apps.posts.tasks.get_publisher")
     def test_target_publish_task_failure_transitions_only_target_to_failed(self, get_publisher):
@@ -2163,6 +2250,68 @@ class PostCreationTests(TestCase):
             [str(own_target.id)],
         )
 
+    def test_calendar_events_exclude_soft_deleted_organizations_with_status_and_month_filters(self):
+        scheduled_at = timezone.now() + timedelta(days=2)
+        active_post = Post.objects.create(
+            organization=self.organization,
+            created_by=self.user,
+            status=PostStatus.SCHEDULED,
+            caption="Active scheduled post",
+        )
+        active_target = PostPlatform.objects.create(
+            post=active_post,
+            platform=SocialPlatform.FACEBOOK,
+            social_account=self.account,
+            content_type="STORY",
+            status=PostStatus.SCHEDULED,
+            scheduled_at=scheduled_at,
+            scheduled_timezone="UTC",
+        )
+
+        deleted_organization = Organization.objects.create(
+            organization_id="ORG-POST-DELETED",
+            name="Deleted Organization",
+            slug="deleted-organization",
+            industry="Retail",
+            created_by=self.user,
+        )
+        deleted_account = SocialAccount.objects.create(
+            organization=deleted_organization,
+            platform=SocialPlatform.INSTAGRAM,
+            platform_account_id="deleted-instagram",
+            account_name="Deleted Instagram",
+        )
+        deleted_post = Post.objects.create(
+            organization=deleted_organization,
+            created_by=self.user,
+            status=PostStatus.SCHEDULED,
+            caption="Deleted scheduled post",
+        )
+        deleted_target = PostPlatform.objects.create(
+            post=deleted_post,
+            platform=SocialPlatform.INSTAGRAM,
+            social_account=deleted_account,
+            content_type="STORY",
+            status=PostStatus.SCHEDULED,
+            scheduled_at=scheduled_at,
+            scheduled_timezone="UTC",
+        )
+        deleted_organization.soft_delete()
+
+        response = self.api_client.get(
+            "/api/posts/calendar/events/",
+            {
+                "month": scheduled_at.strftime("%Y-%m"),
+                "status": "SCHEDULED",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        events = response.json()["data"]
+        self.assertEqual([event["id"] for event in events], [str(active_target.id)])
+        self.assertEqual(events[0]["content_type"], "STORY")
+        self.assertNotIn(str(deleted_target.id), [event["id"] for event in events])
+
     def test_calendar_event_detail_returns_owned_target_in_calendar_event_shape(self):
         post = Post.objects.create(
             organization=self.organization,
@@ -2189,6 +2338,26 @@ class PostCreationTests(TestCase):
             if event["id"] == str(target.id)
         )
         self.assertEqual(detail_response.json()["data"], list_event)
+
+    def test_calendar_event_detail_returns_not_found_for_soft_deleted_organization(self):
+        post = Post.objects.create(
+            organization=self.organization,
+            created_by=self.user,
+            status=PostStatus.PUBLISHED,
+            caption="Archived organization post",
+        )
+        target = PostPlatform.objects.create(
+            post=post,
+            platform=SocialPlatform.FACEBOOK,
+            social_account=self.account,
+            content_type="STORY",
+            status=PostStatus.PUBLISHED,
+        )
+        self.organization.soft_delete()
+
+        response = self.api_client.get(f"/api/posts/calendar/events/{target.id}/")
+
+        self.assertEqual(response.status_code, 404)
 
     def test_calendar_event_detail_returns_not_found_for_another_users_target(self):
         other_user = User.objects.create_user(

@@ -92,7 +92,7 @@ class Migration(migrations.Migration):
     dependencies = [
         (
             "organizations",
-            "0007_organizationsubscription_plan_reference",
+            "0007_seed_required_subscription_plans",
         ),
         (
             "plans",

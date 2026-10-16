@@ -59,6 +59,7 @@ def get_calendar_events(*, user, month=None, search="", organization_id="", soci
         PostPlatform.objects.filter(
             is_deleted=False,
             post__is_deleted=False,
+            post__organization__is_deleted=False,
             post__organization__created_by=user,
         )
         .select_related("post", "post__organization", "social_account")
@@ -123,6 +124,7 @@ def get_calendar_event_by_target_id(*, user, target_id):
             id=target_id,
             is_deleted=False,
             post__is_deleted=False,
+            post__organization__is_deleted=False,
             post__organization__created_by=user,
         )
         .select_related("post", "post__organization", "social_account")

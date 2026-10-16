@@ -403,6 +403,7 @@ def dispatch_due_posts_task():
     # claimed exclusively by the target loop below.
     due = Post.objects.filter(
         is_deleted=False,
+        organization__is_deleted=False,
         status=PostStatus.SCHEDULED,
         scheduled_at__lte=timezone.now(),
     ).exclude(
@@ -411,7 +412,11 @@ def dispatch_due_posts_task():
     ).values_list("id", flat=True)[:100]
     for post_id in due:
         with transaction.atomic():
-            post = Post.objects.select_for_update(skip_locked=True).filter(id=post_id, status=PostStatus.SCHEDULED).first()
+            post = Post.objects.select_for_update(skip_locked=True).filter(
+                id=post_id,
+                status=PostStatus.SCHEDULED,
+                organization__is_deleted=False,
+            ).first()
             if not post:
                 continue
             post.status = PostStatus.PUBLISHING
@@ -426,6 +431,7 @@ def dispatch_due_posts_task():
             status=PostStatus.SCHEDULED,
             scheduled_at__lte=timezone.now(),
             post__is_deleted=False,
+            post__organization__is_deleted=False,
         )
         .values_list("id", flat=True)[:100]
     )
@@ -445,6 +451,7 @@ def dispatch_due_posts_task():
             post = Post.objects.select_for_update().filter(
                 id=target.post_id,
                 is_deleted=False,
+                organization__is_deleted=False,
             ).first()
             if not post:
                 continue

@@ -3,12 +3,13 @@ from html import escape
 from io import BytesIO
 from pathlib import Path
 import sys
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 from django.test import SimpleTestCase
 from django.urls import reverse
 from PIL import Image
-from rest_framework.test import APITestCase
+from rest_framework.test import APIRequestFactory, APITestCase, force_authenticate
 
 from apps.accounts.models import User
 from apps.insights.models import (
@@ -304,6 +305,70 @@ class InsightsReportApiTests(APITestCase):
 
 
 class InsightsReportRendererTests(SimpleTestCase):
+    def test_renderer_unavailable_returns_safe_api_error(self):
+        from apps.reports.views import InsightsReportPngAPIView
+
+        serializer = Mock()
+        serializer.is_valid.return_value = True
+        serializer.validated_data = {"render_token": "render-token", "html": "<html></html>"}
+        render_claim = {
+            "organization_id": "ORG-TEST",
+            "social_account_id": "account-id",
+            "since": "2026-09-01",
+            "until": "2026-09-07",
+            "duration_days": 7,
+        }
+        account = SimpleNamespace(platform="instagram")
+        request = APIRequestFactory().post(
+            "/api/reports/insights/png/",
+            {},
+            format="json",
+        )
+        force_authenticate(request, user=SimpleNamespace(is_authenticated=True))
+
+        with (
+            patch(
+                "apps.reports.views.InsightsReportRenderSerializer",
+                return_value=serializer,
+            ),
+            patch(
+                "apps.reports.views.validate_report_render_token",
+                return_value=render_claim,
+            ),
+            patch(
+                "apps.reports.views.get_selected_account",
+                return_value=(None, account),
+            ),
+            patch("apps.reports.views.get_duration_slot_days", return_value=7),
+            patch(
+                "apps.reports.views.render_report_png",
+                side_effect=ReportRenderError("internal path /srv/app and renderer secret"),
+            ),
+        ):
+            response = InsightsReportPngAPIView.as_view()(request)
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.data["errors"]["render"],
+            "The report image renderer is unavailable.",
+        )
+        self.assertNotIn("/srv/app", str(response.data))
+        self.assertNotIn("renderer secret", str(response.data))
+
+    def test_rendered_png_has_expected_dimensions(self):
+        html = """<!doctype html><html><head><style>
+            html, body { margin: 0; }
+            #report-document { width: 1200px; height: 760px; overflow: hidden; }
+            </style></head><body><article id="report-document">report</article></body></html>"""
+
+        png = render_report_png(html=html)
+
+        self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
+        with Image.open(BytesIO(png)) as image:
+            self.assertEqual(image.format, "PNG")
+            self.assertEqual(image.size, (2400, 1520))
+            image.verify()
+
     def test_missing_playwright_chromium_has_actionable_error_and_safe_log(self):
         patcher = patch("playwright.sync_api.sync_playwright")
         manager = patcher.start()

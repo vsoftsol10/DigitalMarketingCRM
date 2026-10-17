@@ -42,6 +42,8 @@ export default function CreatePlan() {
     mode: "onSubmit",
   });
 
+  const { setError } = methods;
+
   async function onSubmit(data) {
     try {
       const payload = { ...data };
@@ -57,6 +59,33 @@ export default function CreatePlan() {
       navigate("/plans");
     } catch (error) {
       console.error("Failed to create plan:", error);
+
+      const responseData = error?.response?.data;
+      const backendErrors = responseData?.errors;
+
+      if (backendErrors && typeof backendErrors === "object") {
+        Object.entries(backendErrors).forEach(([field, messages]) => {
+          const message = Array.isArray(messages)
+            ? messages[0]
+            : String(messages);
+          const frontendField = mapBackendFieldToFrontend(field);
+
+          if (frontendField) {
+            setError(frontendField, {
+              type: "server",
+              message,
+            });
+          }
+        });
+      }
+
+      setError("root.server", {
+        type: "server",
+        message:
+          responseData?.message ||
+          error?.message ||
+          "Unable to create plan. Please try again.",
+      });
     }
   }
 
@@ -260,4 +289,12 @@ export default function CreatePlan() {
       </FormProvider>
     </Box>
   );
+}
+
+function mapBackendFieldToFrontend(field) {
+  const fieldMap = {
+    plan_type: "type",
+  };
+
+  return fieldMap[field] || field;
 }

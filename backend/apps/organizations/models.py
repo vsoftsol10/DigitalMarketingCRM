@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Lower
 
 from apps.common.models import BaseModel
 
@@ -51,7 +52,6 @@ class Organization(BaseModel):
 
     name = models.CharField(
         max_length=255,
-        unique=True,
     )
 
     slug = models.SlugField(
@@ -150,6 +150,13 @@ class Organization(BaseModel):
             models.Index(
                 fields=["industry"],
                 name="org_industry_idx",
+            ),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                condition=models.Q(is_deleted=False),
+                name="org_active_name_lower_uniq",
             ),
         ]
 

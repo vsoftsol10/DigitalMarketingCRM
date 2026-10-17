@@ -529,6 +529,11 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    # ModelSerializer's generated UniqueValidator queries every row,
+    # including soft-deleted organizations. Active-name uniqueness is
+    # enforced explicitly in validate_name and by the model constraint.
+    name = serializers.CharField(max_length=255, validators=[])
+
     class Meta:
         model = Organization
 
@@ -668,6 +673,9 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
         allow_empty=True,
         read_only=True,
     )
+
+    # See OrganizationCreateSerializer: deleted rows must not reserve names.
+    name = serializers.CharField(max_length=255, validators=[])
 
     class Meta:
         model = Organization

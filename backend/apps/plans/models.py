@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models.functions import Lower
 
 from apps.common.models import BaseModel
 
@@ -16,7 +17,6 @@ class BillingCycle(models.TextChoices):
 class Plan(BaseModel):
     name = models.CharField(
         max_length=100,
-        unique=True,
     )
 
     code = models.SlugField(
@@ -102,6 +102,18 @@ class Plan(BaseModel):
             models.Index(
                 fields=["plan_type"],
                 name="plan_type_idx",
+            ),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                condition=models.Q(is_deleted=False),
+                name="plan_active_name_lower_uniq",
+            ),
+            models.UniqueConstraint(
+                Lower("plan_type"),
+                condition=models.Q(is_deleted=False, is_custom=False),
+                name="plan_active_type_lower_uniq",
             ),
         ]
 

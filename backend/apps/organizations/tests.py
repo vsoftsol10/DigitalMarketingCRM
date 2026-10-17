@@ -1,7 +1,11 @@
 from datetime import timedelta
+from importlib import import_module
+from types import SimpleNamespace
 
+from django.apps import apps
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
+from django.db.migrations.operations.special import RunPython
 from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
@@ -16,6 +20,7 @@ from .models import (
     SubscriptionScheduleType,
     SubscriptionStatus,
 )
+from .serializers import OrganizationCreateSerializer
 from .services import (
     activate_due_scheduled_subscriptions,
     cancel_subscription,
@@ -23,6 +28,106 @@ from .services import (
     renew_subscription,
     start_new_subscription,
 )
+
+
+class OrganizationNameReuseSerializerTests(TestCase):
+    def setUp(self):
+        self.plan = Plan.objects.create(
+            name="Organization Name Test Plan",
+            code="organization-name-test-plan",
+            plan_type="ORG_NAME_TEST",
+            description="Plan for organization name validation tests.",
+        )
+
+    def serializer_for_name(self, name):
+        return OrganizationCreateSerializer(
+            data={
+                "name": name,
+                "industry": "Retail",
+                "contact_name": "Test Contact",
+                "contact_email": "contact@example.com",
+                "subscription_plan": str(self.plan.pk),
+                "billing_cycle": BillingCycle.MONTHLY,
+            }
+        )
+
+    def create_organization(self, name, slug):
+        return Organization.objects.create(
+            organization_id=f"ORG-{slug.upper()}",
+            name=name,
+            slug=slug,
+            industry="Retail",
+        )
+
+    def test_active_duplicate_name_is_rejected(self):
+        self.create_organization("Acme Retail", "acme-retail")
+
+        serializer = self.serializer_for_name("Acme Retail")
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("name", serializer.errors)
+
+    def test_case_insensitive_active_duplicate_name_is_rejected(self):
+        self.create_organization("Acme Retail", "acme-retail")
+
+        serializer = self.serializer_for_name("ACME RETAIL")
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("name", serializer.errors)
+
+    def test_soft_deleted_name_can_be_reused(self):
+        organization = self.create_organization("Acme Retail", "acme-retail")
+        organization.soft_delete()
+
+        serializer = self.serializer_for_name("Acme Retail")
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+
+class OrganizationNameMigrationRollbackGuardTests(TestCase):
+    migration_module = import_module(
+        "apps.organizations.migrations.0017_active_organization_name_unique"
+    )
+
+    def run_rollback_guard(self):
+        operation = self.migration_module.Migration.operations[-1]
+        self.assertIsInstance(operation, RunPython)
+        self.assertIs(
+            operation.reverse_code,
+            self.migration_module.guard_organization_name_rollback,
+        )
+        operation.reverse_code(
+            apps,
+            SimpleNamespace(connection=connection),
+        )
+
+    def test_rollback_guard_allows_names_without_duplicates(self):
+        Organization.objects.create(
+            organization_id="ORG-ROLLBACK-SAFE",
+            name="Rollback Safe Organization",
+            slug="rollback-safe-organization",
+            industry="Retail",
+        )
+
+        self.run_rollback_guard()
+
+    def test_rollback_guard_refuses_reused_soft_deleted_name(self):
+        deleted = Organization.objects.create(
+            organization_id="ORG-ROLLBACK-DELETED",
+            name="Reusable Organization",
+            slug="reusable-organization-old",
+            industry="Retail",
+        )
+        deleted.soft_delete()
+        Organization.objects.create(
+            organization_id="ORG-ROLLBACK-ACTIVE",
+            name="reusable organization",
+            slug="reusable-organization-new",
+            industry="Retail",
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "No schema changes were made"):
+            self.run_rollback_guard()
 
 
 class OrganizationSubscriptionActivityTests(TestCase):

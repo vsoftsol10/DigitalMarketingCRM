@@ -112,6 +112,7 @@ def create_plan(
         if Plan.objects.filter(
             plan_type__iexact=plan_type,
             is_deleted=False,
+            is_custom=False,
         ).exists():
             raise ValidationError(
                 {"type": ("A plan with this type " "already exists.")}

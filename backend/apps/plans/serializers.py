@@ -74,6 +74,10 @@ class PlanCreateSerializer(serializers.ModelSerializer):
         allow_empty=True,
     )
 
+    # The model's unconditional validator includes deleted rows. Keep name
+    # uniqueness scoped to non-deleted plans in validate_name instead.
+    name = serializers.CharField(max_length=100, validators=[])
+
     class Meta:
         model = Plan
 
@@ -114,6 +118,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
 
         if Plan.objects.filter(
             name__iexact=value,
+            is_deleted=False,
         ).exists():
             raise serializers.ValidationError("A plan with this name already exists.")
 
@@ -132,6 +137,8 @@ class PlanCreateSerializer(serializers.ModelSerializer):
 
         if Plan.objects.filter(
             plan_type__iexact=value,
+            is_deleted=False,
+            is_custom=False,
         ).exists():
             raise serializers.ValidationError("A plan with this type already exists.")
 

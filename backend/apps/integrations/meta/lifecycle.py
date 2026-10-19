@@ -1184,7 +1184,7 @@ class MetaTokenLifecycleService:
         # Resolve each selected parent USER credential once, then run a single
         # health probe per credential for this maintenance cycle.
         parents = {}
-        for page_credential in credentials:
+        for page_credential in credentials.iterator(chunk_size=200):
             parent = self._get_parent_user_credential(page_credential=page_credential)
             if parent:
                 parents.setdefault(str(parent.id), parent)
@@ -1215,7 +1215,7 @@ class MetaTokenLifecycleService:
                 result["parent_retry"] += 1
                 result["retry"] += 1
 
-        for credential in credentials:
+        for credential in credentials.iterator(chunk_size=200):
             result["checked"] += 1
 
             try:

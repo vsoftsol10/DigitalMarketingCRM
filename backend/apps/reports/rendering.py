@@ -2,6 +2,7 @@
 
 import logging
 import re
+import time
 from pathlib import Path
 
 REPORT_VIEWPORT = {"width": 1600, "height": 1000}
@@ -30,10 +31,27 @@ def _safe_exception_message(exception):
     return message
 
 
-def _log_renderer_failure(*, stage, exception, browser_launch_status):
-    logger.error(
-        "report_png_renderer_failure stage=%s exception_type=%s message=%s browser_launch_status=%s",
+def _duration_ms(started_at):
+    return max(0, int((time.monotonic() - started_at) * 1000))
+
+
+def _log_renderer_stage(*, stage, started_at):
+    logger.info(
+        "report_png_renderer_stage stage=%s duration_ms=%s",
         stage,
+        _duration_ms(started_at),
+    )
+
+
+def _log_renderer_failure(
+    *, stage, exception, browser_launch_status, stage_started_at, render_started_at,
+):
+    logger.error(
+        "report_png_renderer_end outcome=failure stage=%s stage_duration_ms=%s "
+        "duration_ms=%s exception_type=%s message=%s browser_launch_status=%s",
+        stage,
+        _duration_ms(stage_started_at),
+        _duration_ms(render_started_at),
         type(exception).__name__,
         _safe_exception_message(exception),
         browser_launch_status,
@@ -41,6 +59,11 @@ def _log_renderer_failure(*, stage, exception, browser_launch_status):
 
 
 def render_report_png(*, html):
+    render_started_at = time.monotonic()
+    logger.info("report_png_renderer_start")
+
+    stage = "playwright_import"
+    stage_started_at = time.monotonic()
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as exc:
@@ -48,16 +71,24 @@ def render_report_png(*, html):
             stage="playwright_import",
             exception=exc,
             browser_launch_status="not_attempted",
+            stage_started_at=stage_started_at,
+            render_started_at=render_started_at,
         )
         raise ReportRenderError(
             "The Playwright package is missing from the backend environment. Install backend requirements."
         ) from exc
+    _log_renderer_stage(stage="playwright_import", started_at=stage_started_at)
 
     stage = "playwright_driver_start"
+    stage_started_at = time.monotonic()
     browser_launch_status = "not_attempted"
+    png = None
     try:
         with sync_playwright() as playwright:
+            _log_renderer_stage(stage="playwright_driver_start", started_at=stage_started_at)
+
             stage = "browser_discovery"
+            stage_started_at = time.monotonic()
             executable_path = Path(playwright.chromium.executable_path)
             if not executable_path.is_file():
                 error = FileNotFoundError("Playwright-managed Chromium executable is not installed.")
@@ -65,13 +96,17 @@ def render_report_png(*, html):
                     stage=stage,
                     exception=error,
                     browser_launch_status="missing",
+                    stage_started_at=stage_started_at,
+                    render_started_at=render_started_at,
                 )
                 raise ReportRenderError(
                     "Playwright Chromium is missing in the backend environment. "
                     "Run `python -m playwright install chromium` with the same Python environment as Django."
                 ) from error
+            _log_renderer_stage(stage=stage, started_at=stage_started_at)
 
             stage = "browser_launch"
+            stage_started_at = time.monotonic()
             browser_launch_status = "starting"
             try:
                 browser = playwright.chromium.launch(
@@ -84,14 +119,18 @@ def render_report_png(*, html):
                     stage=stage,
                     exception=exc,
                     browser_launch_status=browser_launch_status,
+                    stage_started_at=stage_started_at,
+                    render_started_at=render_started_at,
                 )
                 raise ReportRenderError(
                     "Playwright Chromium could not start. Verify its installation and the server's OS dependencies."
                 ) from exc
 
             browser_launch_status = "started"
+            _log_renderer_stage(stage=stage, started_at=stage_started_at)
             try:
                 stage = "browser_context"
+                stage_started_at = time.monotonic()
                 context = browser.new_context(
                     viewport=REPORT_VIEWPORT,
                     device_scale_factor=2,
@@ -101,8 +140,10 @@ def render_report_png(*, html):
                 )
                 context.route("**/*", lambda route: route.abort())
                 page = context.new_page()
+                _log_renderer_stage(stage=stage, started_at=stage_started_at)
 
                 stage = "report_layout"
+                stage_started_at = time.monotonic()
                 page.set_content(html, wait_until="load", timeout=15_000)
                 report = page.locator("#report-document")
                 report.wait_for(state="visible", timeout=5_000)
@@ -117,10 +158,14 @@ def render_report_png(*, html):
                         stage=stage,
                         exception=error,
                         browser_launch_status=browser_launch_status,
+                        stage_started_at=stage_started_at,
+                        render_started_at=render_started_at,
                     )
                     raise ReportRenderError("The report layout is outside the supported dimensions.") from error
+                _log_renderer_stage(stage=stage, started_at=stage_started_at)
 
                 stage = "png_capture"
+                stage_started_at = time.monotonic()
                 png = report.screenshot(
                     type="png",
                     animations="disabled",
@@ -133,9 +178,11 @@ def render_report_png(*, html):
                         stage=stage,
                         exception=error,
                         browser_launch_status=browser_launch_status,
+                        stage_started_at=stage_started_at,
+                        render_started_at=render_started_at,
                     )
                     raise ReportRenderError("Chromium returned an invalid report image.") from error
-                return png
+                _log_renderer_stage(stage=stage, started_at=stage_started_at)
             except ReportRenderError:
                 raise
             except Exception as exc:
@@ -143,10 +190,15 @@ def render_report_png(*, html):
                     stage=stage,
                     exception=exc,
                     browser_launch_status=browser_launch_status,
+                    stage_started_at=stage_started_at,
+                    render_started_at=render_started_at,
                 )
                 raise ReportRenderError("Chromium could not render the report image.") from exc
             finally:
+                stage = "browser_cleanup"
+                stage_started_at = time.monotonic()
                 browser.close()
+                _log_renderer_stage(stage=stage, started_at=stage_started_at)
     except ReportRenderError:
         raise
     except Exception as exc:
@@ -154,5 +206,14 @@ def render_report_png(*, html):
             stage=stage,
             exception=exc,
             browser_launch_status=browser_launch_status,
+            stage_started_at=stage_started_at,
+            render_started_at=render_started_at,
         )
         raise ReportRenderError("The Playwright renderer could not initialize.") from exc
+
+    logger.info(
+        "report_png_renderer_end outcome=success duration_ms=%s png_bytes=%s",
+        _duration_ms(render_started_at),
+        len(png),
+    )
+    return png

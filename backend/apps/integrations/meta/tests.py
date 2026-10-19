@@ -889,10 +889,22 @@ class MetaParentCredentialLifecycleTests(TestCase):
         self.page_credentials.append(self.create_page("page-2", "Test Page 2"))
         with (
             patch.object(self.api, "diagnose_token", wraps=self.api.diagnose_token) as debug,
+            patch.object(
+                self.service,
+                "_get_parent_user_credential",
+                wraps=self.service._get_parent_user_credential,
+            ) as parent_lookup,
+            patch.object(
+                self.service,
+                "process_page_credential",
+                wraps=self.service.process_page_credential,
+            ) as page_refresh,
             patch("apps.integrations.meta.lifecycle.decrypt_token", return_value="token-canary"),
         ):
             result = self.service.refresh_due_credentials()
         self.assertEqual(debug.call_count, 1)
+        self.assertEqual(parent_lookup.call_count, 2)
+        self.assertEqual(page_refresh.call_count, 2)
         self.assertEqual(result["parent_checked"], 1)
         self.assertEqual(result["valid"], 3)
         self.assertEqual(result["checked"], 3)

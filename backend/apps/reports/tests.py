@@ -1,8 +1,10 @@
 from datetime import date, datetime, timezone
+from contextlib import contextmanager
 from html import escape
 from io import BytesIO
 from pathlib import Path
 import sys
+from threading import Event, Thread
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -305,6 +307,82 @@ class InsightsReportApiTests(APITestCase):
 
 
 class InsightsReportRendererTests(SimpleTestCase):
+    @contextmanager
+    def png_view_patches(self, renderer):
+        from apps.reports.serializers import InsightsReportRenderSerializer
+
+        serializer = Mock(spec=InsightsReportRenderSerializer)
+        serializer.is_valid.return_value = True
+        serializer.validated_data = {
+            "render_token": "render-token",
+            "html": '<html><body><article id="report-document">report</article></body></html>',
+        }
+        render_claim = {
+            "organization_id": "ORG-TEST",
+            "social_account_id": "account-id",
+            "since": "2026-09-01",
+            "until": "2026-09-07",
+            "duration_days": 7,
+        }
+        account = SimpleNamespace(platform="instagram")
+        with (
+            patch(
+                "apps.reports.views.InsightsReportRenderSerializer",
+                return_value=serializer,
+            ),
+            patch(
+                "apps.reports.views.validate_report_render_token",
+                return_value=render_claim,
+            ),
+            patch(
+                "apps.reports.views.get_selected_account",
+                return_value=(None, account),
+            ),
+            patch("apps.reports.views.get_duration_slot_days", return_value=7),
+            patch("apps.reports.views.render_report_png", side_effect=renderer) as render_mock,
+        ):
+            yield render_mock
+
+    def call_png_view(self):
+        from apps.reports.views import InsightsReportPngAPIView
+
+        request = APIRequestFactory().post(
+            "/api/reports/insights/png/",
+            {},
+            format="json",
+        )
+        force_authenticate(request, user=SimpleNamespace(is_authenticated=True))
+        return InsightsReportPngAPIView.as_view()(request)
+
+    def call_preview_view(self):
+        from apps.reports.views import InsightsReportPreviewAPIView
+
+        serializer = Mock()
+        serializer.is_valid.return_value = True
+        serializer.validated_data = {
+            "organization_id": "ORG-TEST",
+            "social_account_id": "account-id",
+            "platform": "instagram",
+            "since": date(2026, 9, 1),
+            "until": date(2026, 9, 7),
+            "mode": "current",
+            "meta_ads": [],
+        }
+        request = APIRequestFactory().post("/api/reports/insights/preview/", {}, format="json")
+        force_authenticate(request, user=SimpleNamespace(is_authenticated=True))
+        with (
+            patch(
+                "apps.reports.views.InsightsReportPreviewSerializer",
+                return_value=serializer,
+            ),
+            patch(
+                "apps.reports.views.get_selected_account",
+                return_value=(None, SimpleNamespace(platform="instagram")),
+            ),
+            patch("apps.reports.views.build_insights_report_payload", return_value={"ok": True}),
+        ):
+            return InsightsReportPreviewAPIView.as_view()(request)
+
     def test_renderer_unavailable_returns_safe_api_error(self):
         from apps.reports.views import InsightsReportPngAPIView
 
@@ -355,19 +433,94 @@ class InsightsReportRendererTests(SimpleTestCase):
         self.assertNotIn("/srv/app", str(response.data))
         self.assertNotIn("renderer secret", str(response.data))
 
+    def test_png_success_response_contract_and_lock_release_after_success_and_failure(self):
+        from apps.reports.rendering import ReportRenderError
+
+        with self.png_view_patches(
+            Mock(side_effect=[b"first-png", ReportRenderError("safe failure"), b"third-png"])
+        ) as renderer:
+            first = self.call_png_view()
+            failed = self.call_png_view()
+            third = self.call_png_view()
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first["Content-Type"], "image/png")
+        self.assertEqual(first["Cache-Control"], "private, no-store")
+        self.assertEqual(first["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(first["Content-Disposition"], 'inline; filename="insights-report.png"')
+        self.assertEqual(first.content, b"first-png")
+        self.assertEqual(failed.status_code, 503)
+        self.assertEqual(
+            failed.data,
+            {
+                "success": False,
+                "message": "The report image could not be generated. Please try again.",
+                "errors": {"render": "The report image renderer is unavailable."},
+            },
+        )
+        self.assertEqual(third.status_code, 200)
+        self.assertEqual(third.content, b"third-png")
+        self.assertEqual(renderer.call_count, 3)
+
+    def test_second_png_render_is_rejected_without_blocking_preview_request(self):
+        render_started = Event()
+        allow_render_to_finish = Event()
+        first_response = []
+        worker_errors = []
+
+        def blocking_renderer(**kwargs):
+            render_started.set()
+            if not allow_render_to_finish.wait(timeout=5):
+                raise TimeoutError("test renderer release timed out")
+            return b"first-png"
+
+        with self.png_view_patches(blocking_renderer) as renderer:
+            def render_first_request():
+                try:
+                    first_response.append(self.call_png_view())
+                except Exception as exc:  # surfaced in the test thread below
+                    worker_errors.append(exc)
+
+            render_thread = Thread(target=render_first_request, daemon=True)
+            render_thread.start()
+            try:
+                self.assertTrue(render_started.wait(timeout=3))
+                second_response = self.call_png_view()
+                preview_response = self.call_preview_view()
+            finally:
+                allow_render_to_finish.set()
+                render_thread.join(timeout=6)
+
+        self.assertFalse(render_thread.is_alive())
+        self.assertEqual(worker_errors, [])
+        self.assertEqual(len(first_response), 1)
+        self.assertEqual(first_response[0].status_code, 200)
+        self.assertEqual(second_response.status_code, 503)
+        self.assertEqual(preview_response.status_code, 200)
+        renderer.assert_called_once()
+
     def test_rendered_png_has_expected_dimensions(self):
         html = """<!doctype html><html><head><style>
             html, body { margin: 0; }
             #report-document { width: 1200px; height: 760px; overflow: hidden; }
             </style></head><body><article id="report-document">report</article></body></html>"""
 
-        png = render_report_png(html=html)
+        with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
+            png = render_report_png(html=html)
 
         self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
         with Image.open(BytesIO(png)) as image:
             self.assertEqual(image.format, "PNG")
             self.assertEqual(image.size, (2400, 1520))
             image.verify()
+        output = "\n".join(captured.output)
+        self.assertIn("report_png_renderer_start", output)
+        self.assertIn("stage=browser_launch duration_ms=", output)
+        self.assertIn("stage=png_capture duration_ms=", output)
+        self.assertIn("stage=browser_cleanup duration_ms=", output)
+        self.assertIn(f"outcome=success duration_ms=", output)
+        self.assertIn(f"png_bytes={len(png)}", output)
+        self.assertNotIn("<article", output)
 
     def test_missing_playwright_chromium_has_actionable_error_and_safe_log(self):
         patcher = patch("playwright.sync_api.sync_playwright")

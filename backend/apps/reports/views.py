@@ -1,4 +1,5 @@
 from datetime import date
+from threading import Lock
 
 from django.http import HttpResponse
 from rest_framework import status
@@ -13,6 +14,18 @@ from apps.insights.snapshot_read import get_duration_slot_days
 from .rendering import ReportRenderError, render_report_png
 from .serializers import InsightsReportPreviewSerializer, InsightsReportRenderSerializer
 from .services import build_insights_report_payload, validate_report_render_token
+
+
+# This is process-local. Revisit the limit if Gunicorn runs more than one worker.
+_PNG_RENDER_LOCK = Lock()
+
+
+def _renderer_unavailable_response():
+    return Response({
+        "success": False,
+        "message": "The report image could not be generated. Please try again.",
+        "errors": {"render": "The report image renderer is unavailable."},
+    }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 class InsightsReportPreviewAPIView(APIView):
@@ -74,14 +87,16 @@ class InsightsReportPngAPIView(APIView):
                 "errors": {"date_range": "The saved report range is no longer valid."},
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        if not _PNG_RENDER_LOCK.acquire(blocking=False):
+            return _renderer_unavailable_response()
+
         try:
-            png = render_report_png(html=serializer.validated_data["html"])
-        except ReportRenderError:
-            return Response({
-                "success": False,
-                "message": "The report image could not be generated. Please try again.",
-                "errors": {"render": "The report image renderer is unavailable."},
-            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            try:
+                png = render_report_png(html=serializer.validated_data["html"])
+            except ReportRenderError:
+                return _renderer_unavailable_response()
+        finally:
+            _PNG_RENDER_LOCK.release()
 
         response = HttpResponse(png, content_type="image/png")
         response["Content-Disposition"] = 'inline; filename="insights-report.png"'

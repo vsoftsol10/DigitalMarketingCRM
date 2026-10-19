@@ -492,6 +492,11 @@ LOGGING = {
             "level": "INFO",
             "filters": ["credential_redaction"],
         },
+        "report_diagnostics_console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "filters": ["credential_redaction"],
+        },
     },
     "loggers": {
         "apps.integrations.meta.services": {
@@ -506,6 +511,16 @@ LOGGING = {
         },
         "apps.integrations.meta.lifecycle": {
             "handlers": ["meta_maintenance_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps.reports.rendering": {
+            "handlers": ["report_diagnostics_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps.reports.views": {
+            "handlers": ["report_diagnostics_console"],
             "level": "INFO",
             "propagate": False,
         },

@@ -109,6 +109,10 @@ def render_report_png(*, html):
             stage_started_at = time.monotonic()
             browser_launch_status = "starting"
             try:
+                logger.info(
+                    "report_png_renderer_stage stage=browser_launch_start elapsed_ms=%s outcome=starting",
+                    _duration_ms(render_started_at),
+                )
                 browser = playwright.chromium.launch(
                     headless=True,
                     args=["--no-sandbox"],

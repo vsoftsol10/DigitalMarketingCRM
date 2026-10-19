@@ -8,6 +8,7 @@ from threading import Event, Thread
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from django.conf import settings
 from django.test import SimpleTestCase
 from django.urls import reverse
 from PIL import Image
@@ -307,6 +308,25 @@ class InsightsReportApiTests(APITestCase):
 
 
 class InsightsReportRendererTests(SimpleTestCase):
+    def test_report_diagnostic_loggers_emit_info_and_error_to_console(self):
+        logging_config = settings.LOGGING
+        handler = logging_config["handlers"]["report_diagnostics_console"]
+
+        self.assertEqual(handler["class"], "logging.StreamHandler")
+        self.assertEqual(handler["level"], "INFO")
+        self.assertIn("credential_redaction", handler["filters"])
+        self.assertEqual(
+            logging_config["loggers"]["apps.reports.rendering"]["handlers"],
+            ["report_diagnostics_console"],
+        )
+        self.assertEqual(
+            logging_config["loggers"]["apps.reports.rendering"]["level"],
+            "INFO",
+        )
+        self.assertFalse(
+            logging_config["loggers"]["apps.reports.rendering"]["propagate"]
+        )
+
     @contextmanager
     def png_view_patches(self, renderer):
         from apps.reports.serializers import InsightsReportRenderSerializer
@@ -438,7 +458,7 @@ class InsightsReportRendererTests(SimpleTestCase):
 
         with self.png_view_patches(
             Mock(side_effect=[b"first-png", ReportRenderError("safe failure"), b"third-png"])
-        ) as renderer:
+        ) as renderer, self.assertLogs("apps.reports.views", level="INFO") as captured:
             first = self.call_png_view()
             failed = self.call_png_view()
             third = self.call_png_view()
@@ -461,6 +481,11 @@ class InsightsReportRendererTests(SimpleTestCase):
         self.assertEqual(third.status_code, 200)
         self.assertEqual(third.content, b"third-png")
         self.assertEqual(renderer.call_count, 3)
+        output = "\n".join(captured.output)
+        self.assertEqual(output.count("report_png_request_enter"), 3)
+        self.assertEqual(output.count("report_png_render_invoke"), 3)
+        self.assertNotIn("render-token", output)
+        self.assertNotIn("report-document", output)
 
     def test_second_png_render_is_rejected_without_blocking_preview_request(self):
         render_started = Event()
@@ -548,11 +573,14 @@ class InsightsReportRendererTests(SimpleTestCase):
             "Authorization: Bearer render-token-secret"
         )
 
-        with self.assertLogs("apps.reports.rendering", level="ERROR") as captured:
+        with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
             with self.assertRaises(ReportRenderError):
                 render_report_png(html="<html></html>")
 
         output = "\n".join(captured.output)
         self.assertIn("stage=browser_launch", output)
+        self.assertIn("stage=browser_launch_start", output)
+        self.assertIn("elapsed_ms=", output)
+        self.assertIn("outcome=starting", output)
         self.assertIn("exception_type=RuntimeError", output)
         self.assertNotIn("render-token-secret", output)

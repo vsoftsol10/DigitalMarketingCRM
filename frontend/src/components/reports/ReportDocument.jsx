@@ -189,7 +189,7 @@ export default function ReportDocument({ report }) {
                   <span className={`report-thumbnail${row.media_type === "VIDEO" ? " video" : " image"}`} aria-label={row.media_type === "VIDEO" ? "Video" : "Image"}>
                     {row.media_type === "VIDEO" ? "▶" : "▧"}
                   </span>
-                  <span className="report-caption" title={captionText(row)}>{captionText(row)}</span>
+                  <span className="report-caption">{captionText(row)}</span>
                 </td>
                 <td>{shortDate(row.published_at?.slice(0, 10))}</td>
                 {report.content_fields.map((field) => {

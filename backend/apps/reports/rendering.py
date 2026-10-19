@@ -37,9 +37,17 @@ def _duration_ms(started_at):
 
 def _log_renderer_stage(*, stage, started_at):
     logger.info(
-        "report_png_renderer_stage stage=%s duration_ms=%s",
+        "report_png_renderer_stage stage=%s duration_ms=%s outcome=success",
         stage,
         _duration_ms(started_at),
+    )
+
+
+def _log_renderer_stage_start(*, stage, render_started_at):
+    logger.info(
+        "report_png_renderer_stage stage=%s elapsed_ms=%s outcome=starting",
+        stage,
+        _duration_ms(render_started_at),
     )
 
 
@@ -135,6 +143,7 @@ def render_report_png(*, html):
             try:
                 stage = "browser_context"
                 stage_started_at = time.monotonic()
+                _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
                 context = browser.new_context(
                     viewport=REPORT_VIEWPORT,
                     device_scale_factor=2,
@@ -146,9 +155,15 @@ def render_report_png(*, html):
                 page = context.new_page()
                 _log_renderer_stage(stage=stage, started_at=stage_started_at)
 
-                stage = "report_layout"
+                stage = "page_set_content"
                 stage_started_at = time.monotonic()
+                _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
                 page.set_content(html, wait_until="load", timeout=15_000)
+                _log_renderer_stage(stage=stage, started_at=stage_started_at)
+
+                stage = "layout_readiness"
+                stage_started_at = time.monotonic()
+                _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
                 report = page.locator("#report-document")
                 report.wait_for(state="visible", timeout=5_000)
                 bounds = report.bounding_box()
@@ -170,6 +185,7 @@ def render_report_png(*, html):
 
                 stage = "png_capture"
                 stage_started_at = time.monotonic()
+                _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
                 png = report.screenshot(
                     type="png",
                     animations="disabled",
@@ -201,6 +217,7 @@ def render_report_png(*, html):
             finally:
                 stage = "browser_cleanup"
                 stage_started_at = time.monotonic()
+                _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
                 browser.close()
                 _log_renderer_stage(stage=stage, started_at=stage_started_at)
     except ReportRenderError:

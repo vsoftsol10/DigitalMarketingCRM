@@ -541,6 +541,22 @@ class InsightsReportRendererTests(SimpleTestCase):
         output = "\n".join(captured.output)
         self.assertIn("report_png_renderer_start", output)
         self.assertIn("stage=browser_launch duration_ms=", output)
+        for stage in (
+            "browser_context",
+            "page_set_content",
+            "layout_readiness",
+            "png_capture",
+            "browser_cleanup",
+        ):
+            stage_logs = [line for line in output.splitlines() if f"stage={stage} " in line]
+            self.assertTrue(any(
+                "elapsed_ms=" in line and "outcome=starting" in line
+                for line in stage_logs
+            ))
+            self.assertTrue(any(
+                "duration_ms=" in line and "outcome=success" in line
+                for line in stage_logs
+            ))
         self.assertIn("stage=png_capture duration_ms=", output)
         self.assertIn("stage=browser_cleanup duration_ms=", output)
         self.assertIn(f"outcome=success duration_ms=", output)
@@ -584,3 +600,28 @@ class InsightsReportRendererTests(SimpleTestCase):
         self.assertIn("outcome=starting", output)
         self.assertIn("exception_type=RuntimeError", output)
         self.assertNotIn("render-token-secret", output)
+
+    def test_page_content_failure_logs_stage_and_closes_browser_without_report_data(self):
+        patcher = patch("playwright.sync_api.sync_playwright")
+        manager = patcher.start()
+        self.addCleanup(patcher.stop)
+        playwright = manager.return_value.__enter__.return_value
+        playwright.chromium.executable_path = sys.executable
+        browser = playwright.chromium.launch.return_value
+        page = browser.new_context.return_value.new_page.return_value
+        page.set_content.side_effect = RuntimeError("page content failed")
+
+        html = "<html><body>private-caption-marker</body></html>"
+        with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
+            with self.assertRaises(ReportRenderError):
+                render_report_png(html=html)
+
+        output = "\n".join(captured.output)
+        self.assertIn("stage=page_set_content elapsed_ms=", output)
+        self.assertIn("outcome=starting", output)
+        self.assertIn("outcome=failure stage=page_set_content", output)
+        self.assertIn("stage=browser_cleanup elapsed_ms=", output)
+        self.assertIn("stage=browser_cleanup duration_ms=", output)
+        self.assertIn("outcome=success", output)
+        self.assertNotIn("private-caption-marker", output)
+        browser.close.assert_called_once_with()

@@ -354,7 +354,8 @@ class InsightsReportRendererTests(SimpleTestCase):
 
                 self.assertRegex(
                     captured.output[0],
-                    rf"report_png_renderer_memory stage=page_create {expected_value} elapsed_ms=\d+$",
+                    rf"report_png_renderer_memory stage=page_create {expected_value} "
+                    r"elapsed_ms=\d+ scope=cgroup_aggregate$",
                 )
 
     def test_report_diagnostic_loggers_emit_info_and_error_to_console(self):
@@ -590,6 +591,7 @@ class InsightsReportRendererTests(SimpleTestCase):
         output = "\n".join(captured.output)
         self.assertIn("report_png_renderer_start", output)
         self.assertIn("stage=browser_launch duration_ms=", output)
+        self.assertIn("scope=cgroup_aggregate", output)
         for stage in ("browser_launch", "page_create"):
             self.assertRegex(
                 output,

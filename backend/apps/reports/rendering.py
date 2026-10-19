@@ -5,6 +5,8 @@ import re
 import time
 from pathlib import Path
 
+from config.process_diagnostics import log_process_memory_snapshot
+
 REPORT_VIEWPORT = {"width": 1200, "height": 760}
 REPORT_IMAGE_SIZE = {"width": 1200, "height": 760}
 _CGROUP_MEMORY_USAGE_FILES = (
@@ -71,7 +73,8 @@ def _log_renderer_stage_start(*, stage, render_started_at):
 def _log_cgroup_memory(*, stage, render_started_at):
     memory_bytes = _read_cgroup_memory_bytes()
     logger.info(
-        "report_png_renderer_memory stage=%s memory_bytes=%s elapsed_ms=%s",
+        "report_png_renderer_memory stage=%s memory_bytes=%s elapsed_ms=%s "
+        "scope=cgroup_aggregate",
         stage,
         memory_bytes if memory_bytes is not None else "unavailable",
         _duration_ms(render_started_at),
@@ -149,6 +152,7 @@ def render_report_png(*, html):
                     _duration_ms(render_started_at),
                 )
                 _log_cgroup_memory(stage=stage, render_started_at=render_started_at)
+                log_process_memory_snapshot(stage=stage)
                 browser = playwright.chromium.launch(
                     headless=True,
                     args=["--no-sandbox"],
@@ -192,6 +196,7 @@ def render_report_png(*, html):
                 stage_started_at = time.monotonic()
                 _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
                 _log_cgroup_memory(stage=stage, render_started_at=render_started_at)
+                log_process_memory_snapshot(stage=stage)
                 page = context.new_page()
                 _log_renderer_stage(stage=stage, started_at=stage_started_at)
 

@@ -524,6 +524,11 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        "config.process_diagnostics": {
+            "handlers": ["report_diagnostics_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "urllib3.connectionpool": {
             "filters": ["credential_redaction"],
         },

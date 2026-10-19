@@ -7,12 +7,29 @@ from pathlib import Path
 
 REPORT_VIEWPORT = {"width": 1600, "height": 1000}
 REPORT_IMAGE_SIZE = {"width": 1200, "height": 760}
+_CGROUP_MEMORY_USAGE_FILES = (
+    Path("/sys/fs/cgroup/memory.current"),
+    Path("/sys/fs/cgroup/memory/memory.usage_in_bytes"),
+    Path("/sys/fs/cgroup/memory.usage_in_bytes"),
+)
 
 logger = logging.getLogger(__name__)
 
 
 class ReportRenderError(Exception):
     """The report image could not be rendered by the configured browser."""
+
+
+def _read_cgroup_memory_bytes():
+    """Return current cgroup memory usage for common Linux v1/v2 mounts."""
+    for memory_file in _CGROUP_MEMORY_USAGE_FILES:
+        try:
+            memory_bytes = int(memory_file.read_text(encoding="ascii").strip())
+        except (OSError, UnicodeError, ValueError):
+            continue
+        if memory_bytes >= 0:
+            return memory_bytes
+    return None
 
 
 def _safe_exception_message(exception):
@@ -47,6 +64,16 @@ def _log_renderer_stage_start(*, stage, render_started_at):
     logger.info(
         "report_png_renderer_stage stage=%s elapsed_ms=%s outcome=starting",
         stage,
+        _duration_ms(render_started_at),
+    )
+
+
+def _log_cgroup_memory(*, stage, render_started_at):
+    memory_bytes = _read_cgroup_memory_bytes()
+    logger.info(
+        "report_png_renderer_memory stage=%s memory_bytes=%s elapsed_ms=%s",
+        stage,
+        memory_bytes if memory_bytes is not None else "unavailable",
         _duration_ms(render_started_at),
     )
 
@@ -121,6 +148,7 @@ def render_report_png(*, html):
                     "report_png_renderer_stage stage=browser_launch_start elapsed_ms=%s outcome=starting",
                     _duration_ms(render_started_at),
                 )
+                _log_cgroup_memory(stage=stage, render_started_at=render_started_at)
                 browser = playwright.chromium.launch(
                     headless=True,
                     args=["--no-sandbox"],
@@ -163,6 +191,7 @@ def render_report_png(*, html):
                 stage = "page_create"
                 stage_started_at = time.monotonic()
                 _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
+                _log_cgroup_memory(stage=stage, render_started_at=render_started_at)
                 page = context.new_page()
                 _log_renderer_stage(stage=stage, started_at=stage_started_at)
 

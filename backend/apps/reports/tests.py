@@ -25,7 +25,12 @@ from apps.insights.models import (
 from apps.organizations.models import Organization
 from apps.social_accounts.models import SocialAccount, SocialAccountStatus, SocialPlatform
 
-from .rendering import ReportRenderError, render_report_png
+from .rendering import (
+    ReportRenderError,
+    _log_cgroup_memory,
+    _read_cgroup_memory_bytes,
+    render_report_png,
+)
 
 
 class InsightsReportApiTests(APITestCase):
@@ -308,6 +313,49 @@ class InsightsReportApiTests(APITestCase):
 
 
 class InsightsReportRendererTests(SimpleTestCase):
+    def test_read_cgroup_memory_bytes_supports_v2(self):
+        memory_files = (Path("/cgroup/memory.current"),)
+        with patch("apps.reports.rendering._CGROUP_MEMORY_USAGE_FILES", memory_files):
+            with patch("apps.reports.rendering.Path.read_text", return_value="12345\n"):
+                self.assertEqual(_read_cgroup_memory_bytes(), 12345)
+
+    def test_read_cgroup_memory_bytes_supports_v1_after_v2_file_is_unavailable(self):
+        memory_files = (
+            Path("/cgroup/memory.current"),
+            Path("/cgroup/memory/memory.usage_in_bytes"),
+        )
+        with patch("apps.reports.rendering._CGROUP_MEMORY_USAGE_FILES", memory_files):
+            with patch(
+                "apps.reports.rendering.Path.read_text",
+                side_effect=[FileNotFoundError, "67890\n"],
+            ):
+                self.assertEqual(_read_cgroup_memory_bytes(), 67890)
+
+    def test_cgroup_memory_reader_returns_unavailable_when_metrics_cannot_be_read(self):
+        memory_files = (
+            Path("/cgroup/memory.current"),
+            Path("/cgroup/memory/memory.usage_in_bytes"),
+            Path("/cgroup/memory.usage_in_bytes"),
+        )
+        with patch("apps.reports.rendering._CGROUP_MEMORY_USAGE_FILES", memory_files):
+            with patch("apps.reports.rendering.Path.read_text", side_effect=PermissionError):
+                self.assertIsNone(_read_cgroup_memory_bytes())
+
+    def test_cgroup_memory_logs_only_stage_bytes_or_unavailable_and_elapsed_time(self):
+        for memory_bytes, expected_value in ((24680, "memory_bytes=24680"), (None, "memory_bytes=unavailable")):
+            with self.subTest(memory_bytes=memory_bytes):
+                with patch(
+                    "apps.reports.rendering._read_cgroup_memory_bytes",
+                    return_value=memory_bytes,
+                ):
+                    with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
+                        _log_cgroup_memory(stage="page_create", render_started_at=0)
+
+                self.assertRegex(
+                    captured.output[0],
+                    rf"report_png_renderer_memory stage=page_create {expected_value} elapsed_ms=\d+$",
+                )
+
     def test_report_diagnostic_loggers_emit_info_and_error_to_console(self):
         logging_config = settings.LOGGING
         handler = logging_config["handlers"]["report_diagnostics_console"]
@@ -541,6 +589,11 @@ class InsightsReportRendererTests(SimpleTestCase):
         output = "\n".join(captured.output)
         self.assertIn("report_png_renderer_start", output)
         self.assertIn("stage=browser_launch duration_ms=", output)
+        for stage in ("browser_launch", "page_create"):
+            self.assertRegex(
+                output,
+                rf"report_png_renderer_memory stage={stage} memory_bytes=(?:\d+|unavailable) elapsed_ms=\d+",
+            )
         for stage in (
             "browser_context_create",
             "network_route_registration",

@@ -141,7 +141,7 @@ def render_report_png(*, html):
             browser_launch_status = "started"
             _log_renderer_stage(stage=stage, started_at=stage_started_at)
             try:
-                stage = "browser_context"
+                stage = "browser_context_create"
                 stage_started_at = time.monotonic()
                 _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
                 context = browser.new_context(
@@ -151,7 +151,18 @@ def render_report_png(*, html):
                     service_workers="block",
                     accept_downloads=False,
                 )
+                _log_renderer_stage(stage=stage, started_at=stage_started_at)
+
+                stage = "network_route_registration"
+                stage_started_at = time.monotonic()
+                _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
                 context.route("**/*", lambda route: route.abort())
+
+                _log_renderer_stage(stage=stage, started_at=stage_started_at)
+
+                stage = "page_create"
+                stage_started_at = time.monotonic()
+                _log_renderer_stage_start(stage=stage, render_started_at=render_started_at)
                 page = context.new_page()
                 _log_renderer_stage(stage=stage, started_at=stage_started_at)
 

@@ -542,7 +542,9 @@ class InsightsReportRendererTests(SimpleTestCase):
         self.assertIn("report_png_renderer_start", output)
         self.assertIn("stage=browser_launch duration_ms=", output)
         for stage in (
-            "browser_context",
+            "browser_context_create",
+            "network_route_registration",
+            "page_create",
             "page_set_content",
             "layout_readiness",
             "png_capture",
@@ -625,3 +627,35 @@ class InsightsReportRendererTests(SimpleTestCase):
         self.assertIn("outcome=success", output)
         self.assertNotIn("private-caption-marker", output)
         browser.close.assert_called_once_with()
+
+    def test_browser_context_substage_failures_log_and_close_browser(self):
+        html = "<html><body>private-caption-marker</body></html>"
+        failure_targets = (
+            ("browser_context_create", "new_context"),
+            ("network_route_registration", "route"),
+            ("page_create", "new_page"),
+        )
+
+        for stage, method_name in failure_targets:
+            with self.subTest(stage=stage):
+                patcher = patch("playwright.sync_api.sync_playwright")
+                manager = patcher.start()
+                self.addCleanup(patcher.stop)
+                playwright = manager.return_value.__enter__.return_value
+                playwright.chromium.executable_path = sys.executable
+                browser = playwright.chromium.launch.return_value
+                context = browser.new_context.return_value
+                target = browser if method_name == "new_context" else context
+                getattr(target, method_name).side_effect = RuntimeError("context step failed")
+
+                with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
+                    with self.assertRaises(ReportRenderError):
+                        render_report_png(html=html)
+
+                output = "\n".join(captured.output)
+                self.assertIn(f"stage={stage} elapsed_ms=", output)
+                self.assertIn(f"outcome=failure stage={stage}", output)
+                self.assertIn("stage=browser_cleanup elapsed_ms=", output)
+                self.assertIn("stage=browser_cleanup duration_ms=", output)
+                self.assertNotIn("private-caption-marker", output)
+                browser.close.assert_called_once_with()

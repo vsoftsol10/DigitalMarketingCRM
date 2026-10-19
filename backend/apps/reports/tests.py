@@ -26,6 +26,7 @@ from apps.organizations.models import Organization
 from apps.social_accounts.models import SocialAccount, SocialAccountStatus, SocialPlatform
 
 from .rendering import (
+    REPORT_VIEWPORT,
     ReportRenderError,
     _log_cgroup_memory,
     _read_cgroup_memory_bytes,
@@ -617,6 +618,33 @@ class InsightsReportRendererTests(SimpleTestCase):
         self.assertIn(f"outcome=success duration_ms=", output)
         self.assertIn(f"png_bytes={len(png)}", output)
         self.assertNotIn("<article", output)
+
+    def test_renderer_uses_compact_viewport_and_device_scale(self):
+        patcher = patch("playwright.sync_api.sync_playwright")
+        manager = patcher.start()
+        self.addCleanup(patcher.stop)
+        playwright = manager.return_value.__enter__.return_value
+        playwright.chromium.executable_path = sys.executable
+        page = playwright.chromium.launch.return_value.new_context.return_value.new_page.return_value
+        page.locator.return_value.bounding_box.return_value = {
+            "width": 1200,
+            "height": 760,
+            "x": 0,
+            "y": 0,
+        }
+        page.locator.return_value.screenshot.return_value = b"\x89PNG\r\n\x1a\nmock"
+
+        self.assertEqual(REPORT_VIEWPORT, {"width": 1200, "height": 760})
+        png = render_report_png(html="<html><body><article id='report-document'></article></body></html>")
+
+        self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
+        playwright.chromium.launch.return_value.new_context.assert_called_once_with(
+            viewport={"width": 1200, "height": 760},
+            device_scale_factor=2,
+            java_script_enabled=False,
+            service_workers="block",
+            accept_downloads=False,
+        )
 
     def test_missing_playwright_chromium_has_actionable_error_and_safe_log(self):
         patcher = patch("playwright.sync_api.sync_playwright")

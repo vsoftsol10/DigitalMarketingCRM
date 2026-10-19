@@ -5,7 +5,7 @@ import re
 import time
 from pathlib import Path
 
-REPORT_VIEWPORT = {"width": 1600, "height": 1000}
+REPORT_VIEWPORT = {"width": 1200, "height": 760}
 REPORT_IMAGE_SIZE = {"width": 1200, "height": 760}
 _CGROUP_MEMORY_USAGE_FILES = (
     Path("/sys/fs/cgroup/memory.current"),

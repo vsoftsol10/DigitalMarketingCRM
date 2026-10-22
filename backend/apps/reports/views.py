@@ -1,5 +1,4 @@
 from datetime import date
-import logging
 from threading import Lock
 
 from django.http import HttpResponse
@@ -15,9 +14,6 @@ from apps.insights.snapshot_read import get_duration_slot_days
 from .rendering import ReportRenderError, render_report_png
 from .serializers import InsightsReportPreviewSerializer, InsightsReportRenderSerializer
 from .services import build_insights_report_payload, validate_report_render_token
-
-logger = logging.getLogger(__name__)
-
 
 # This is process-local. Revisit the limit if Gunicorn runs more than one worker.
 _PNG_RENDER_LOCK = Lock()
@@ -69,7 +65,6 @@ class InsightsReportPngAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        logger.info("report_png_request_enter")
         serializer = InsightsReportRenderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         render_claim = validate_report_render_token(
@@ -96,7 +91,6 @@ class InsightsReportPngAPIView(APIView):
 
         try:
             try:
-                logger.info("report_png_render_invoke")
                 png = render_report_png(html=serializer.validated_data["html"])
             except ReportRenderError:
                 return _renderer_unavailable_response()

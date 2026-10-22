@@ -492,9 +492,9 @@ LOGGING = {
             "level": "INFO",
             "filters": ["credential_redaction"],
         },
-        "report_diagnostics_console": {
+        "report_error_console": {
             "class": "logging.StreamHandler",
-            "level": "INFO",
+            "level": "ERROR",
             "filters": ["credential_redaction"],
         },
     },
@@ -515,18 +515,8 @@ LOGGING = {
             "propagate": False,
         },
         "apps.reports.rendering": {
-            "handlers": ["report_diagnostics_console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "apps.reports.views": {
-            "handlers": ["report_diagnostics_console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "config.process_diagnostics": {
-            "handlers": ["report_diagnostics_console"],
-            "level": "INFO",
+            "handlers": ["report_error_console"],
+            "level": "ERROR",
             "propagate": False,
         },
         "urllib3.connectionpool": {

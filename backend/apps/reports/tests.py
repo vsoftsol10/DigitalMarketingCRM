@@ -28,8 +28,6 @@ from apps.social_accounts.models import SocialAccount, SocialAccountStatus, Soci
 from .rendering import (
     REPORT_VIEWPORT,
     ReportRenderError,
-    _log_cgroup_memory,
-    _read_cgroup_memory_bytes,
     render_report_png,
 )
 
@@ -314,64 +312,20 @@ class InsightsReportApiTests(APITestCase):
 
 
 class InsightsReportRendererTests(SimpleTestCase):
-    def test_read_cgroup_memory_bytes_supports_v2(self):
-        memory_files = (Path("/cgroup/memory.current"),)
-        with patch("apps.reports.rendering._CGROUP_MEMORY_USAGE_FILES", memory_files):
-            with patch("apps.reports.rendering.Path.read_text", return_value="12345\n"):
-                self.assertEqual(_read_cgroup_memory_bytes(), 12345)
-
-    def test_read_cgroup_memory_bytes_supports_v1_after_v2_file_is_unavailable(self):
-        memory_files = (
-            Path("/cgroup/memory.current"),
-            Path("/cgroup/memory/memory.usage_in_bytes"),
-        )
-        with patch("apps.reports.rendering._CGROUP_MEMORY_USAGE_FILES", memory_files):
-            with patch(
-                "apps.reports.rendering.Path.read_text",
-                side_effect=[FileNotFoundError, "67890\n"],
-            ):
-                self.assertEqual(_read_cgroup_memory_bytes(), 67890)
-
-    def test_cgroup_memory_reader_returns_unavailable_when_metrics_cannot_be_read(self):
-        memory_files = (
-            Path("/cgroup/memory.current"),
-            Path("/cgroup/memory/memory.usage_in_bytes"),
-            Path("/cgroup/memory.usage_in_bytes"),
-        )
-        with patch("apps.reports.rendering._CGROUP_MEMORY_USAGE_FILES", memory_files):
-            with patch("apps.reports.rendering.Path.read_text", side_effect=PermissionError):
-                self.assertIsNone(_read_cgroup_memory_bytes())
-
-    def test_cgroup_memory_logs_only_stage_bytes_or_unavailable_and_elapsed_time(self):
-        for memory_bytes, expected_value in ((24680, "memory_bytes=24680"), (None, "memory_bytes=unavailable")):
-            with self.subTest(memory_bytes=memory_bytes):
-                with patch(
-                    "apps.reports.rendering._read_cgroup_memory_bytes",
-                    return_value=memory_bytes,
-                ):
-                    with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
-                        _log_cgroup_memory(stage="page_create", render_started_at=0)
-
-                self.assertRegex(
-                    captured.output[0],
-                    rf"report_png_renderer_memory stage=page_create {expected_value} "
-                    r"elapsed_ms=\d+ scope=cgroup_aggregate$",
-                )
-
-    def test_report_diagnostic_loggers_emit_info_and_error_to_console(self):
+    def test_report_renderer_error_logs_remain_console_configured(self):
         logging_config = settings.LOGGING
-        handler = logging_config["handlers"]["report_diagnostics_console"]
+        handler = logging_config["handlers"]["report_error_console"]
 
         self.assertEqual(handler["class"], "logging.StreamHandler")
-        self.assertEqual(handler["level"], "INFO")
+        self.assertEqual(handler["level"], "ERROR")
         self.assertIn("credential_redaction", handler["filters"])
         self.assertEqual(
             logging_config["loggers"]["apps.reports.rendering"]["handlers"],
-            ["report_diagnostics_console"],
+            ["report_error_console"],
         )
         self.assertEqual(
             logging_config["loggers"]["apps.reports.rendering"]["level"],
-            "INFO",
+            "ERROR",
         )
         self.assertFalse(
             logging_config["loggers"]["apps.reports.rendering"]["propagate"]
@@ -508,7 +462,7 @@ class InsightsReportRendererTests(SimpleTestCase):
 
         with self.png_view_patches(
             Mock(side_effect=[b"first-png", ReportRenderError("safe failure"), b"third-png"])
-        ) as renderer, self.assertLogs("apps.reports.views", level="INFO") as captured:
+        ) as renderer:
             first = self.call_png_view()
             failed = self.call_png_view()
             third = self.call_png_view()
@@ -531,11 +485,6 @@ class InsightsReportRendererTests(SimpleTestCase):
         self.assertEqual(third.status_code, 200)
         self.assertEqual(third.content, b"third-png")
         self.assertEqual(renderer.call_count, 3)
-        output = "\n".join(captured.output)
-        self.assertEqual(output.count("report_png_request_enter"), 3)
-        self.assertEqual(output.count("report_png_render_invoke"), 3)
-        self.assertNotIn("render-token", output)
-        self.assertNotIn("report-document", output)
 
     def test_second_png_render_is_rejected_without_blocking_preview_request(self):
         render_started = Event()
@@ -580,7 +529,7 @@ class InsightsReportRendererTests(SimpleTestCase):
             #report-document { width: 1200px; height: 760px; overflow: hidden; }
             </style></head><body><article id="report-document">report</article></body></html>"""
 
-        with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
+        with self.assertNoLogs("apps.reports.rendering", level="INFO"):
             png = render_report_png(html=html)
 
         self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
@@ -588,38 +537,6 @@ class InsightsReportRendererTests(SimpleTestCase):
             self.assertEqual(image.format, "PNG")
             self.assertEqual(image.size, (2400, 1520))
             image.verify()
-        output = "\n".join(captured.output)
-        self.assertIn("report_png_renderer_start", output)
-        self.assertIn("stage=browser_launch duration_ms=", output)
-        self.assertIn("scope=cgroup_aggregate", output)
-        for stage in ("browser_launch", "page_create"):
-            self.assertRegex(
-                output,
-                rf"report_png_renderer_memory stage={stage} memory_bytes=(?:\d+|unavailable) elapsed_ms=\d+",
-            )
-        for stage in (
-            "browser_context_create",
-            "network_route_registration",
-            "page_create",
-            "page_set_content",
-            "layout_readiness",
-            "png_capture",
-            "browser_cleanup",
-        ):
-            stage_logs = [line for line in output.splitlines() if f"stage={stage} " in line]
-            self.assertTrue(any(
-                "elapsed_ms=" in line and "outcome=starting" in line
-                for line in stage_logs
-            ))
-            self.assertTrue(any(
-                "duration_ms=" in line and "outcome=success" in line
-                for line in stage_logs
-            ))
-        self.assertIn("stage=png_capture duration_ms=", output)
-        self.assertIn("stage=browser_cleanup duration_ms=", output)
-        self.assertIn(f"outcome=success duration_ms=", output)
-        self.assertIn(f"png_bytes={len(png)}", output)
-        self.assertNotIn("<article", output)
 
     def test_renderer_uses_compact_viewport_and_device_scale(self):
         patcher = patch("playwright.sync_api.sync_playwright")
@@ -674,15 +591,12 @@ class InsightsReportRendererTests(SimpleTestCase):
             "Authorization: Bearer render-token-secret"
         )
 
-        with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
+        with self.assertLogs("apps.reports.rendering", level="ERROR") as captured:
             with self.assertRaises(ReportRenderError):
                 render_report_png(html="<html></html>")
 
         output = "\n".join(captured.output)
-        self.assertIn("stage=browser_launch", output)
-        self.assertIn("stage=browser_launch_start", output)
-        self.assertIn("elapsed_ms=", output)
-        self.assertIn("outcome=starting", output)
+        self.assertIn("report_png_renderer_failure stage=browser_launch", output)
         self.assertIn("exception_type=RuntimeError", output)
         self.assertNotIn("render-token-secret", output)
 
@@ -697,17 +611,13 @@ class InsightsReportRendererTests(SimpleTestCase):
         page.set_content.side_effect = RuntimeError("page content failed")
 
         html = "<html><body>private-caption-marker</body></html>"
-        with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
+        with self.assertLogs("apps.reports.rendering", level="ERROR") as captured:
             with self.assertRaises(ReportRenderError):
                 render_report_png(html=html)
 
         output = "\n".join(captured.output)
-        self.assertIn("stage=page_set_content elapsed_ms=", output)
-        self.assertIn("outcome=starting", output)
-        self.assertIn("outcome=failure stage=page_set_content", output)
-        self.assertIn("stage=browser_cleanup elapsed_ms=", output)
-        self.assertIn("stage=browser_cleanup duration_ms=", output)
-        self.assertIn("outcome=success", output)
+        self.assertIn("report_png_renderer_failure stage=page_set_content", output)
+        self.assertNotIn("duration_ms=", output)
         self.assertNotIn("private-caption-marker", output)
         browser.close.assert_called_once_with()
 
@@ -731,14 +641,12 @@ class InsightsReportRendererTests(SimpleTestCase):
                 target = browser if method_name == "new_context" else context
                 getattr(target, method_name).side_effect = RuntimeError("context step failed")
 
-                with self.assertLogs("apps.reports.rendering", level="INFO") as captured:
+                with self.assertLogs("apps.reports.rendering", level="ERROR") as captured:
                     with self.assertRaises(ReportRenderError):
                         render_report_png(html=html)
 
                 output = "\n".join(captured.output)
-                self.assertIn(f"stage={stage} elapsed_ms=", output)
-                self.assertIn(f"outcome=failure stage={stage}", output)
-                self.assertIn("stage=browser_cleanup elapsed_ms=", output)
-                self.assertIn("stage=browser_cleanup duration_ms=", output)
+                self.assertIn(f"report_png_renderer_failure stage={stage}", output)
+                self.assertNotIn("duration_ms=", output)
                 self.assertNotIn("private-caption-marker", output)
                 browser.close.assert_called_once_with()

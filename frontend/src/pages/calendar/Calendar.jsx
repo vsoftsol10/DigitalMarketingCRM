@@ -396,6 +396,8 @@ export default function Calendar() {
 
     isRefreshing,
 
+    isBackgroundSyncing,
+
     filterOptionsLoading,
 
     error,
@@ -781,6 +783,25 @@ export default function Calendar() {
       ======================================== */}
 
       <CalendarHeader />
+
+      <Box
+        sx={{
+          minHeight: 20,
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+        }}
+      >
+        {isBackgroundSyncing && (
+          <Typography
+            role="status"
+            aria-live="polite"
+            sx={{ fontSize: 12, color: "text.secondary" }}
+          >
+            Syncing...
+          </Typography>
+        )}
+      </Box>
 
       {/* ========================================
           CALENDAR TOOLBAR

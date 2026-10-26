@@ -128,6 +128,36 @@ function useDebouncedValue(value, delay = 600) {
   return debouncedValue;
 }
 
+function areCalendarValuesEqual(left, right) {
+  if (Object.is(left, right)) {
+    return true;
+  }
+
+  if (!left || !right || typeof left !== "object" || typeof right !== "object") {
+    return false;
+  }
+
+  if (Array.isArray(left) !== Array.isArray(right)) {
+    return false;
+  }
+
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+
+  return leftKeys.length === rightKeys.length
+    && leftKeys.every((key) => (
+      Object.prototype.hasOwnProperty.call(right, key)
+      && areCalendarValuesEqual(left[key], right[key])
+    ));
+}
+
+function areCalendarEventListsEqual(currentEvents, nextEvents) {
+  return currentEvents.length === nextEvents.length
+    && currentEvents.every((event, index) => (
+      areCalendarValuesEqual(event, nextEvents[index])
+    ));
+}
+
 export default function useCalendar({
   currentDate,
   filters = {},
@@ -157,10 +187,25 @@ export default function useCalendar({
 
   const [loading, setLoading] = useState(false);
 
+  const [backgroundSyncing, setBackgroundSyncing] = useState(false);
+
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false);
 
-  const eventRequestRef = useRef({ id: 0, controller: null });
+  const eventRequestRef = useRef({
+    id: 0,
+    controller: null,
+    promise: null,
+    kind: null,
+    scope: null,
+  });
   const debouncedSearch = useDebouncedValue(search.trim());
+
+  const [isCalendarVisible, setIsCalendarVisible] = useState(
+    () => typeof document === "undefined" || document.visibilityState !== "hidden",
+  );
+  const [isBrowserOnline, setIsBrowserOnline] = useState(
+    () => typeof navigator === "undefined" || navigator.onLine,
+  );
 
   const [filterOptionsLoading, setFilterOptionsLoading] =
     useState(false);
@@ -178,68 +223,93 @@ export default function useCalendar({
   // FETCH CALENDAR EVENTS
   // ==========================================
 
-  const fetchEvents = useCallback(async () => {
-    eventRequestRef.current.controller?.abort();
-    const controller = new AbortController();
-    const requestId = eventRequestRef.current.id + 1;
-    eventRequestRef.current = { id: requestId, controller };
+  const fetchEvents = useCallback(({
+    background = false,
+    coalesce = false,
+  } = {}) => {
+    const params = {
+      month: currentDate?.format("YYYY-MM"),
+      search: debouncedSearch || undefined,
+      organization: filters.organization || undefined,
+      social_account: filters.socialAccount || undefined,
+      content_type: filters.contentType || undefined,
+      status: filters.status || undefined,
+    };
+    const requestScope = JSON.stringify(params);
+    const activeRequest = eventRequestRef.current;
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const params = {
-        month: currentDate?.format("YYYY-MM"),
-
-        search: debouncedSearch || undefined,
-
-        organization:
-          filters.organization || undefined,
-
-        social_account:
-          filters.socialAccount || undefined,
-
-        content_type:
-          filters.contentType || undefined,
-
-        status:
-          filters.status || undefined,
-      };
-
-      const data = await calendarService.getEvents(params, {
-        signal: controller.signal,
-      });
-
-      if (eventRequestRef.current.id !== requestId) {
-        return;
-      }
-
-      const nextEvents = Array.isArray(data) ? data : [];
-
-      setEvents(nextEvents);
-      setHasLoadedEvents(true);
-      return nextEvents;
-    } catch (err) {
-      if (controller.signal.aborted || eventRequestRef.current.id !== requestId) {
-        return;
-      }
-
-      console.error(
-        "Failed to fetch calendar events:",
-        err
-      );
-
-      setError(
-        err?.response?.data?.detail ||
-          err?.message ||
-          "Unable to load calendar events."
-      );
-    } finally {
-      if (eventRequestRef.current.id === requestId) {
-        eventRequestRef.current = { id: requestId, controller: null };
-        setLoading(false);
+    if (background && coalesce && activeRequest.controller) {
+      if (activeRequest.kind === "foreground" || activeRequest.scope === requestScope) {
+        return activeRequest.promise;
       }
     }
+
+    activeRequest.controller?.abort();
+    const controller = new AbortController();
+    const requestId = activeRequest.id + 1;
+
+    eventRequestRef.current = {
+      id: requestId,
+      controller,
+      promise: null,
+      kind: background ? "background" : "foreground",
+      scope: requestScope,
+    };
+
+    if (background) {
+      setBackgroundSyncing(true);
+    } else {
+      setBackgroundSyncing(false);
+      setLoading(true);
+    }
+    setError(null);
+
+    const request = (async () => {
+      try {
+        const data = await calendarService.getEvents(params, {
+          signal: controller.signal,
+        });
+
+        if (eventRequestRef.current.id !== requestId) {
+          return;
+        }
+
+        const nextEvents = Array.isArray(data) ? data : [];
+        setEvents((currentEvents) => (
+          areCalendarEventListsEqual(currentEvents, nextEvents)
+            ? currentEvents
+            : nextEvents
+        ));
+        setHasLoadedEvents(true);
+        return nextEvents;
+      } catch (err) {
+        if (controller.signal.aborted || eventRequestRef.current.id !== requestId) {
+          return;
+        }
+
+        console.error("Failed to fetch calendar events:", err);
+        setError(
+          err?.response?.data?.detail ||
+            err?.message ||
+            "Unable to load calendar events.",
+        );
+      } finally {
+        if (eventRequestRef.current.id === requestId) {
+          eventRequestRef.current = {
+            id: requestId,
+            controller: null,
+            promise: null,
+            kind: null,
+            scope: null,
+          };
+          setLoading(false);
+          setBackgroundSyncing(false);
+        }
+      }
+    })();
+
+    eventRequestRef.current.promise = request;
+    return request;
   }, [
     currentDate,
     filters.organization,
@@ -326,32 +396,61 @@ export default function useCalendar({
       eventRequestRef.current = {
         id: activeRequest.id + 1,
         controller: null,
+        promise: null,
+        kind: null,
+        scope: null,
       };
     };
   }, [fetchEvents]);
 
-  // Scheduled targets may be claimed by Celery between user interactions, so
-  // refresh only while the current view contains active lifecycle work.
-  useEffect(() => {
-    const hasActiveLifecycleEvent = events.some(
-      (event) => ["SCHEDULED", "PUBLISHING"].includes(
-        event.status?.toUpperCase(),
-      ),
-    );
+  const pollingInterval = events.some(
+    (event) => event.status?.toUpperCase() === "PUBLISHING",
+  )
+    ? 15000
+    : events.some((event) => event.status?.toUpperCase() === "SCHEDULED")
+      ? 30000
+      : null;
 
-    if (!hasActiveLifecycleEvent) {
+  useEffect(() => {
+    if (!pollingInterval || !isCalendarVisible || !isBrowserOnline) {
       return undefined;
     }
 
     const intervalId = window.setInterval(() => {
-      if (eventRequestRef.current.controller) {
-        return;
-      }
-
-      fetchEvents();
-    }, 5000);
+      fetchEvents({ background: true, coalesce: true });
+    }, pollingInterval);
     return () => window.clearInterval(intervalId);
-  }, [events, fetchEvents]);
+  }, [fetchEvents, isBrowserOnline, isCalendarVisible, pollingInterval]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isVisible = document.visibilityState !== "hidden";
+      setIsCalendarVisible(isVisible);
+
+      if (isVisible) {
+        fetchEvents({ background: true, coalesce: true });
+      }
+    };
+
+    const handleOnline = () => {
+      setIsBrowserOnline(true);
+      if (document.visibilityState !== "hidden") {
+        fetchEvents({ background: true, coalesce: true });
+      }
+    };
+
+    const handleOffline = () => setIsBrowserOnline(false);
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [fetchEvents]);
 
   // ==========================================
   // REFRESH EVENTS
@@ -418,9 +517,11 @@ export default function useCalendar({
 
     loading,
 
-    isInitialLoading: loading && !hasLoadedEvents,
+    isInitialLoading: (loading || backgroundSyncing) && !hasLoadedEvents,
 
     isRefreshing: loading && hasLoadedEvents,
+
+    isBackgroundSyncing: backgroundSyncing && hasLoadedEvents,
 
     filterOptionsLoading,
 

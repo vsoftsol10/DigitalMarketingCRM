@@ -18,7 +18,7 @@ export default function Header({
         display: "flex",
         justifyContent: "space-between",
         alignItems: "flex-start",
-        mb: 5,
+        mb: 3.5,
       }}
     >
       <Box>
@@ -47,11 +47,13 @@ export default function Header({
           ...TYPOGRAPHY.button,
 
           bgcolor: "#2563EB",
-          boxShadow: "none",
+          background: "linear-gradient(115deg, #9B72EE 0%, #4B8DEB 100%)",
+          border: "1px solid rgba(255,255,255,.72)",
+          boxShadow: "0 8px 18px rgba(83, 105, 196, .24), inset 0 1px 0 rgba(255,255,255,.42)",
 
           "&:hover": {
-            bgcolor: "#1D4ED8",
-            boxShadow: "none",
+            background: "linear-gradient(115deg, #8C63E1 0%, #397DE0 100%)",
+            boxShadow: "0 10px 22px rgba(83, 105, 196, .28), inset 0 1px 0 rgba(255,255,255,.46)",
           },
         }}
       >

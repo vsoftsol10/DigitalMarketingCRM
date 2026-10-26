@@ -62,7 +62,9 @@ export default function CalendarEventDetailsHeader({
               height: 28,
               px: 0.25,
               borderRadius: 1.5,
-              bgcolor: "action.hover",
+              bgcolor: "rgba(255,255,255,0.76)",
+              border: "1px solid rgba(205,221,247,0.8)",
+              boxShadow: "0 3px 8px rgba(70,106,172,0.08), inset 0 1px 0 #FFFFFF",
               color: statusMeta.palette,
               ...TYPOGRAPHY.caption,
               fontWeight: 700,
@@ -77,6 +79,8 @@ export default function CalendarEventDetailsHeader({
           <Box
             sx={{
               height: 28,
+              border: "1px solid rgba(255,255,255,0.92)",
+              boxShadow: "0 3px 8px rgba(70,106,172,0.08), inset 0 1px 0 #FFFFFF",
               display: "flex",
               alignItems: "center",
               gap: 0.75,
@@ -84,8 +88,7 @@ export default function CalendarEventDetailsHeader({
               pr: 1.25,
               borderRadius: 1.5,
               bgcolor: platformColor
-                ? (theme) =>
-                    alpha(platformColor, 0.1)
+                ? alpha(platformColor, 0.1)
                 : "action.hover",
               color: platformColor || "text.secondary",
             }}

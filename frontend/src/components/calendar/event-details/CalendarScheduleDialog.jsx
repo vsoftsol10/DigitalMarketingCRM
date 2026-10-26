@@ -1,6 +1,5 @@
 import {
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -15,6 +14,14 @@ import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
+import {
+  glassDialogActionsSx,
+  glassDialogContentSx,
+  glassDialogPaperSx,
+  glassDialogSecondaryButtonSx,
+  glassDialogTitleSx,
+} from "../../ui/dialog/glassDialogSx";
 
 function toTimeValue(value) {
   const match = String(value || "").match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -87,26 +94,17 @@ export default function CalendarScheduleDialog({
       onClose={loading ? undefined : onClose}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: "24px",
-          overflow: "hidden",
-        },
-      }}
+      PaperProps={{ sx: glassDialogPaperSx }}
     >
       <DialogTitle
-        sx={{
-          px: 3,
-          py: 2.5,
-          ...TYPOGRAPHY.sectionTitle,
-        }}
+        sx={{ ...TYPOGRAPHY.sectionTitle, ...glassDialogTitleSx }}
       >
         {isReschedule ? "Reschedule post" : "Schedule post"}
       </DialogTitle>
 
-      <Divider />
+      <Divider sx={{ borderColor: "rgba(146,168,201,.22)" }} />
 
-      <DialogContent sx={{ px: 3, py: 3 }}>
+      <DialogContent sx={glassDialogContentSx}>
         <Stack component="form" id="calendar-schedule-form" spacing={2} onSubmit={handleSubmit}>
           <TextField
             label="Publish date"
@@ -136,10 +134,10 @@ export default function CalendarScheduleDialog({
         </Stack>
       </DialogContent>
 
-      <Divider />
+      <Divider sx={{ borderColor: "rgba(146,168,201,.22)" }} />
 
-      <DialogActions sx={{ px: 3, py: 3 }}>
-        <Button disabled={loading} variant="outlined" onClick={onClose}>
+      <DialogActions sx={glassDialogActionsSx}>
+        <Button disabled={loading} variant="outlined" onClick={onClose} sx={glassDialogSecondaryButtonSx}>
           Cancel
         </Button>
         <Button
@@ -147,7 +145,7 @@ export default function CalendarScheduleDialog({
           variant="contained"
           form="calendar-schedule-form"
           type="submit"
-          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
+          sx={glassPrimaryButtonSx}
         >
           {loading
             ? loadingAction === "reschedule" ? "Rescheduling..." : "Scheduling..."

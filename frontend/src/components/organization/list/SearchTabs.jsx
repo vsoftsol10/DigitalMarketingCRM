@@ -10,6 +10,7 @@ import {
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import overviewGlassCardSx from "../overview/overviewGlassCardSx";
 
 export default function SearchTabs({
   search = "",
@@ -42,11 +43,8 @@ export default function SearchTabs({
     <Paper
       elevation={0}
       sx={{
-        mt: 4,
-        borderRadius: "20px",
-        border: "1px solid #E5E7EB",
-        bgcolor: "#FFFFFF",
-        overflow: "hidden",
+        ...overviewGlassCardSx,
+        mt: 0,
       }}
     >
       <Box
@@ -54,10 +52,11 @@ export default function SearchTabs({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          px: 3,
-          py: 2,
-          borderBottom: "1px solid #E5E7EB",
-          gap: 3,
+          px: { xs: 2, md: 3 },
+          py: { xs: 1.75, md: 2 },
+          borderBottom: "1px solid rgba(162,181,210,.26)",
+          gap: { xs: 1.5, md: 3 },
+          flexWrap: { xs: "wrap", md: "nowrap" },
         }}
       >
         <TextField
@@ -77,15 +76,27 @@ export default function SearchTabs({
             ),
           }}
           sx={{
-            maxWidth: 760,
+            maxWidth: 820,
+            minWidth: { xs: "100%", md: 0 },
+            flex: "1 1 auto",
 
             "& .MuiOutlinedInput-root": {
-              height: 48,
-              borderRadius: "14px",
+              height: 50,
+              borderRadius: "999px",
+              background: "linear-gradient(145deg, rgba(229,238,252,.82), rgba(255,255,255,.9))",
+              boxShadow: "inset 0 2px 6px rgba(77,102,145,.09), 0 3px 8px rgba(75,100,145,.06), inset 0 1px 0 rgba(255,255,255,.96)",
+              "& fieldset": { borderColor: "rgba(255,255,255,.96)" },
+              "&:hover fieldset": { borderColor: "rgba(128,157,202,.48)" },
+              "&.Mui-focused fieldset": { borderColor: "#8CA9E2", borderWidth: 1 },
             },
+            "& .MuiInputAdornment-root": { mr: 0.5 },
+            "& .MuiInputAdornment-root svg": { color: "#647D9F", fontSize: 22 },
 
             "& input": {
               ...TYPOGRAPHY.body,
+              color: "#243957",
+              py: 0,
+              "&::placeholder": { color: "#7185A2", opacity: 0.78 },
             },
           }}
         />
@@ -101,6 +112,8 @@ export default function SearchTabs({
           sx={{
             minHeight: 48,
             flexShrink: 0,
+            "& .MuiTabs-indicator": { display: "none" },
+            "& .MuiTabs-flexContainer": { gap: { xs: 0, sm: 0.5 } },
           }}
         >
           {tabs.map((tab) => (
@@ -113,13 +126,31 @@ export default function SearchTabs({
                 minHeight: 48,
                 minWidth: "auto",
                 px: 2,
+                borderRadius: "999px",
                 textTransform: "none",
+                color: "#607493",
+                transition: "background-color .18s ease, box-shadow .18s ease, color .18s ease",
 
                 ...TYPOGRAPHY.body,
 
+                "&:hover": {
+                  background: "rgba(226,237,255,.62)",
+                  color: "#405F91",
+                },
+                "&.Mui-focusVisible": {
+                  outline: "2px solid rgba(111,145,211,.55)",
+                  outlineOffset: 2,
+                },
+
                 "&.Mui-selected": {
-                  color: "#2563EB",
+                  color: "#355FBC",
                   fontWeight: 600,
+                  background: "linear-gradient(145deg, #EEE8FF, #F7F8FF)",
+                  border: "1px solid rgba(255,255,255,.96)",
+                  boxShadow: "0 5px 11px rgba(95,91,164,.14), 0 2px 5px rgba(78,107,165,.08), inset 0 1px 0 #fff, inset 0 -1px 2px rgba(125,136,184,.08)",
+                  "&:hover": {
+                    background: "linear-gradient(145deg, #E9E1FF, #F5F7FF)",
+                  },
                 },
               }}
             />
@@ -130,7 +161,8 @@ export default function SearchTabs({
       {/* Organization Grid will render here */}
       <Box
         sx={{
-          p: 3,
+          p: { xs: 2, md: 3 },
+          background: "linear-gradient(180deg, rgba(241,247,255,.58), rgba(255,255,255,.3))",
         }}
       >
         {children}

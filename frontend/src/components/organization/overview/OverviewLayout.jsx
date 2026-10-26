@@ -13,6 +13,7 @@ export default function OverviewLayout({
     <Box
       sx={{
         display: "flex",
+        flexDirection: { xs: "column", lg: "row" },
         gap: 3,
         alignItems: "flex-start",
       }}
@@ -43,7 +44,7 @@ export default function OverviewLayout({
 
       <Box
         sx={{
-          width: 360,
+          width: { xs: "100%", lg: 360 },
 
           flexShrink: 0,
 
@@ -52,8 +53,8 @@ export default function OverviewLayout({
 
           gap: 3,
 
-          position: "sticky",
-          top: 24,
+          position: { xs: "static", lg: "sticky" },
+          top: { lg: 24 },
         }}
       >
         {profile}

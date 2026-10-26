@@ -4,7 +4,6 @@ import {
   IconButton,
   Stack,
   Tooltip,
-  CircularProgress,
 } from "@mui/material";
 
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
@@ -13,22 +12,23 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import {
+  glassDialogSecondaryButtonSx,
+} from "../../ui/dialog/glassDialogSx";
+import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 
 const buttonSx = {
-  minHeight: 40,
+  ...glassPrimaryButtonSx,
+  minHeight: 42,
   px: 2,
-  borderRadius: 1.75,
   ...TYPOGRAPHY.button,
 };
 
 const secondaryButtonSx = {
-  ...buttonSx,
-  borderColor: "divider",
-  color: "text.primary",
-  "&:hover": {
-    bgcolor: "action.hover",
-    borderColor: "text.disabled",
-  },
+  ...glassDialogSecondaryButtonSx,
+  minHeight: 42,
+  px: 2,
+  ...TYPOGRAPHY.button,
 };
 
 export default function CalendarEventActions({
@@ -60,8 +60,9 @@ export default function CalendarEventActions({
         px: { xs: 2.5, sm: 3 },
         py: 1.5,
         borderTop: "1px solid",
-        borderColor: "divider",
-        bgcolor: "background.paper",
+        borderColor: "rgba(190,211,242,0.68)",
+        background: "linear-gradient(180deg, rgba(248,252,255,0.98), rgba(230,241,255,0.98))",
+        boxShadow: "0 -8px 22px rgba(72,105,157,0.08), inset 0 1px 0 rgba(255,255,255,0.96)",
         flexShrink: 0,
       }}
     >
@@ -82,7 +83,7 @@ export default function CalendarEventActions({
               <Button
                 variant="contained"
                 disableElevation
-                startIcon={loadingAction === "publish" ? <CircularProgress size={16} color="inherit" /> : <PublishRoundedIcon />}
+                startIcon={<PublishRoundedIcon />}
                 onClick={() =>
                   handleAction(onPublishNow)
                 }
@@ -123,7 +124,7 @@ export default function CalendarEventActions({
 
               <Button
                 variant="outlined"
-                startIcon={loadingAction === "publish" ? <CircularProgress size={16} color="inherit" /> : <PublishRoundedIcon />}
+                startIcon={<PublishRoundedIcon />}
                 onClick={() =>
                   handleAction(onPublishNow)
                 }
@@ -140,7 +141,7 @@ export default function CalendarEventActions({
               variant="contained"
               disableElevation
               color="error"
-              startIcon={loadingAction === "retry" ? <CircularProgress size={16} color="inherit" /> : <ReplayRoundedIcon />}
+              startIcon={<ReplayRoundedIcon />}
               onClick={() => handleAction(onRetry)}
               disabled={loading}
               sx={buttonSx}
@@ -165,12 +166,16 @@ export default function CalendarEventActions({
                 flexShrink: 0,
                 borderRadius: 1.75,
                 border: "1px solid",
-                borderColor: "divider",
+                borderColor: "rgba(194,214,246,0.86)",
+                background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(232,242,255,0.9))",
+                boxShadow: "0 4px 10px rgba(70,106,172,0.08), inset 0 1px 0 #FFFFFF",
                 color: "text.secondary",
                 "&:hover": {
                   bgcolor: "error.lighter",
                   borderColor: "error.light",
                   color: "error.dark",
+                background: "linear-gradient(145deg, rgba(255,244,246,.98), rgba(255,231,235,.94))",
+                boxShadow: "0 5px 12px rgba(176,54,79,.12), inset 0 1px 0 #fff",
                 },
               }}
             >

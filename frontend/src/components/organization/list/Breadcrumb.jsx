@@ -18,6 +18,7 @@ export default function Breadcrumb({
         justifyContent: "space-between",
         alignItems: "center",
         mb: 3,
+        color: "#64799B",
       }}
     >
       {showBack ? (
@@ -29,6 +30,12 @@ export default function Breadcrumb({
             gap: 0.5,
             cursor: "pointer",
             color: "#64748B",
+            px: 1.25,
+            py: 0.75,
+            borderRadius: "999px",
+            border: "1px solid rgba(255,255,255,.78)",
+            background: "linear-gradient(145deg, rgba(255,255,255,.76), rgba(232,241,255,.68))",
+            boxShadow: "0 3px 10px rgba(74, 101, 148, .08), inset 0 1px 0 rgba(255,255,255,.8)",
 
             "&:hover": {
               color: "#2563EB",
@@ -68,7 +75,7 @@ export default function Breadcrumb({
                 <Icon
                   sx={{
                     fontSize: 18,
-                    color: "#64748B",
+                    color: index === items.length - 1 ? "#536A91" : "#6B83A8",
                   }}
                 />
               )}

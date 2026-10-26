@@ -12,6 +12,11 @@ const notificationService = {
     const response = await api.post(`/notifications/${notificationId}/read/`);
     return response.data?.data;
   },
+
+  async clearAll() {
+    const response = await api.post("/notifications/clear/");
+    return response.data?.data;
+  },
 };
 
 export default notificationService;

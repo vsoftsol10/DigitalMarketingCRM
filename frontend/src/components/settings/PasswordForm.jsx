@@ -17,6 +17,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import { settingsFieldSx, settingsPrimaryButtonSx } from "./settingsGlassSx";
 
 const DEFAULT_VALUES = {
   current_password: "",
@@ -111,12 +112,15 @@ export default function PasswordForm({
   // ==========================================
 
   const passwordFieldSx = {
+    ...settingsFieldSx,
     "& .MuiOutlinedInput-root": {
       minHeight: 48,
 
-      borderRadius: 2,
-
-      bgcolor: "background.paper",
+      borderRadius: "12px",
+      background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(247,250,255,0.92))",
+      "& fieldset": { borderColor: "rgba(175,192,221,0.58)" },
+      "&:hover fieldset": { borderColor: "rgba(123,157,218,0.72)" },
+      "&.Mui-focused fieldset": { borderColor: "#7D91F3" },
     },
 
     "& .MuiInputLabel-root": {
@@ -365,13 +369,7 @@ export default function PasswordForm({
             startIcon={<LockRoundedIcon />}
             sx={{
               minWidth: 170,
-
-              height: 44,
-
-              px: 2.5,
-
-              borderRadius: 2,
-
+              ...settingsPrimaryButtonSx,
               ...TYPOGRAPHY.button,
             }}
           >

@@ -37,7 +37,7 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
               fontWeight: 700,
               lineHeight: "34px",
               letterSpacing: "-0.02em",
-              color: "#1E293B",
+              color: "#12264D",
 
               m: 0,
 
@@ -97,13 +97,13 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
 
               px: 2,
 
-              borderRadius: "14px",
+              borderRadius: 999,
 
-              border: "1px solid #CBD5E1",
+              border: "1px solid rgba(255,255,255,0.96)",
 
-              backgroundColor: "#FFFFFF",
+              background: "linear-gradient(145deg, rgba(255,255,255,0.92), rgba(234,243,255,0.84))",
 
-              color: "#475569",
+              color: "#30466A",
 
               fontSize: "14px",
               fontWeight: 500,
@@ -114,8 +114,8 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
               whiteSpace: "nowrap",
 
               "&:hover": {
-                borderColor: "#94A3B8",
-                backgroundColor: "#F8FAFC",
+                borderColor: "#B9CEF0",
+                background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)",
               },
             }}
           >
@@ -141,13 +141,13 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
 
               px: 2,
 
-              borderRadius: "14px",
+              borderRadius: 999,
 
-              border: "1px solid #CBD5E1",
+              border: "1px solid rgba(255,255,255,0.96)",
 
-              backgroundColor: "#FFFFFF",
+              background: "linear-gradient(145deg, rgba(255,255,255,0.92), rgba(234,243,255,0.84))",
 
-              color: "#475569",
+              color: "#30466A",
 
               fontSize: "14px",
               fontWeight: 500,
@@ -158,8 +158,8 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
               whiteSpace: "nowrap",
 
               "&:hover": {
-                borderColor: "#94A3B8",
-                backgroundColor: "#F8FAFC",
+                borderColor: "#B9CEF0",
+                background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)",
               },
             }}
           >

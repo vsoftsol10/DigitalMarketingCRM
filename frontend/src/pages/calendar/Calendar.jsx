@@ -307,7 +307,7 @@
 //   );
 // }
 
-import { Box, CircularProgress, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -321,6 +321,7 @@ import CalendarGrid from "../../components/calendar/CalendarGrid";
 import CalendarFilters from "../../components/calendar/CalendarFilters";
 import CalendarEventDetails from "../../components/calendar/event-details/CalendarEventDetails";
 import CalendarScheduleDialog from "../../components/calendar/event-details/CalendarScheduleDialog";
+import LoadingState from "../../components/ui/LoadingState";
 import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
 
 import useCalendar from "../../hooks/calendar/useCalendar";
@@ -813,19 +814,7 @@ export default function Calendar() {
         ====================================== */}
 
         {isInitialLoading && (
-          <Box
-            sx={{
-              minHeight: 300,
-
-              display: "flex",
-
-              alignItems: "center",
-
-              justifyContent: "center",
-            }}
-          >
-            <CircularProgress size={28} />
-          </Box>
+          <LoadingState page="Calendar" variant="container" minHeight={300} />
         )}
 
         {/* ======================================
@@ -904,24 +893,10 @@ export default function Calendar() {
         )}
 
         {isRefreshing && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              zIndex: 2,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              bgcolor: "background.paper",
-              boxShadow: "0 1px 4px rgba(15, 23, 42, 0.12)",
-            }}
-          >
-            <CircularProgress size={16} />
-          </Box>
+          <LoadingState
+            label="UPDATING CALENDAR..."
+            variant="overlay"
+          />
         )}
       </Box>
 
@@ -968,6 +943,8 @@ export default function Calendar() {
       />
 
       <ConfirmDialog
+        glass
+        destructive={confirmation?.type === "delete"}
         open={Boolean(confirmation)}
         title={
           confirmation?.type === "delete"
@@ -985,12 +962,9 @@ export default function Calendar() {
             ? "This action cannot be undone."
             : "It will be queued for publishing immediately."
         }
-        confirmText={actionLoading ? (
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <CircularProgress size={16} sx={{ color: "currentColor" }} />
-            <span>{loadingAction === "delete" ? "Deleting..." : "Publishing..."}</span>
-          </Stack>
-        ) : confirmation?.type === "delete" ? "Delete" : "Publish now"}
+        confirmText={actionLoading
+          ? loadingAction === "delete" ? "Deleting..." : "Publishing..."
+          : confirmation?.type === "delete" ? "Delete" : "Publish now"}
         loading={actionLoading}
         onClose={() => {
           if (!actionLoading) {

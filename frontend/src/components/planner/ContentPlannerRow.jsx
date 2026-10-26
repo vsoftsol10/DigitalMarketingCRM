@@ -20,8 +20,17 @@ export default function ContentPlannerRow({ idea, onDelete }) {
       hover
       sx={{
         "& td": {
-          borderBottom: "1px solid #F1F5F9",
+          borderBottom: "1px solid rgba(146,168,201,.22)",
           py: 2.5,
+          background:
+            "linear-gradient(145deg, rgba(250,252,255,.82), rgba(237,245,255,.68))",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 2px rgba(112,127,177,.05)",
+        },
+
+        "&:hover td": {
+          background:
+            "linear-gradient(145deg, rgba(242,247,255,.96), rgba(228,239,255,.82))",
         },
 
         "&:last-child td": {
@@ -41,7 +50,7 @@ export default function ContentPlannerRow({ idea, onDelete }) {
               sx={{
                 fontSize: 15,
                 fontWeight: 600,
-                color: "#0F172A",
+                color: "#17294F",
               }}
             >
               {idea.caption}
@@ -53,7 +62,7 @@ export default function ContentPlannerRow({ idea, onDelete }) {
 
                 fontSize: 13,
 
-                color: "#64748B",
+                color: "#657899",
 
                 whiteSpace: "nowrap",
                 overflow: "hidden",
@@ -74,7 +83,7 @@ export default function ContentPlannerRow({ idea, onDelete }) {
           sx={{
             fontSize: 14,
             fontWeight: 500,
-            color: "#334155",
+            color: "#304563",
           }}
         >
           {idea.organization}
@@ -86,12 +95,12 @@ export default function ContentPlannerRow({ idea, onDelete }) {
       <TableCell>
         <Stack spacing={0.5}>
           {(idea.selected_social_accounts || []).map((account) => (
-            <Typography key={account.id} noWrap sx={{ fontSize: 13, color: "#475569" }}>
+            <Typography key={account.id} noWrap sx={{ fontSize: 13, color: "#536A8A" }}>
               {account.display_name} · {String(account.platform || "").toLowerCase()}
             </Typography>
           ))}
           {!idea.selected_social_accounts?.length && (
-            <Typography sx={{ fontSize: 13, color: "#94A3B8" }}>No accounts selected</Typography>
+            <Typography sx={{ fontSize: 13, color: "#8294B4" }}>No accounts selected</Typography>
           )}
         </Stack>
       </TableCell>
@@ -103,10 +112,11 @@ export default function ContentPlannerRow({ idea, onDelete }) {
           label={idea.content_type || idea.type}
           size="small"
           sx={{
-            bgcolor: "#F8FAFC",
-            color: "#475569",
+            background: "linear-gradient(145deg, rgba(238,245,255,.96), rgba(222,234,252,.86))",
+            color: "#536A8A",
             fontWeight: 600,
             borderRadius: "8px",
+            border: "1px solid rgba(255,255,255,.86)",
           }}
         />
       </TableCell>
@@ -117,7 +127,7 @@ export default function ContentPlannerRow({ idea, onDelete }) {
         <Typography
           sx={{
             fontSize: 14,
-            color: "#64748B",
+            color: "#657899",
             width: 160,
             whiteSpace: "nowrap",
           }}

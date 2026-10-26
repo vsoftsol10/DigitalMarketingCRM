@@ -8,7 +8,7 @@ export default function EditContentIdeaHeader() {
   const navigate = useNavigate();
 
   return (
-    <Box sx={{ mb: 4 }}>
+    <Box sx={{ width: "100%", maxWidth: "980px", mx: "auto", mb: 4 }}>
       {/* Back */}
 
       <Box

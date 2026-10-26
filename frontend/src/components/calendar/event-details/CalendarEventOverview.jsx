@@ -36,11 +36,14 @@ function OverviewCard({ icon, iconColor, label, value }) {
         p: 1.5,
         borderRadius: 2,
         border: "1px solid",
-        borderColor: "divider",
-        bgcolor: "background.paper",
-        transition: "border-color 120ms ease",
+        borderColor: "rgba(202,220,248,0.84)",
+        background: "linear-gradient(145deg, rgba(255,255,255,0.94), rgba(236,245,255,0.84))",
+        boxShadow: "0 5px 12px rgba(70,106,172,0.09), inset 0 1px 0 #FFFFFF, inset 0 -1px 0 rgba(190,211,244,0.32)",
+        transition: "border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease",
         "&:hover": {
-          borderColor: "text.disabled",
+          borderColor: "#AFC8F0",
+          boxShadow: "0 8px 16px rgba(70,106,172,0.14), inset 0 1px 0 #FFFFFF",
+          transform: "translateY(-1px)",
         },
       }}
     >
@@ -59,7 +62,7 @@ function OverviewCard({ icon, iconColor, label, value }) {
             alignItems: "center",
             justifyContent: "center",
             bgcolor: iconColor
-              ? (theme) => alpha(iconColor, 0.12)
+              ? alpha(iconColor, 0.12)
               : "transparent",
             color: iconColor || "text.disabled",
           }}

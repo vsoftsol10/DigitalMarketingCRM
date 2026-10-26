@@ -23,6 +23,8 @@ export default function FormSelect({
   placeholder = "Select",
   helperText,
   compact = false,
+  errorInputSx = {},
+  errorMessageSx = {},
   ...props
 }) {
   const { control } = useFormContext();
@@ -125,6 +127,7 @@ export default function FormSelect({
                     : 1.75,
                   px: 1.75,
                 },
+                ...(fieldState.error ? errorInputSx : {}),
               }}
             >
               <MenuItem value="">
@@ -147,6 +150,7 @@ export default function FormSelect({
                 sx={{
                   ...TYPOGRAPHY.helperText,
                   mt: 0.5,
+                  ...(fieldState.error ? errorMessageSx : {}),
                 }}
               >
                 {fieldState.error?.message ||

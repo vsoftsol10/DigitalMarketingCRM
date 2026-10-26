@@ -169,6 +169,8 @@ import { TYPOGRAPHY } from "../../../theme/typography";
 
 import PreviewPlatformTabs from "./preview/PreviewPlatformTabs";
 import PreviewPostCard from "./preview/PreviewPostCard";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import overviewGlassCardSx from "../../organization/overview/overviewGlassCardSx";
 
 export default function LivePreviewSection({
   organizations = [],
@@ -272,12 +274,7 @@ export default function LivePreviewSection({
     <Paper
       elevation={0}
       sx={{
-        border: "1px solid #E2E8F0",
-
-        borderRadius: "24px",
-
-        bgcolor: "#FFFFFF",
-
+        ...overviewGlassCardSx,
         overflow: "hidden",
       }}
     >
@@ -287,23 +284,48 @@ export default function LivePreviewSection({
 
       <Box
         sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1.5,
           px: 3,
           pt: 3,
           pb: 2,
-
-          borderBottom: "1px solid #F1F5F9",
         }}
       >
-        <Typography sx={TYPOGRAPHY.sectionTitle}>Live Preview</Typography>
-
-        <Typography
+        <Box
+          aria-hidden="true"
           sx={{
-            ...TYPOGRAPHY.sectionDescription,
-            mt: 0.5,
+            width: 46,
+            height: 46,
+            flexShrink: 0,
+            borderRadius: "50%",
+            display: "grid",
+            placeItems: "center",
+            color: "#557FE1",
+            background:
+              "linear-gradient(145deg, rgba(255,255,255,.96), rgba(220,232,255,.86))",
+            border: "1px solid rgba(255,255,255,.95)",
+            boxShadow:
+              "0 6px 12px rgba(80,101,164,.15), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 4px rgba(104,124,175,.1)",
           }}
         >
-          See how your post will look before publishing.
-        </Typography>
+          <VisibilityOutlinedIcon sx={{ fontSize: 23 }} />
+        </Box>
+        <Box>
+          <Typography sx={{ ...TYPOGRAPHY.sectionTitle, color: "#17284D" }}>
+            Live Preview
+          </Typography>
+
+          <Typography
+            sx={{
+              ...TYPOGRAPHY.sectionDescription,
+              mt: 0.25,
+              color: "#71809F",
+            }}
+          >
+            See how your post will look before publishing.
+          </Typography>
+        </Box>
       </Box>
 
       {/* ======================================================
@@ -328,7 +350,8 @@ export default function LivePreviewSection({
 
           minHeight: 500,
 
-          bgcolor: "#FFFFFF",
+          background:
+            "linear-gradient(145deg, rgba(249,252,255,.72), rgba(235,243,255,.54))",
         }}
       >
         <PreviewPostCard

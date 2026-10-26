@@ -1,24 +1,7 @@
-import { Box, CircularProgress } from "@mui/material";
+import LoadingState from "../LoadingState";
 
-export default function TableLoadingOverlay() {
+export default function TableLoadingOverlay({ label = "LOADING CONTENT..." }) {
   return (
-    <Box
-      sx={{
-        position: "absolute",
-        inset: 0,
-
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-
-        backgroundColor: "rgba(255, 255, 255, 0.72)",
-
-        backdropFilter: "blur(1px)",
-
-        zIndex: 2,
-      }}
-    >
-      <CircularProgress size={28} />
-    </Box>
+    <LoadingState label={label} variant="overlay" />
   );
 }

@@ -12,6 +12,7 @@ export default function PrimaryButton({
   disabled = false,
   type = "button",
   onClick,
+  sx = {},
 }) {
   return (
     <Button
@@ -37,6 +38,7 @@ export default function PrimaryButton({
         "&:hover": {
           bgcolor: "#1D4ED8",
         },
+        ...sx,
       }}
     >
       {children}

@@ -12,6 +12,15 @@ import {
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { glassPrimaryButtonSx } from "../form/glassFormSx";
+import {
+  glassDialogActionsSx,
+  glassDialogContentSx,
+  glassDialogDangerButtonSx,
+  glassDialogPaperSx,
+  glassDialogSecondaryButtonSx,
+  glassDialogTitleSx,
+} from "./glassDialogSx";
 
 export default function ConfirmDialog({
   open,
@@ -22,6 +31,8 @@ export default function ConfirmDialog({
   confirmText = "Delete",
   cancelText = "Cancel",
   loading = false,
+  glass = false,
+  destructive = true,
   onClose,
   onConfirm,
 }) {
@@ -35,6 +46,7 @@ export default function ConfirmDialog({
         sx: {
           borderRadius: "24px",
           overflow: "hidden",
+          ...(glass && glassDialogPaperSx),
         },
       }}
     >
@@ -50,6 +62,13 @@ export default function ConfirmDialog({
           alignItems: "center",
 
           ...TYPOGRAPHY.sectionTitle,
+          ...(glass && {
+            ...glassDialogTitleSx,
+            borderBottom: "none",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }),
         }}
       >
         {title}
@@ -59,7 +78,7 @@ export default function ConfirmDialog({
         </IconButton>
       </DialogTitle>
 
-      <Divider />
+      <Divider sx={glass ? { borderColor: "rgba(146,168,201,.22)" } : undefined} />
 
       {/* Body */}
 
@@ -67,6 +86,7 @@ export default function ConfirmDialog({
         sx={{
           px: 3,
           py: 3,
+          ...(glass && glassDialogContentSx),
         }}
       >
         <Typography
@@ -90,7 +110,7 @@ export default function ConfirmDialog({
         </Typography>
       </DialogContent>
 
-      <Divider />
+      <Divider sx={glass ? { borderColor: "rgba(146,168,201,.22)" } : undefined} />
 
       {/* Footer */}
 
@@ -98,6 +118,7 @@ export default function ConfirmDialog({
         sx={{
           px: 3,
           py: 3,
+          ...(glass && glassDialogActionsSx),
         }}
       >
         <Button
@@ -114,6 +135,7 @@ export default function ConfirmDialog({
             color: "#334155",
 
             ...TYPOGRAPHY.formButton,
+            ...(glass && glassDialogSecondaryButtonSx),
           }}
         >
           {cancelText}
@@ -121,7 +143,7 @@ export default function ConfirmDialog({
 
         <Button
           variant="contained"
-          color="error"
+          color={destructive ? "error" : "primary"}
           onClick={onConfirm}
           disabled={loading}
           sx={{
@@ -133,9 +155,16 @@ export default function ConfirmDialog({
             boxShadow: "none",
 
             ...TYPOGRAPHY.formButton,
+            ...(glass && (destructive ? glassDialogDangerButtonSx : glassPrimaryButtonSx)),
 
             "&:hover": {
-              boxShadow: "none",
+              ...(glass && !destructive
+                ? glassPrimaryButtonSx["&:hover"]
+                : {
+                    boxShadow: glass
+                      ? "0 8px 18px rgba(176,54,79,.25), inset 0 1px 0 rgba(255,255,255,.36)"
+                      : "none",
+                  }),
             },
           }}
         >

@@ -5,6 +5,8 @@ import {
   Button,
   Divider,
   Grid,
+  IconButton,
+  InputAdornment,
   Stack,
   TextField,
   Typography,
@@ -12,6 +14,9 @@ import {
 
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
+import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import MailOutlineOutlinedIcon from "@mui/icons-material/MailOutlineOutlined";
+import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -21,6 +26,10 @@ import {
 } from "react-hook-form";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import {
+  settingsFieldSx,
+  settingsPrimaryButtonSx,
+} from "./settingsGlassSx";
 
 const DEFAULT_VALUES = {
   name: "",
@@ -64,6 +73,8 @@ export default function ProfileForm({
       phone: profile.phone || "",
     });
 
+    // This effect syncs the image preview with the loaded profile record.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImagePreview(
       profile.profileImage || null,
     );
@@ -267,44 +278,58 @@ export default function ProfileForm({
         alignItems="center"
         spacing={2.5}
         sx={{
-          mt: 2.75,
+          mt: 2.5,
+          flexWrap: "wrap",
         }}
       >
         {/* Avatar */}
-
-        <Avatar
-          src={imagePreview || undefined}
-          alt={
-            profile?.fullName ||
-            "Profile"
-          }
+        <Box
           sx={{
-            width: {
-              xs: 72,
-              sm: 100,
-            },
-
-            height: {
-              xs: 72,
-              sm: 100,
-            },
-
+            position: "relative",
+            width: { xs: 76, sm: 100 },
+            height: { xs: 76, sm: 100 },
             flexShrink: 0,
-
-            bgcolor: "primary.main",
-
-            color: "primary.contrastText",
-
-            fontSize: {
-              xs: 24,
-              sm: 28,
-            },
-
-            fontWeight: 700,
           }}
         >
-          {!imagePreview && profileInitial}
-        </Avatar>
+          <Avatar
+            src={imagePreview || undefined}
+            alt={profile?.fullName || "Profile"}
+            sx={{
+              width: "100%",
+              height: "100%",
+              border: "3px solid rgba(255,255,255,0.98)",
+              boxShadow: "0 8px 20px rgba(58,83,145,0.2)",
+              background: "linear-gradient(145deg, #8A62E8, #4E8BEF)",
+              color: "#FFFFFF",
+              fontSize: { xs: 24, sm: 28 },
+              fontWeight: 700,
+            }}
+          >
+            {!imagePreview && profileInitial}
+          </Avatar>
+          <IconButton
+            type="button"
+            aria-label="Change profile image"
+            onClick={handleChangeProfileImage}
+            disabled={loading}
+            size="small"
+            sx={{
+              position: "absolute",
+              right: -3,
+              bottom: -2,
+              width: 34,
+              height: 34,
+              border: "2px solid #FFFFFF",
+              borderRadius: "50%",
+              color: "#FFFFFF",
+              background: "linear-gradient(135deg, #9B58ED, #5578F5)",
+              boxShadow: "0 4px 10px rgba(91,83,195,0.25)",
+              "&:hover": { background: "linear-gradient(135deg, #8C49E0, #486AE8)" },
+            }}
+          >
+            <PhotoCameraOutlinedIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Box>
 
         {/* Profile details */}
 
@@ -358,13 +383,13 @@ export default function ProfileForm({
 
               gap: 0.75,
 
-              border: "none",
-
-              p: 0,
-
-              bgcolor: "transparent",
-
-              color: "primary.main",
+              border: "1px solid rgba(255,255,255,0.95)",
+              borderRadius: 999,
+              px: 1.5,
+              py: 0.75,
+              background: "linear-gradient(145deg, rgba(255,255,255,0.94), rgba(238,243,255,0.88))",
+              boxShadow: "0 5px 12px rgba(76,99,161,0.1), inset 0 1px 0 #FFFFFF",
+              color: "#5F65D9",
 
               cursor: loading
                 ? "default"
@@ -375,9 +400,9 @@ export default function ProfileForm({
               fontWeight: 600,
 
               "&:hover": {
-                textDecoration: loading
-                  ? "none"
-                  : "underline",
+                textDecoration: "none",
+                background: "linear-gradient(145deg, #FFFFFF, #E9EFFF)",
+                cursor: loading ? "default" : "pointer",
               },
             }}
           >
@@ -404,26 +429,28 @@ export default function ProfileForm({
           DIVIDER
       ===================================== */}
 
-      <Divider
-        sx={{
-          my: 3,
-        }}
-      />
+      <Divider sx={{ my: 2.5, borderColor: "rgba(159,177,211,0.28)" }} />
 
       {/* =====================================
           DETAILS
       ===================================== */}
 
+      <Box
+        sx={{
+          p: { xs: 1.75, sm: 2.25 },
+          borderRadius: "20px",
+          border: "1px solid rgba(255,255,255,0.92)",
+          background: "linear-gradient(120deg, rgba(255,255,255,0.56), rgba(241,247,255,0.62) 55%, rgba(255,248,252,0.55))",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.94)",
+        }}
+      >
       <Typography
         component="h3"
         sx={{
           ...TYPOGRAPHY.cardTitle,
-
-          color: "text.primary",
-
+          color: "#12264D",
           fontWeight: 700,
-
-          mb: 2,
+          mb: 1.75,
         }}
       >
         Details
@@ -450,96 +477,89 @@ export default function ProfileForm({
           NAME
       ===================================== */}
 
-      <Controller
-        name="name"
-        control={control}
-        rules={{
-          required: "Name is required.",
-          validate: (value) =>
-            value?.trim()
-              ? true
-              : "Name is required.",
-        }}
-        render={({
-          field,
-          fieldState,
-        }) => (
-          <TextField
-            {...field}
-            fullWidth
-            label="Name"
-            required
-            error={
-              !!fieldState.error ||
-              !!firstNameError
-            }
-            helperText={
-              fieldState.error?.message ||
-              firstNameError
-            }
-            disabled={loading}
-            size="small"
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Controller
+            name="name"
+            control={control}
+            rules={{
+              required: "Name is required.",
+              validate: (value) => value?.trim() ? true : "Name is required.",
+            }}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                fullWidth
+                label="Name"
+                required
+                error={!!fieldState.error || !!firstNameError}
+                helperText={fieldState.error?.message || firstNameError}
+                disabled={loading}
+                size="small"
+                sx={settingsFieldSx}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonOutlineOutlinedIcon sx={{ color: "#7D91B8", fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+            )}
           />
-        )}
-      />
+        </Grid>
 
-      {/* =====================================
-          EMAIL
-      ===================================== */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            label="Email"
+            value={profile?.email || ""}
+            disabled
+            helperText="Email address cannot be changed from settings."
+            size="small"
+            sx={settingsFieldSx}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <MailOutlineOutlinedIcon sx={{ color: "#7D91B8", fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+        </Grid>
 
-      <Box
-        sx={{
-          mt: 2,
-        }}
-      >
-        <TextField
-          fullWidth
-          label="Email"
-          value={profile?.email || ""}
-          disabled
-          helperText="Email address cannot be changed from settings."
-          size="small"
-        />
-      </Box>
-
-      {/* =====================================
-          PHONE
-      ===================================== */}
-
-      <Box
-        sx={{
-          mt: 2,
-          maxWidth: {
-            xs: "100%",
-            sm: 444,
-          },
-        }}
-      >
-        <Controller
-          name="phone"
-          control={control}
-          render={({
-            field,
-            fieldState,
-          }) => (
-            <TextField
-              {...field}
-              fullWidth
-              label="Phone number"
-              error={
-                !!fieldState.error ||
-                !!getFieldError("phone")
-              }
-              helperText={
-                fieldState.error?.message ||
-                getFieldError("phone")
-              }
-              disabled={loading}
-              size="small"
-            />
-          )}
-        />
-      </Box>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Controller
+            name="phone"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                fullWidth
+                label="Phone number"
+                error={!!fieldState.error || !!getFieldError("phone")}
+                helperText={fieldState.error?.message || getFieldError("phone")}
+                disabled={loading}
+                size="small"
+                sx={settingsFieldSx}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PhoneOutlinedIcon sx={{ color: "#7D91B8", fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+            )}
+          />
+        </Grid>
+      </Grid>
 
       {/* =====================================
           INFORMATION MESSAGE
@@ -547,7 +567,7 @@ export default function ProfileForm({
 
       <Box
         sx={{
-          mt: 3,
+          mt: 2.25,
 
           px: 1.5,
           py: 1.25,
@@ -558,18 +578,17 @@ export default function ProfileForm({
 
           gap: 1,
 
-          borderRadius: 2,
-
-          bgcolor: "action.hover",
-
-          color: "text.secondary",
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.9)",
+          background: "linear-gradient(100deg, rgba(229,242,255,0.88), rgba(238,243,255,0.72))",
+          color: "#647A9B",
         }}
       >
         <ShieldOutlinedIcon
           sx={{
             fontSize: 18,
 
-            color: "text.secondary",
+            color: "#647A9B",
 
             flexShrink: 0,
           }}
@@ -587,6 +606,7 @@ export default function ProfileForm({
           reports.
         </Typography>
       </Box>
+      </Box>
 
       {/* =====================================
           ACTION
@@ -600,7 +620,7 @@ export default function ProfileForm({
 
           borderTop: "1px solid",
 
-          borderColor: "divider",
+          borderColor: "rgba(159,177,211,0.28)",
 
           display: "flex",
 
@@ -619,11 +639,9 @@ export default function ProfileForm({
 
             px: 2.5,
 
-            borderRadius: 2,
-
             ...TYPOGRAPHY.button,
-
             fontWeight: 600,
+            ...settingsPrimaryButtonSx,
           }}
         >
           {loading

@@ -236,6 +236,7 @@ export default function useCalendar({
       );
     } finally {
       if (eventRequestRef.current.id === requestId) {
+        eventRequestRef.current = { id: requestId, controller: null };
         setLoading(false);
       }
     }
@@ -319,7 +320,14 @@ export default function useCalendar({
 
   useEffect(() => {
     fetchEvents();
-    return () => eventRequestRef.current.controller?.abort();
+    return () => {
+      const activeRequest = eventRequestRef.current;
+      activeRequest.controller?.abort();
+      eventRequestRef.current = {
+        id: activeRequest.id + 1,
+        controller: null,
+      };
+    };
   }, [fetchEvents]);
 
   // Scheduled targets may be claimed by Celery between user interactions, so
@@ -335,7 +343,13 @@ export default function useCalendar({
       return undefined;
     }
 
-    const intervalId = window.setInterval(fetchEvents, 5000);
+    const intervalId = window.setInterval(() => {
+      if (eventRequestRef.current.controller) {
+        return;
+      }
+
+      fetchEvents();
+    }, 5000);
     return () => window.clearInterval(intervalId);
   }, [events, fetchEvents]);
 

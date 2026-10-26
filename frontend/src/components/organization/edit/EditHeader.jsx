@@ -1,4 +1,4 @@
-import { Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
@@ -6,6 +6,8 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { useNavigate } from "react-router-dom";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import PrimaryButton from "../../ui/button/PrimaryButton";
+import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 
 export default function EditHeader({ loading = false }) {
   const navigate = useNavigate();
@@ -13,11 +15,13 @@ export default function EditHeader({ loading = false }) {
   return (
     <Box
       sx={{
+        width: "100%",
         maxWidth: "980px",
         mx: "auto",
         mb: 4,
 
         display: "flex",
+        flexDirection: { xs: "column", sm: "row" },
         justifyContent: "space-between",
         alignItems: "flex-start",
         gap: 3,
@@ -40,6 +44,12 @@ export default function EditHeader({ loading = false }) {
             cursor: loading ? "not-allowed" : "pointer",
 
             color: "#64748B",
+            px: 1.25,
+            py: 0.7,
+            borderRadius: "999px",
+            background: "linear-gradient(145deg, rgba(255,255,255,.78), rgba(232,241,255,.68))",
+            border: "1px solid rgba(255,255,255,.88)",
+            boxShadow: "0 3px 9px rgba(76, 102, 148, .08), inset 0 1px 0 #fff",
 
             transition: ".2s",
 
@@ -64,7 +74,7 @@ export default function EditHeader({ loading = false }) {
         <Typography
           sx={{
             ...TYPOGRAPHY.pageTitle,
-            mt: 1.5,
+            mt: 2,
           }}
         >
           Edit Organization
@@ -84,36 +94,22 @@ export default function EditHeader({ loading = false }) {
 
       {/* Right */}
 
-      <Button
+      <PrimaryButton
         type="submit"
-        variant="contained"
-        startIcon={
-          loading ? (
-            <CircularProgress size={18} color="inherit" />
-          ) : (
-            <SaveRoundedIcon />
-          )
-        }
-        disabled={loading}
+        fullWidth={false}
+        loading={loading}
+        height={46}
+        startIcon={<SaveRoundedIcon />}
         sx={{
-          height: 46,
+          width: { xs: "100%", sm: "auto" },
           px: 3,
-
-          borderRadius: "14px",
-
           textTransform: "none",
-
-          boxShadow: "none",
-
           ...TYPOGRAPHY.formButton,
-
-          "&:hover": {
-            boxShadow: "none",
-          },
+          ...glassPrimaryButtonSx,
         }}
       >
         {loading ? "Saving..." : "Save Changes"}
-      </Button>
+      </PrimaryButton>
     </Box>
   );
 }

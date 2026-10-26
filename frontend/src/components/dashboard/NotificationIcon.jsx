@@ -43,7 +43,7 @@ const CONFIG = {
   },
 };
 
-export default function NotificationIcon({ type }) {
+export default function NotificationIcon({ type, raised = false }) {
   const config = CONFIG[type] || CONFIG.DEFAULT;
 
   const Icon = config.icon;
@@ -56,7 +56,13 @@ export default function NotificationIcon({ type }) {
 
         borderRadius: "12px",
 
-        bgcolor: config.background,
+        background: raised
+          ? `linear-gradient(145deg, ${config.background}, rgba(255,255,255,.78))`
+          : config.background,
+        border: raised ? "1px solid rgba(255,255,255,.92)" : "none",
+        boxShadow: raised
+          ? "0 4px 9px rgba(76,98,154,.1), inset 0 1px 2px rgba(255,255,255,.92), inset 0 -1px 2px rgba(95,116,170,.08)"
+          : "none",
 
         display: "flex",
         justifyContent: "center",

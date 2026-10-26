@@ -7,15 +7,25 @@ export default function SidebarSection({
   items,
 }) {
   return (
-    <Box sx={{ mb: 3 }}>
+    <Box
+      sx={{
+        mb: 1.1,
+        "@media (max-height: 700px)": { mb: 0.6 },
+        "@media (max-height: 600px)": { mb: 0.35 },
+        "@media (max-height: 520px)": { mb: 0 },
+      }}
+    >
       <Typography
         sx={{
           px: 2,
-          mb: 1,
-          fontSize: 12,
+          mb: 0.5,
+          fontSize: 11,
           fontWeight: 700,
-          letterSpacing: 1,
-          color: "#94A3B8",
+          letterSpacing: 0.7,
+          color: "#8290AD",
+          "@media (max-height: 700px)": { mb: 0.3 },
+          "@media (max-height: 600px)": { mb: 0.2 },
+          "@media (max-height: 520px)": { mb: 0 },
         }}
       >
         {title}

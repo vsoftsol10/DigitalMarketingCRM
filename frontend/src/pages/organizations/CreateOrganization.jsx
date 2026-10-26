@@ -1,4 +1,4 @@
-import { Alert, Box, CircularProgress, Divider, Paper } from "@mui/material";
+import { Alert, Box, Divider, Paper } from "@mui/material";
 
 import { FormProvider, useForm } from "react-hook-form";
 
@@ -13,6 +13,13 @@ import OrganizationDetailsForm from "../../components/organization/create/Organi
 import PrimaryContactForm from "../../components/organization/create/PrimaryContactForm";
 import SubscriptionForm from "../../components/organization/create/SubscriptionForm";
 import CreateOrganizationFooter from "../../components/organization/create/CreateOrganizationFooter";
+import LoadingState from "../../components/ui/LoadingState";
+import FormSection from "../../components/ui/form/FormSection";
+import {
+  glassFormDividerSx,
+  glassFormPaperSx,
+  glassFormSectionSx,
+} from "../../components/ui/form/glassFormSx";
 
 import { organizationSchema } from "../../validation/organization.schema";
 import { organizationDefaultValues } from "../../constants/forms/organizationDefaultValues";
@@ -225,7 +232,9 @@ export default function CreateOrganization() {
 
               mb: 3,
 
-              borderRadius: "12px",
+              borderRadius: "16px",
+              border: "1px solid rgba(255,255,255,.85)",
+              boxShadow: "0 6px 16px rgba(77, 59, 75, .08)",
             }}
           >
             {serverError}
@@ -246,7 +255,9 @@ export default function CreateOrganization() {
 
               mb: 3,
 
-              borderRadius: "12px",
+              borderRadius: "16px",
+              border: "1px solid rgba(255,255,255,.85)",
+              boxShadow: "0 6px 16px rgba(77, 59, 75, .08)",
             }}
           >
             {plansError}
@@ -260,17 +271,8 @@ export default function CreateOrganization() {
         <Paper
           elevation={0}
           sx={{
+            ...glassFormPaperSx,
             maxWidth: "980px",
-
-            mx: "auto",
-
-            p: 4,
-
-            borderRadius: "24px",
-
-            border: "1px solid #E2E8F0",
-
-            bgcolor: "#FFFFFF",
           }}
         >
           {/* ==================================================
@@ -279,7 +281,7 @@ export default function CreateOrganization() {
 
           <OrganizationDetailsForm />
 
-          <Divider sx={{ my: 5 }} />
+          <Divider sx={glassFormDividerSx} />
 
           {/* ==================================================
               PRIMARY CONTACT
@@ -287,29 +289,29 @@ export default function CreateOrganization() {
 
           <PrimaryContactForm />
 
-          <Divider sx={{ my: 5 }} />
+          <Divider sx={glassFormDividerSx} />
 
           {/* ==================================================
               SUBSCRIPTION
           ================================================== */}
 
-          {plansLoading ? (
-            <Box
-              sx={{
-                minHeight: 180,
-
-                display: "flex",
-
-                alignItems: "center",
-
-                justifyContent: "center",
-              }}
+          <Box sx={glassFormSectionSx}>
+            <FormSection
+              title="Subscription"
+              description="Configure the organization's subscription plan and billing."
+              spacing={2.5}
             >
-              <CircularProgress size={28} />
-            </Box>
-          ) : (
-            <SubscriptionForm plans={activePlans} />
-          )}
+              {plansLoading ? (
+                <LoadingState
+                  label="LOADING SUBSCRIPTION PLANS..."
+                  variant="container"
+                  minHeight={56}
+                />
+              ) : (
+                <SubscriptionForm plans={activePlans} />
+              )}
+            </FormSection>
+          </Box>
 
           {/* ==================================================
               SOCIAL ACCOUNTS

@@ -10,6 +10,7 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PasswordForm from "./PasswordForm";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import { settingsGlassCardSx } from "./settingsGlassSx";
 
 export default function SecuritySettings({
   loading = false,
@@ -20,15 +21,7 @@ export default function SecuritySettings({
     <Paper
       elevation={0}
       sx={{
-        width: "100%",
-
-        border: "1px solid",
-        borderColor: "divider",
-
-        borderRadius: 3,
-
-        bgcolor: "background.paper",
-
+        ...settingsGlassCardSx,
         overflow: "hidden",
       }}
     >
@@ -63,11 +56,10 @@ export default function SecuritySettings({
               alignItems: "center",
               justifyContent: "center",
 
-              borderRadius: 2,
-
-              bgcolor: "action.hover",
-
-              color: "text.secondary",
+              borderRadius: "14px",
+              background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(235,242,255,0.86))",
+              border: "1px solid rgba(255,255,255,0.9)",
+              color: "#7650DF",
 
               flexShrink: 0,
             }}

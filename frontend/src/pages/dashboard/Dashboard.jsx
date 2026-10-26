@@ -6,11 +6,12 @@ import DashboardStats from "../../components/dashboard/DashboardStats";
 
 import dashboardService from "../../services/dashboard.service";
 import DashboardScheduleCard from "../../components/dashboard/DashboardScheduleCard";
-import { Box, CircularProgress, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import DashboardNotificationsCard from "../../components/dashboard/DashboardNotificationsCard";
 import DashboardRecentActivityCard from "../../components/dashboard/DashboardRecentActivityCard";
 import QuickActions from "../../components/dashboard/QuickActions";
+import LoadingState from "../../components/ui/LoadingState";
 export default function Dashboard() {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
@@ -46,18 +47,7 @@ export default function Dashboard() {
   }, []);
 
   if (isLoading) {
-    return (
-      <Box
-        sx={{
-          minHeight: 320,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={32} />
-      </Box>
-    );
+    return <LoadingState page="Dashboard" />;
   }
 
   if (error) {
@@ -90,7 +80,7 @@ export default function Dashboard() {
         onButtonClick={() => navigate("/posts")}
       />
 
-      <Box sx={{ mt: 4 }}>
+      <Box sx={{ mt: 3 }}>
         <DashboardStats statistics={dashboard.statistics} />
       </Box>
 

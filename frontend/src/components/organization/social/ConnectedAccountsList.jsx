@@ -2,6 +2,7 @@ import { Box, Button, Typography } from "@mui/material";
 
 import ConnectedAccountRow from "./ConnectedAccountRow";
 import SocialAccountEmptyState from "./SocialAccountEmptyState";
+import LoadingState from "../../ui/LoadingState";
 
 // ============================================================
 // CONNECTED ACCOUNTS LIST
@@ -67,24 +68,11 @@ export default function ConnectedAccountsList({
 
   if (loading) {
     return (
-      <Box
-        role="status"
-        aria-live="polite"
-        sx={{
-          py: 5,
-          textAlign: "center",
-        }}
-      >
-        <Typography
-          sx={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: "#64748B",
-          }}
-        >
-          Loading connected accounts...
-        </Typography>
-      </Box>
+      <LoadingState
+        label="LOADING CONNECTED ACCOUNTS..."
+        variant="container"
+        minHeight={120}
+      />
     );
   }
 

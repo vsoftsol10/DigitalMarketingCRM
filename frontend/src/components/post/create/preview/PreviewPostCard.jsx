@@ -4,6 +4,7 @@ import PreviewMedia from "./PreviewMedia";
 import PreviewHeader from "./PreviewHeader";
 import PreviewActions from "./PreviewActions";
 import PreviewCaption from "./PreviewCaption";
+import overviewGlassCardSx from "../../../organization/overview/overviewGlassCardSx";
 
 export default function PreviewPostCard({
   organization,
@@ -20,12 +21,8 @@ export default function PreviewPostCard({
 
         mx: "auto",
 
-        border: "1px solid #E2E8F0",
-
-        borderRadius: "22px",
-
-        bgcolor: "#FFFFFF",
-
+        ...overviewGlassCardSx,
+        borderRadius: "20px",
         overflow: "hidden",
       }}
     >

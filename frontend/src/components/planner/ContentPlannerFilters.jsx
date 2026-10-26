@@ -123,8 +123,18 @@ export default function ContentPlannerFilters({
 
             whiteSpace: "nowrap",
 
+            border: "1px solid rgba(255,255,255,.76)",
+
+            boxShadow: "0 4px 10px rgba(75,96,151,.07), inset 0 1px 0 rgba(255,255,255,.96)",
+
             "&:hover": {
-              backgroundColor: "#F8FAFC",
+              background: "rgba(226,237,255,.62)",
+              color: "#355FBC",
+            },
+
+            "&:focus-visible": {
+              outline: "2px solid rgba(111,145,211,.48)",
+              outlineOffset: 2,
             },
           }}
         >

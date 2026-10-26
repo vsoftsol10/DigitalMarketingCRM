@@ -1,5 +1,6 @@
 import {
   Alert,
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -7,6 +8,15 @@ import {
   DialogTitle,
   Typography,
 } from "@mui/material";
+import {
+  glassDialogActionsSx,
+  glassDialogCardSx,
+  glassDialogContentSx,
+  glassDialogDangerButtonSx,
+  glassDialogPaperSx,
+  glassDialogSecondaryButtonSx,
+  glassDialogTitleSx,
+} from "../../ui/dialog/glassDialogSx";
 
 export default function CancelSubscriptionDialog({
   open,
@@ -26,17 +36,13 @@ export default function CancelSubscriptionDialog({
       onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="sm"
+      PaperProps={{ sx: glassDialogPaperSx }}
     >
-      <DialogTitle
-        sx={{
-          fontWeight: 700,
-          color: "#0F172A",
-        }}
-      >
+      <DialogTitle sx={glassDialogTitleSx}>
         Cancel Subscription
       </DialogTitle>
 
-      <DialogContent dividers>
+      <DialogContent dividers sx={glassDialogContentSx}>
         <Typography
           sx={{
             fontSize: 15,
@@ -51,7 +57,10 @@ export default function CancelSubscriptionDialog({
           severity="warning"
           sx={{
             mt: 2.5,
-            borderRadius: "10px",
+            borderRadius: "14px",
+            border: "1px solid rgba(246,202,134,.56)",
+            background: "linear-gradient(145deg, rgba(255,250,235,.9), rgba(255,255,255,.76))",
+            boxShadow: "0 4px 10px rgba(154,112,49,.06), inset 0 1px 0 #fff",
           }}
         >
           The current subscription will be cancelled immediately and preserved
@@ -59,37 +68,39 @@ export default function CancelSubscriptionDialog({
           be cancelled and will not be activated.
         </Alert>
 
-        <Typography
-          sx={{
-            mt: 2.5,
-            fontSize: 13,
-            color: "#64748B",
-          }}
-        >
-          Current Plan
-        </Typography>
-
-        <Typography
-          sx={{
-            mt: 0.35,
-            fontSize: 17,
-            fontWeight: 700,
-            color: "#0F172A",
-          }}
-        >
-          {organization.subscription_plan || "-"}
-        </Typography>
-
-        <Typography
-          sx={{
-            mt: 0.25,
-            fontSize: 14,
-            color: "#64748B",
-            textTransform: "capitalize",
-          }}
-        >
-          {organization.billing_cycle || "-"}
-        </Typography>
+        <Box sx={{ mt: 2.5, ...glassDialogCardSx }}>
+          <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#8192B0",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Current Plan
+          </Typography>
+          <Typography
+            sx={{
+              mt: 0.35,
+              fontSize: 17,
+              fontWeight: 700,
+              color: "#17294D",
+            }}
+          >
+            {organization.subscription_plan || "-"}
+          </Typography>
+          <Typography
+            sx={{
+              mt: 0.25,
+              fontSize: 14,
+              color: "#657899",
+              textTransform: "capitalize",
+            }}
+          >
+            {organization.billing_cycle || "-"}
+          </Typography>
+        </Box>
 
         {error && (
           <Alert
@@ -104,20 +115,12 @@ export default function CancelSubscriptionDialog({
         )}
       </DialogContent>
 
-      <DialogActions
-        sx={{
-          px: 3,
-          py: 2,
-          gap: 1,
-        }}
-      >
+      <DialogActions sx={glassDialogActionsSx}>
         <Button
           onClick={onClose}
           disabled={loading}
           color="inherit"
-          sx={{
-            textTransform: "none",
-          }}
+          sx={glassDialogSecondaryButtonSx}
         >
           Keep Subscription
         </Button>
@@ -127,19 +130,7 @@ export default function CancelSubscriptionDialog({
           color="error"
           onClick={onConfirm}
           disabled={loading}
-          sx={{
-            minWidth: 150,
-
-            textTransform: "none",
-
-            fontWeight: 600,
-
-            boxShadow: "none",
-
-            "&:hover": {
-              boxShadow: "none",
-            },
-          }}
+          sx={{ minWidth: 150, ...glassDialogDangerButtonSx }}
         >
           {loading ? "Cancelling..." : "Cancel Subscription"}
         </Button>

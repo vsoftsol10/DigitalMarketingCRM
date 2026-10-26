@@ -18,6 +18,7 @@ import { planSchema } from "../../validation/plan.schema";
 import { planDefaultValues } from "../../constants/forms/planDefaultValues";
 
 import plansService from "../../services/plans.service";
+import { planSectionSx } from "../../components/plans/plansGlassSx";
 
 export default function CreatePlan() {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ export default function CreatePlan() {
     mode: "onSubmit",
   });
 
-  const { setError } = methods;
+  const { setError, formState: { isSubmitting } } = methods;
 
   async function onSubmit(data) {
     try {
@@ -96,17 +97,7 @@ export default function CreatePlan() {
         minWidth: 0,
         boxSizing: "border-box",
 
-        /*
-         * Original UI alignment
-         *
-         * Header + form content should have
-         * the same left/right alignment.
-         */
-        px: {
-          xs: 2,
-          sm: 3,
-          md: 4.5,
-        },
+        pb: 2,
       }}
     >
       {/* =========================
@@ -163,17 +154,7 @@ export default function CreatePlan() {
 
               <Paper
                 elevation={0}
-                sx={{
-                  width: "100%",
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-                  borderRadius: "18px",
-                  border: "1px solid #E2E8F0",
-                  backgroundColor: "#FFFFFF",
-                  boxSizing: "border-box",
-                }}
+                sx={planSectionSx}
               >
                 <PlanDetailsForm customPlan={customPlan} />
               </Paper>
@@ -182,17 +163,7 @@ export default function CreatePlan() {
 
               <Paper
                 elevation={0}
-                sx={{
-                  width: "100%",
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-                  borderRadius: "18px",
-                  border: "1px solid #E2E8F0",
-                  backgroundColor: "#FFFFFF",
-                  boxSizing: "border-box",
-                }}
+                sx={planSectionSx}
               >
                 <PricingForm />
               </Paper>
@@ -201,17 +172,7 @@ export default function CreatePlan() {
 
               <Paper
                 elevation={0}
-                sx={{
-                  width: "100%",
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-                  borderRadius: "18px",
-                  border: "1px solid #E2E8F0",
-                  backgroundColor: "#FFFFFF",
-                  boxSizing: "border-box",
-                }}
+                sx={planSectionSx}
               >
                 <PlanLimitsForm />
               </Paper>
@@ -220,17 +181,7 @@ export default function CreatePlan() {
 
               <Paper
                 elevation={0}
-                sx={{
-                  width: "100%",
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-                  borderRadius: "18px",
-                  border: "1px solid #E2E8F0",
-                  backgroundColor: "#FFFFFF",
-                  boxSizing: "border-box",
-                }}
+                sx={planSectionSx}
               >
                 <PlanHighlightsForm />
               </Paper>
@@ -282,7 +233,7 @@ export default function CreatePlan() {
                 mt: 0,
               }}
             >
-              <CreatePlanFooter onCancel={() => navigate("/plans")} />
+              <CreatePlanFooter onCancel={() => navigate("/plans")} loading={isSubmitting} />
             </Box>
           </Box>
         </Box>

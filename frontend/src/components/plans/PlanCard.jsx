@@ -407,12 +407,13 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import { planTone } from "./plansGlassSx";
 
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN").format(Number(value) || 0);
 }
 
-function LimitItem({ icon, label, value }) {
+function LimitItem({ icon, label, value, color }) {
   return (
     <Stack
       direction="row"
@@ -428,7 +429,7 @@ function LimitItem({ icon, label, value }) {
           alignItems: "center",
           justifyContent: "center",
           flexShrink: 0,
-          color: "#94A3B8",
+          color,
         }}
       >
         {icon}
@@ -462,7 +463,7 @@ function LimitItem({ icon, label, value }) {
   );
 }
 
-function PriceItem({ label, value }) {
+function PriceItem({ label, value, color }) {
   return (
     <Box
       sx={{
@@ -488,7 +489,7 @@ function PriceItem({ label, value }) {
           fontSize: "20px",
           fontWeight: 700,
           lineHeight: "28px",
-          color: "#2563EB",
+          color,
           whiteSpace: "nowrap",
         }}
       >
@@ -502,6 +503,7 @@ export default function PlanCard({ plan, onSelect }) {
   const isActive = plan.status === "active";
 
   const limits = plan?.limits || {};
+  const tone = planTone(plan?.type);
 
   return (
     <Paper
@@ -510,19 +512,21 @@ export default function PlanCard({ plan, onSelect }) {
       onClick={() => onSelect(plan)}
       sx={{
         width: "100%",
-        minHeight: 350,
+        minHeight: 450,
 
         position: "relative",
 
-        p: "20px 22px",
+        p: { xs: 2.25, sm: 2.75 },
 
         display: "flex",
         flexDirection: "column",
 
-        border: "1px solid #DCE3EC",
-        borderRadius: "18px",
+        border: `1px solid ${tone.border}`,
+        borderRadius: "22px",
 
-        backgroundColor: "#FFFFFF",
+        background: tone.surface,
+        backdropFilter: "blur(16px)",
+        boxShadow: "0 16px 30px rgba(73,95,157,0.14), inset 0 1px 0 rgba(255,255,255,0.98)",
 
         cursor: "pointer",
 
@@ -532,8 +536,8 @@ export default function PlanCard({ plan, onSelect }) {
           "border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease",
 
         "&:hover": {
-          borderColor: "#CBD5E1",
-          boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
+          borderColor: "rgba(255,255,255,1)",
+          boxShadow: "0 20px 38px rgba(73,95,157,0.2), inset 0 1px 0 #FFFFFF",
           transform: "translateY(-2px)",
         },
       }}
@@ -571,13 +575,15 @@ export default function PlanCard({ plan, onSelect }) {
 
               borderRadius: "12px",
 
-              backgroundColor: "#EFF6FF",
+              background: tone.iconSurface,
+              border: "1px solid rgba(255,255,255,0.96)",
+              boxShadow: "0 6px 13px rgba(77,98,154,0.12), inset 0 1px 0 #FFFFFF",
             }}
           >
             <CreditCardOutlinedIcon
               sx={{
                 fontSize: 21,
-                color: "#2563EB",
+                color: tone.icon,
               }}
             />
           </Box>
@@ -687,14 +693,16 @@ export default function PlanCard({ plan, onSelect }) {
 
           borderRadius: "14px",
 
-          backgroundColor: "#F8FAFC",
+          background: tone.tint,
 
-          border: "1px solid #E2E8F0",
+          border: "1px solid rgba(255,255,255,0.88)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.94)",
+          "& > :nth-of-type(2)": { borderLeft: "1px solid rgba(145,166,202,0.24)", pl: 2 },
         }}
       >
-        <PriceItem label="Monthly" value={plan.monthly_price} />
+        <PriceItem label="Monthly" value={plan.monthly_price} color={tone.accent} />
 
-        <PriceItem label="Yearly" value={plan.yearly_price} />
+        <PriceItem label="Yearly" value={plan.yearly_price} color={tone.accent} />
       </Box>
 
       {/* =====================================================
@@ -736,6 +744,7 @@ export default function PlanCard({ plan, onSelect }) {
           }
           label="Accounts"
           value={limits.accounts ?? 0}
+          color={tone.accent}
         />
 
         <LimitItem
@@ -748,6 +757,7 @@ export default function PlanCard({ plan, onSelect }) {
           }
           label="Posts"
           value={limits.posts ?? 0}
+          color={tone.accent}
         />
 
         <LimitItem
@@ -760,6 +770,7 @@ export default function PlanCard({ plan, onSelect }) {
           }
           label="Videos"
           value={limits.videos ?? 0}
+          color={tone.accent}
         />
 
         <LimitItem
@@ -772,6 +783,7 @@ export default function PlanCard({ plan, onSelect }) {
           }
           label="Ads"
           value={limits.ads ?? 0}
+          color={tone.accent}
         />
       </Box>
 
@@ -791,7 +803,7 @@ export default function PlanCard({ plan, onSelect }) {
         <AutoAwesomeOutlinedIcon
           sx={{
             fontSize: 16,
-            color: "#94A3B8",
+            color: tone.accent,
           }}
         />
 

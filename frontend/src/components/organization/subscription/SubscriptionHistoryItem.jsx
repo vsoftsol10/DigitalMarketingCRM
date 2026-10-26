@@ -95,7 +95,18 @@ export default function SubscriptionHistoryItem({
 
   return (
     <Box>
-      <Stack direction="row" spacing={2} alignItems="flex-start">
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: "18px",
+          border: "1px solid rgba(255,255,255,.88)",
+          background:
+            "linear-gradient(145deg, rgba(250,252,255,.92) 0%, rgba(242,247,255,.86) 100%)",
+          boxShadow:
+            "0 8px 18px rgba(75,96,151,.09), 0 2px 5px rgba(79,99,154,.05), inset 0 1px 0 rgba(255,255,255,.96)",
+        }}
+      >
+        <Stack direction="row" spacing={2} alignItems="flex-start">
         <Box
           sx={{
             width: 42,
@@ -103,7 +114,13 @@ export default function SubscriptionHistoryItem({
 
             borderRadius: "12px",
 
-            backgroundColor: "#F8FAFC",
+            background:
+              "linear-gradient(145deg, rgba(238,245,255,.98), rgba(222,234,252,.9))",
+
+            border: "1px solid rgba(255,255,255,.9)",
+
+            boxShadow:
+              "0 4px 10px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.96)",
 
             display: "flex",
             alignItems: "center",
@@ -115,7 +132,7 @@ export default function SubscriptionHistoryItem({
           <CalendarTodayOutlinedIcon
             sx={{
               fontSize: 19,
-              color: "#64748B",
+              color: "#17294F",
             }}
           />
         </Box>
@@ -170,7 +187,7 @@ export default function SubscriptionHistoryItem({
               mt: 0.35,
 
               fontSize: 13,
-              color: "#64748B",
+              color: "#657899",
             }}
           >
             {formatBillingCycle(subscription.billing_cycle)}
@@ -192,7 +209,7 @@ export default function SubscriptionHistoryItem({
             <Typography
               sx={{
                 fontSize: 13,
-                color: "#64748B",
+                color: "#657899",
               }}
             >
               {formatDate(subscription.start_date)}
@@ -201,7 +218,7 @@ export default function SubscriptionHistoryItem({
             <Typography
               sx={{
                 fontSize: 13,
-                color: "#94A3B8",
+                color: "#8294B4",
               }}
             >
               →
@@ -217,12 +234,14 @@ export default function SubscriptionHistoryItem({
             </Typography>
           </Stack>
         </Box>
-      </Stack>
+        </Stack>
+      </Box>
 
       {!isLast && (
         <Divider
           sx={{
             my: 2.5,
+            borderColor: "rgba(146,168,201,.24)",
           }}
         />
       )}

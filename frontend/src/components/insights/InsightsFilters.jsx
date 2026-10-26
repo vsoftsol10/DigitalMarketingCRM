@@ -8,17 +8,19 @@ import {
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
+import { insightsGlassControlSx } from "./insightsGlassSx";
 
 const CONTROL_SX = {
   width: "100%",
   minWidth: 0,
   height: 40,
-  bgcolor: "#fff",
-  borderRadius: "9px",
-  color: "#1E293B",
+  ...insightsGlassControlSx,
+  borderRadius: 999,
+  color: "#203965",
   fontSize: 13,
-  "& .MuiOutlinedInput-notchedOutline": { borderColor: "#DBE4F0" },
-  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#A7B8D1" },
+  "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" },
+  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#AFC8F0" },
+  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#79A8F6", borderWidth: 1 },
   "& .MuiSelect-select": {
     display: "flex",
     alignItems: "center",
@@ -27,7 +29,21 @@ const CONTROL_SX = {
     pr: "32px !important",
     overflow: "hidden",
   },
-  "& .MuiSelect-icon": { right: 8, color: "#647A9A" },
+  "& .MuiSelect-icon": { right: 8, color: "#607AA5" },
+};
+
+const MENU_PROPS = {
+  PaperProps: {
+    sx: {
+      mt: 0.7,
+      border: "1px solid rgba(255,255,255,0.96)",
+      borderRadius: 2.5,
+      background: "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(233,243,255,0.98))",
+      boxShadow: "0 14px 30px rgba(58,94,155,0.18), inset 0 1px 0 #FFFFFF",
+      "& .MuiMenuItem-root.Mui-selected": { bgcolor: "rgba(205,224,255,0.76)" },
+      "& .MuiMenuItem-root:hover": { bgcolor: "rgba(221,235,255,0.8)" },
+    },
+  },
 };
 
 function LabeledValue({ icon, children }) {
@@ -70,19 +86,20 @@ export default function InsightsFilters({
         alignItems: "center",
         justifyContent: { xs: "stretch", xl: "flex-end" },
         flexWrap: { xs: "wrap", xl: "nowrap" },
-        gap: 1,
+        gap: { xs: 1, xl: 0.5 },
         width: { xs: "100%", xl: "auto" },
-        flex: "1 1 680px",
+        flex: { xs: "1 1 100%", xl: "0 0 auto" },
         minWidth: 0,
       }}
     >
-      <FormControl size="small" sx={{ flex: { xs: "1 1 calc(50% - 8px)", sm: "1 1 calc(50% - 8px)", xl: "0 0 190px" }, minWidth: 0 }}>
+      <FormControl size="small" sx={{ flex: { xs: "1 1 calc(50% - 8px)", sm: "1 1 calc(50% - 8px)", xl: "0 0 172px" }, minWidth: 0 }}>
         <Select
           value={organizationId}
           onChange={(event) => onOrganizationChange(event.target.value)}
           disabled={organizationsLoading}
           displayEmpty
           inputProps={{ "aria-label": "Organization" }}
+          MenuProps={MENU_PROPS}
           sx={CONTROL_SX}
         >
           <MenuItem value="">Organization</MenuItem>
@@ -94,13 +111,14 @@ export default function InsightsFilters({
         </Select>
       </FormControl>
 
-      <FormControl size="small" sx={{ flex: { xs: "1 1 calc(50% - 8px)", sm: "1 1 calc(50% - 8px)", xl: "0 0 130px" }, minWidth: 0 }}>
+      <FormControl size="small" sx={{ flex: { xs: "1 1 calc(50% - 8px)", sm: "1 1 calc(50% - 8px)", xl: "0 0 120px" }, minWidth: 0 }}>
         <Select
           value={platform}
           onChange={(event) => onPlatformChange(event.target.value)}
           disabled={!organizationId}
           displayEmpty
           inputProps={{ "aria-label": "Platform filter" }}
+          MenuProps={MENU_PROPS}
           sx={CONTROL_SX}
           renderValue={(value) => (
             <LabeledValue icon={<FilterAltOutlinedIcon sx={{ color: "#647A9A", fontSize: 17 }} />}>
@@ -118,13 +136,14 @@ export default function InsightsFilters({
       <FormControl
         size="small"
         disabled={!platform || !filteredAccounts.length}
-        sx={{ flex: { xs: "1 1 calc(50% - 8px)", sm: "1 1 calc(50% - 8px)", xl: "0 0 180px" }, minWidth: 0 }}
+        sx={{ flex: { xs: "1 1 calc(50% - 8px)", sm: "1 1 calc(50% - 8px)", xl: "0 0 166px" }, minWidth: 0 }}
       >
         <Select
           value={accountId}
           onChange={(event) => onAccountChange(event.target.value)}
           displayEmpty
           inputProps={{ "aria-label": "Connected account" }}
+          MenuProps={MENU_PROPS}
           sx={CONTROL_SX}
           renderValue={(value) => {
             const selected = filteredAccounts.find((account) => String(account.id) === value);
@@ -144,12 +163,13 @@ export default function InsightsFilters({
         </Select>
       </FormControl>
 
-      <FormControl size="small" disabled={!accountId || !durationOptions.length} sx={{ flex: { xs: "1 1 calc(50% - 8px)", sm: "1 1 calc(50% - 8px)", xl: "0 0 150px" }, minWidth: 0 }}>
+      <FormControl size="small" disabled={!accountId || !durationOptions.length} sx={{ flex: { xs: "1 1 calc(50% - 8px)", sm: "1 1 calc(50% - 8px)", xl: "0 0 136px" }, minWidth: 0 }}>
         <Select
           value={duration}
           onChange={(event) => onDurationChange(event.target.value)}
           displayEmpty
           inputProps={{ "aria-label": "Insights duration" }}
+          MenuProps={MENU_PROPS}
           sx={CONTROL_SX}
           renderValue={(value) => (
             <LabeledValue icon={<CalendarMonthOutlinedIcon sx={{ color: "#647A9A", fontSize: 17 }} />}>

@@ -1,7 +1,6 @@
 import {
   Alert,
   Box,
-  CircularProgress,
   Drawer,
   IconButton,
   Stack,
@@ -12,6 +11,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 
 import SubscriptionHistoryItem from "./SubscriptionHistoryItem";
+import LoadingState from "../../ui/LoadingState";
 
 const DRAWER_WIDTH = 460;
 
@@ -43,11 +43,15 @@ export default function SubscriptionHistoryDrawer({
 
           borderRadius: 0,
 
-          borderLeft: "1px solid #E2E8F0",
+          borderLeft: "1px solid rgba(255,255,255,.9)",
 
-          backgroundColor: "#FFFFFF",
+          background:
+            "linear-gradient(145deg, rgba(250,252,255,.98) 0%, rgba(242,247,255,.96) 58%, rgba(237,244,255,.92) 100%)",
 
-          boxShadow: "-8px 0 32px rgba(15, 23, 42, 0.08)",
+          boxShadow:
+            "-10px 0 30px rgba(75,96,151,.14), -2px 0 8px rgba(79,99,154,.09), inset 1px 0 0 rgba(255,255,255,.78)",
+
+          backdropFilter: "blur(16px)",
 
           display: "flex",
           flexDirection: "column",
@@ -63,9 +67,12 @@ export default function SubscriptionHistoryDrawer({
           px: 3,
           py: 2.5,
 
-          borderBottom: "1px solid #E2E8F0",
+          borderBottom: "1px solid rgba(146,168,201,.24)",
 
-          backgroundColor: "#FFFFFF",
+          background:
+            "linear-gradient(145deg, rgba(250,252,255,.98) 0%, rgba(242,247,255,.96) 100%)",
+
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,.98)",
 
           flexShrink: 0,
 
@@ -95,9 +102,15 @@ export default function SubscriptionHistoryDrawer({
 
                 borderRadius: "11px",
 
-                backgroundColor: "#EEF4FF",
+                background:
+                  "linear-gradient(145deg, rgba(238,245,255,.98), rgba(222,234,252,.95))",
 
-                color: "#2563EB",
+                color: "#4B70C7",
+
+                border: "1px solid rgba(255,255,255,.9)",
+
+                boxShadow:
+                  "0 5px 12px rgba(75,96,151,.1), inset 0 2px 0 rgba(255,255,255,.98)",
 
                 display: "flex",
                 alignItems: "center",
@@ -124,7 +137,7 @@ export default function SubscriptionHistoryDrawer({
                   lineHeight: "23px",
                   fontWeight: 700,
 
-                  color: "#0F172A",
+                  color: "#17294F",
                 }}
               >
                 Subscription History
@@ -137,7 +150,7 @@ export default function SubscriptionHistoryDrawer({
                   fontSize: 13,
                   lineHeight: "18px",
 
-                  color: "#64748B",
+                  color: "#657899",
                 }}
               >
                 Complete subscription timeline
@@ -152,13 +165,18 @@ export default function SubscriptionHistoryDrawer({
               width: 40,
               height: 40,
 
-              color: "#64748B",
+              color: "#657899",
 
-              borderRadius: "10px",
+              borderRadius: "12px",
+
+              border: "1px solid rgba(255,255,255,.82)",
+
+              boxShadow:
+                "0 4px 10px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.98)",
 
               "&:hover": {
-                backgroundColor: "#F8FAFC",
-                color: "#0F172A",
+                background: "rgba(231,240,255,.76)",
+                color: "#17294F",
               },
             }}
           >
@@ -189,12 +207,12 @@ export default function SubscriptionHistoryDrawer({
           },
 
           "&::-webkit-scrollbar-thumb": {
-            backgroundColor: "#CBD5E1",
+            backgroundColor: "rgba(133,154,193,.48)",
             borderRadius: 10,
           },
 
           "&::-webkit-scrollbar-thumb:hover": {
-            backgroundColor: "#94A3B8",
+            backgroundColor: "rgba(105,128,171,.62)",
           },
         }}
       >
@@ -203,28 +221,11 @@ export default function SubscriptionHistoryDrawer({
         =================================================== */}
 
         {loading && (
-          <Box
-            sx={{
-              minHeight: 320,
-
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Stack spacing={1.5} alignItems="center">
-              <CircularProgress size={28} />
-
-              <Typography
-                sx={{
-                  fontSize: 13,
-                  color: "#64748B",
-                }}
-              >
-                Loading subscription history...
-              </Typography>
-            </Stack>
-          </Box>
+          <LoadingState
+            label="LOADING SUBSCRIPTION HISTORY..."
+            variant="container"
+            minHeight={320}
+          />
         )}
 
         {/* ===================================================
@@ -270,13 +271,19 @@ export default function SubscriptionHistoryDrawer({
 
                   borderRadius: "14px",
 
-                  backgroundColor: "#F8FAFC",
+                  background:
+                    "linear-gradient(145deg, rgba(238,245,255,.98), rgba(222,234,252,.9))",
+
+                  border: "1px solid rgba(255,255,255,.9)",
+
+                  boxShadow:
+                    "0 4px 10px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.96)",
 
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
 
-                  color: "#94A3B8",
+                  color: "#7184AD",
                 }}
               >
                 <HistoryOutlinedIcon />
@@ -286,7 +293,7 @@ export default function SubscriptionHistoryDrawer({
                 sx={{
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#334155",
+                  color: "#17294F",
                 }}
               >
                 No subscription history
@@ -299,7 +306,7 @@ export default function SubscriptionHistoryDrawer({
                   fontSize: 13,
                   lineHeight: "19px",
 
-                  color: "#64748B",
+                  color: "#657899",
                 }}
               >
                 Subscription activity will appear here once a subscription is

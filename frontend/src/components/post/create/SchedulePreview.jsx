@@ -84,11 +84,14 @@ export default function SchedulePreview() {
         py: 1.25,
 
         border: "1px solid",
-        borderColor: "divider",
+        borderColor: "rgba(255,255,255,.9)",
 
-        borderRadius: 2,
+        borderRadius: "14px",
 
-        bgcolor: "background.default",
+        background:
+          "linear-gradient(145deg, rgba(248,251,255,.86), rgba(234,242,255,.72))",
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,.95), 0 3px 8px rgba(75,96,151,.07)",
       }}
     >
       <Stack direction="row" spacing={1.25} alignItems="center">
@@ -103,9 +106,12 @@ export default function SchedulePreview() {
 
             flexShrink: 0,
 
-            borderRadius: 1.5,
+            borderRadius: "11px",
 
-            bgcolor: "action.hover",
+            background:
+              "linear-gradient(145deg, rgba(255,255,255,.96), rgba(220,233,255,.86))",
+            boxShadow:
+              "0 3px 7px rgba(80,101,164,.12), inset 0 1px 0 rgba(255,255,255,.98)",
 
             display: "flex",
             alignItems: "center",

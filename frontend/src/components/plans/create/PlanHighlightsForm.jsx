@@ -3,6 +3,7 @@ import { Box, TextField, Typography } from "@mui/material";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { planInputSx } from "../plansGlassSx";
 
 export default function PlanHighlightsForm() {
   const { control } = useFormContext();
@@ -31,6 +32,7 @@ export default function PlanHighlightsForm() {
             multiline
             minRows={3}
             placeholder="Add a short description of what this plan is best for..."
+            sx={planInputSx}
           />
         )}
       />

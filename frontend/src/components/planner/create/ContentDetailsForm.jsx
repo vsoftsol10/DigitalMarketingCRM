@@ -52,9 +52,14 @@
 //     </FormSection>
 //   );
 // }
-import { Grid } from "@mui/material";
+import { Box, Grid } from "@mui/material";
 
 import FormSection from "../../ui/form/FormSection";
+import { glassFormSectionSx } from "../../ui/form/glassFormSx";
+import {
+  glassFieldErrorInputSx,
+  glassFieldErrorMessageSx,
+} from "../../ui/form/glassFormSx";
 import FormSelect from "../../ui/form/FormSelect";
 import FormTextArea from "../../ui/form/FormTextArea";
 
@@ -68,11 +73,13 @@ const CONTENT_TYPE_OPTIONS = [
 
 export default function ContentDetailsForm() {
   return (
-    <FormSection
-      title="Content Details"
-      description="Describe the content idea and its objective."
-    >
-      <Grid container spacing={3}>
+    <Box sx={glassFormSectionSx}>
+      <FormSection
+        title="Content Details"
+        description="Describe the content idea and its objective."
+        spacing={3}
+      >
+        <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
           <FormSelect
             name="content_type"
@@ -80,6 +87,8 @@ export default function ContentDetailsForm() {
             required
             placeholder="Select Content Type"
             options={CONTENT_TYPE_OPTIONS}
+            errorInputSx={glassFieldErrorInputSx}
+            errorMessageSx={glassFieldErrorMessageSx}
           />
         </Grid>
 
@@ -121,7 +130,8 @@ export default function ContentDetailsForm() {
             placeholder="Describe your content idea..."
           />
         </Grid>
-      </Grid>
-    </FormSection>
+        </Grid>
+      </FormSection>
+    </Box>
   );
 }

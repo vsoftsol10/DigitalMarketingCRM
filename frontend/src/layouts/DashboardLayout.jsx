@@ -10,7 +10,8 @@ export default function DashboardLayout() {
       sx={{
         display: "flex",
         minHeight: "100vh",
-        bgcolor: "#F8FAFC",
+        bgcolor: "#F2F5FF",
+        backgroundImage: "linear-gradient(135deg, #F7F9FF 0%, #F1F5FF 58%, #F7F2FF 100%)",
       }}
     >
       <Sidebar />
@@ -18,6 +19,7 @@ export default function DashboardLayout() {
       <Box
         sx={{
           flex: 1,
+          minWidth: 0,
           display: "flex",
           flexDirection: "column",
         }}
@@ -37,6 +39,7 @@ export default function DashboardLayout() {
           component="main"
           sx={{
             flex: 1,
+            minWidth: 0,
             px: 5,
             py: 4,
             overflowY: "auto",
@@ -45,6 +48,7 @@ export default function DashboardLayout() {
           <Box
             sx={{
               width: "100%",
+              minWidth: 0,
               // maxWidth: "1320px",
               maxWidth: "1180px",
               mx: "auto",

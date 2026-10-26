@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 
 import { TYPOGRAPHY } from "../../theme/typography";
 import CalendarEvent from "./CalendarEvent";
+import { calendarGlassInsetSx } from "./calendarGlassSx";
 
 function eventTimeMinutes(time) {
   const match = String(time || "").match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -53,9 +54,14 @@ export default function CalendarDayCell({
 
         borderRight: "1px solid",
         borderBottom: "1px solid",
-        borderColor: "divider",
+        borderColor: "rgba(201,219,247,0.62)",
 
-        bgcolor: isCurrentMonth ? "background.paper" : "action.hover",
+        background: isCurrentMonth
+          ? "linear-gradient(145deg, rgba(255,255,255,0.84) 0%, rgba(243,248,255,0.76) 100%)"
+          : "linear-gradient(145deg, rgba(222,234,251,0.76) 0%, rgba(232,241,253,0.7) 100%)",
+        ...(isCurrentMonth ? {} : calendarGlassInsetSx),
+        transition: "background 160ms ease",
+        "&:hover": { background: "linear-gradient(145deg, rgba(255,255,255,0.96) 0%, rgba(232,242,255,0.9) 100%)" },
 
         "&:nth-of-type(7n)": {
           borderRight: "none",
@@ -82,7 +88,8 @@ export default function CalendarDayCell({
 
             borderRadius: "50%",
 
-            bgcolor: isToday ? "primary.main" : "transparent",
+            bgcolor: isToday ? "#3478E5" : "transparent",
+            boxShadow: isToday ? "0 4px 10px rgba(52,120,229,0.3), inset 0 1px 0 rgba(255,255,255,0.4)" : "none",
 
             color: isToday
               ? "primary.contrastText"

@@ -34,7 +34,7 @@ export default function ActivityItem({ activity, onClick }) {
   const subscriptionSummary = [activity.plan_name, activity.expiry_date ? `Expires ${formatDate(activity.expiry_date)}` : ""].filter(Boolean).join(" • ");
 
   return (
-    <Box onClick={() => onClick?.(activity)} sx={{ display: "flex", alignItems: "flex-start", gap: 2, px: 2, py: 1.5, minHeight: { xs: 132, sm: 116 }, borderRadius: "16px", cursor: onClick ? "pointer" : "default", transition: "background-color 0.2s ease", "&:hover": onClick ? { bgcolor: "#F8FAFC" } : {} }}>
+    <Box onClick={() => onClick?.(activity)} sx={{ display: "flex", alignItems: "flex-start", gap: 2, px: 2, py: 1.5, minHeight: { xs: 132, sm: 116 }, borderRadius: "16px", border: "1px solid rgba(255,255,255,.86)", background: "linear-gradient(115deg, rgba(238,244,255,.68), rgba(255,255,255,.46))", boxShadow: "inset 0 1px 0 rgba(255,255,255,.94)", cursor: onClick ? "pointer" : "default", transition: "background-color 0.2s ease", "&:hover": onClick ? { bgcolor: "rgba(232,240,255,.86)" } : {} }}>
       <ActivityIcon type={eventType} />
       <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <Typography sx={{ fontSize: 15, fontWeight: 600, color: "#1E293B", lineHeight: 1.35 }}>{ACTIVITY_MESSAGES[eventType] || "Activity updated"}</Typography>

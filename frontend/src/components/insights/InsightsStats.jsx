@@ -10,7 +10,7 @@ const ITEMS = [
 
 export default function InsightsStats({ metrics = {}, loading = false, selected = false }) {
   return (
-    <Grid container spacing={1.75}>
+    <Grid container spacing={1.75} sx={{ width: "100%", minWidth: 0 }}>
       {ITEMS.map((item) => (
         <Grid key={item.key} size={{ xs: 12, sm: 6, lg: 3 }}>
           <InsightStatCard

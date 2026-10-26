@@ -275,6 +275,7 @@
 import { Box, Grid, TextField, Typography } from "@mui/material";
 
 import { Controller, useFormContext } from "react-hook-form";
+import { planInputSx } from "../plansGlassSx";
 
 const FIELD_HEIGHT = 52;
 
@@ -424,7 +425,7 @@ export default function PricingForm() {
                 helperText={
                   errors.monthly_price?.message || "Price per month in INR"
                 }
-                sx={inputSx}
+                sx={[inputSx, planInputSx]}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -470,7 +471,7 @@ export default function PricingForm() {
                 helperText={
                   errors.yearly_price?.message || "Price per year in INR"
                 }
-                sx={inputSx}
+                sx={[inputSx, planInputSx]}
                 slotProps={{
                   input: {
                     startAdornment: (

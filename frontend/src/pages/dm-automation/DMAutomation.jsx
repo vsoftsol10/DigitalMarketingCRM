@@ -144,13 +144,14 @@
 //   );
 // }
 
-import { Alert, Box, CircularProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, Stack, Typography } from "@mui/material";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import dmAutomationService from "../../services/dmAutomation.service";
 
 import DMAutomationHeader from "../../components/dm-automation/DMAutomationHeader";
+import LoadingState from "../../components/ui/LoadingState";
 import DMAutomationInfoBanner from "../../components/dm-automation/DMAutomationInfoBanner";
 import DMAutomationGrid from "../../components/dm-automation/DMAutomationGrid";
 import CreateAutomationDialog from "../../components/dm-automation/CreateAutomationDialog";
@@ -327,18 +328,7 @@ export default function DMAutomation() {
   }, []);
 
   if (loading) {
-    return (
-      <Box
-        sx={{
-          minHeight: 400,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={28} />
-      </Box>
-    );
+    return <LoadingState page="DM Automation" />;
   }
 
   if (error) {

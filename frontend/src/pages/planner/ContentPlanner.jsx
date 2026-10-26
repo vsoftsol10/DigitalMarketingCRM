@@ -110,7 +110,7 @@
 //   );
 // }
 
-import { Alert, Box, CircularProgress } from "@mui/material";
+import { Alert, Box } from "@mui/material";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -123,6 +123,7 @@ import ContentPlannerStats from "../../components/planner/ContentPlannerStats";
 import ContentPlannerFilters from "../../components/planner/ContentPlannerFilters";
 import ContentPlannerTable from "../../components/planner/ContentPlannerTable";
 import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
+import LoadingState from "../../components/ui/LoadingState";
 
 import useDebounce from "../../hooks/common/useDebounce";
 
@@ -154,7 +155,16 @@ export default function ContentPlanner() {
 
   const debouncedSearch = useDebounce(filters.search, 400);
 
-  const hasMountedFilterEffect = useRef(false);
+  const initialFilterKey = JSON.stringify({
+    search: debouncedSearch.trim(),
+    organization: filters.organization,
+  });
+  const lastFilterKeyRef = useRef(initialFilterKey);
+  const plannerRequestId = useRef(0);
+
+  useEffect(() => () => {
+    plannerRequestId.current += 1;
+  }, []);
 
   // ============================================================
   // DELETE STATE
@@ -172,6 +182,9 @@ export default function ContentPlanner() {
 
   const loadPlanner = useCallback(
     async ({ search = "", organization = "all", initial = false } = {}) => {
+      const requestId = plannerRequestId.current + 1;
+      plannerRequestId.current = requestId;
+
       try {
         if (initial) {
           setInitialLoading(true);
@@ -186,6 +199,10 @@ export default function ContentPlanner() {
           organization,
         });
 
+        if (requestId !== plannerRequestId.current) {
+          return;
+        }
+
         if (!response?.success) {
           throw new Error(
             response?.message || "Unable to load content planner.",
@@ -198,6 +215,10 @@ export default function ContentPlanner() {
 
         setPlanner(response.data);
       } catch (error) {
+        if (requestId !== plannerRequestId.current) {
+          return;
+        }
+
         console.error("Failed to load content planner:", error);
 
         setError(
@@ -206,8 +227,10 @@ export default function ContentPlanner() {
             "Unable to load content planner.",
         );
       } finally {
-        setInitialLoading(false);
-        setTableLoading(false);
+        if (requestId === plannerRequestId.current) {
+          setInitialLoading(false);
+          setTableLoading(false);
+        }
       }
     },
     [],
@@ -230,14 +253,16 @@ export default function ContentPlanner() {
   // ============================================================
 
   useEffect(() => {
-    /*
-     * Skip the first render because the initial loader above
-     * already performs the initial request.
-     */
-    if (!hasMountedFilterEffect.current) {
-      hasMountedFilterEffect.current = true;
+    const filterKey = JSON.stringify({
+      search: debouncedSearch.trim(),
+      organization: filters.organization,
+    });
+
+    if (lastFilterKeyRef.current === filterKey) {
       return;
     }
+
+    lastFilterKeyRef.current = filterKey;
 
     loadPlanner({
       search: debouncedSearch.trim(),
@@ -351,19 +376,7 @@ export default function ContentPlanner() {
   // ============================================================
 
   if (initialLoading && !planner) {
-    return (
-      <Box
-        sx={{
-          minHeight: 500,
-
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={30} />
-      </Box>
-    );
+    return <LoadingState page="Content Planner" />;
   }
 
   // ============================================================
@@ -463,6 +476,7 @@ export default function ContentPlanner() {
       ======================================================= */}
 
       <ConfirmDialog
+        glass
         open={deleteDialogOpen}
         title="Delete Content Idea"
         message="Are you sure you want to delete"

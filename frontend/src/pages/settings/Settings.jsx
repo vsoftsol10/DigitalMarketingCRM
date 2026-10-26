@@ -157,7 +157,6 @@
 
 import {
   Box,
-  CircularProgress,
   Typography,
 } from "@mui/material";
 
@@ -168,6 +167,7 @@ import SignOutSettings from "../../components/settings/SignOutSettings";
 
 import useSettings from "../../hooks/settings/useSettings";
 import { useLogout } from "../../hooks/useAuth";
+import LoadingState from "../../components/ui/LoadingState";
 
 export default function Settings() {
   // ==========================================
@@ -201,20 +201,7 @@ export default function Settings() {
   // ==========================================
 
   if (profileLoading) {
-    return (
-      <Box
-        sx={{
-          width: "100%",
-          minHeight: 400,
-
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={28} />
-      </Box>
-    );
+    return <LoadingState page="Settings" />;
   }
 
   // ==========================================
@@ -285,8 +272,9 @@ export default function Settings() {
       <Box
         sx={{
           width: "100%",
+          minWidth: 0,
 
-          maxWidth: 840,
+          maxWidth: 1200,
 
           mx: "auto",
 

@@ -1,12 +1,13 @@
 import { Box, Divider, Typography } from "@mui/material";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { SOCIAL_PLATFORMS } from "../../../constants/social/socialPlatforms";
 
 import ConnectedAccountsList from "./ConnectedAccountsList";
 
 import ConnectSocialAccountCard from "./ConnectSocialAccountCard";
+import overviewGlassCardSx from "../overview/overviewGlassCardSx";
 
 import useSocialAccounts from "../../../hooks/social/useSocialAccounts";
 
@@ -94,12 +95,21 @@ export default function SocialAccountsSection({
     enabled: shouldFetchAccounts,
   });
 
+  const previousRefreshKey = useRef(refreshKey);
+
   // ============================================================
   // REFRESH AFTER OAUTH CALLBACK
   // ============================================================
 
   useEffect(() => {
+    const refreshKeyChanged = previousRefreshKey.current !== refreshKey;
+    previousRefreshKey.current = refreshKey;
+
     if (!shouldFetchAccounts) {
+      return;
+    }
+
+    if (!refreshKeyChanged) {
       return;
     }
 
@@ -208,13 +218,22 @@ export default function SocialAccountsSection({
   // RENDER
   // ============================================================
 
+  const overviewSectionSx = {
+    ...overviewGlassCardSx,
+    p: { xs: 2, sm: 2.5 },
+  };
+
   return (
     <Box
       sx={{
         width: "100%",
-        mt: 4,
+        mt: isCreateMode ? 4 : 0,
       }}
     >
+      <Box
+        component="section"
+        sx={!isCreateMode ? overviewSectionSx : undefined}
+      >
       {/* ======================================================
           HEADER
       ====================================================== */}
@@ -234,7 +253,7 @@ export default function SocialAccountsSection({
       <Typography
         sx={{
           mt: 0.5,
-          mb: 3,
+          mb: isCreateMode ? 3 : 2.5,
           fontSize: 15,
           lineHeight: 1.6,
           color: "#64748B",
@@ -256,15 +275,20 @@ export default function SocialAccountsSection({
         onRetry={handleRetry}
         actionLoadingId={actionLoadingId}
       />
+      </Box>
 
       {/* ======================================================
           CONNECT NEW ACCOUNT
       ====================================================== */}
 
+      <Box
+        component="section"
+        sx={!isCreateMode ? { ...overviewSectionSx, mt: 2.5 } : undefined}
+      >
       <Typography
         component="h3"
         sx={{
-          mt: 4,
+          mt: isCreateMode ? 4 : 0,
           mb: 2,
           fontSize: 15,
           fontWeight: 600,
@@ -280,9 +304,16 @@ export default function SocialAccountsSection({
 
       <Box
         sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 2,
+          display: isCreateMode ? "flex" : "grid",
+          gridTemplateColumns: isCreateMode
+            ? undefined
+            : {
+                xs: "repeat(1, minmax(0, 1fr))",
+                sm: "repeat(2, minmax(0, 1fr))",
+                lg: "repeat(4, minmax(0, 1fr))",
+              },
+          flexWrap: isCreateMode ? "wrap" : undefined,
+          gap: isCreateMode ? 2 : 1.5,
           width: "100%",
         }}
       >
@@ -292,8 +323,10 @@ export default function SocialAccountsSection({
             platform={platform}
             onConnect={handleConnect}
             loading={connectingPlatform === platform.id}
+            overviewStyle={!isCreateMode}
           />
         ))}
+      </Box>
       </Box>
 
       {/* ======================================================
@@ -307,9 +340,10 @@ export default function SocialAccountsSection({
             mt: 2.5,
             px: 2,
             py: 1.5,
-            borderRadius: "12px",
-            bgcolor: "#F8FAFC",
-            border: "1px solid #E2E8F0",
+            borderRadius: "14px",
+            background: "linear-gradient(145deg, rgba(240,246,255,.92), rgba(250,252,255,.94))",
+            border: "1px solid rgba(255,255,255,.92)",
+            boxShadow: "0 5px 12px rgba(76,98,154,.08), inset 0 1px 0 rgba(255,255,255,.98)",
           }}
         >
           <Typography
@@ -329,11 +363,12 @@ export default function SocialAccountsSection({
           DIVIDER
       ====================================================== */}
 
-      <Divider
+      {isCreateMode && <Divider
         sx={{
-          my: 4,
+          my: 3,
+          borderColor: "rgba(146,168,201,.28)",
         }}
-      />
+      />}
     </Box>
   );
 }

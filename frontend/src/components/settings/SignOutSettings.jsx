@@ -3,21 +3,15 @@ import { Box, Button, Paper, Stack, Typography } from "@mui/material";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import { settingsGlassCardSx } from "./settingsGlassSx";
 
 export default function SignOutSettings({ onLogout, loading = false }) {
   return (
     <Paper
       elevation={0}
       sx={{
-        width: "100%",
-
-        border: "1px solid",
-        borderColor: "error.light",
-
-        borderRadius: 3,
-
-        bgcolor: "background.paper",
-
+        ...settingsGlassCardSx,
+        borderColor: "rgba(240,185,204,0.75)",
         overflow: "hidden",
 
         boxSizing: "border-box",

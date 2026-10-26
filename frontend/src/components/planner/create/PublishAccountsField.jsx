@@ -1,4 +1,4 @@
-import { Alert, Box, CircularProgress, Grid, Stack, Typography } from "@mui/material";
+import { Alert, Grid, Stack, Typography } from "@mui/material";
 import { useEffect, useRef } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import SocialAccountCard from "../../post/create/SocialAccountCard";
 import socialAccountService from "../../../services/social/socialAccount.service";
 import { TYPOGRAPHY } from "../../../theme/typography";
+import LoadingState from "../../ui/LoadingState";
 
 export default function PublishAccountsField({ organizations = [] }) {
   const { control, setValue, formState: { errors } } = useFormContext();
@@ -40,12 +41,22 @@ export default function PublishAccountsField({ organizations = [] }) {
   }
 
   return (
-    <Stack spacing={1}>
+    <Stack
+      spacing={1}
+      sx={{
+        minWidth: 0,
+        p: { xs: 1.5, sm: 2 },
+        borderRadius: "16px",
+        background: "linear-gradient(145deg, rgba(235,243,255,.7), rgba(255,255,255,.7))",
+        border: "1px solid rgba(255,255,255,.94)",
+        boxShadow: "0 5px 14px rgba(73,99,153,.08), inset 0 1px 0 rgba(255,255,255,.98)",
+      }}
+    >
       <Typography sx={TYPOGRAPHY.inputLabel}>Publish Accounts<Typography component="span" sx={{ color: "#EF4444", ml: 0.5 }}>*</Typography></Typography>
       {!organizationId ? (
         <Alert severity="info" sx={{ borderRadius: "12px" }}>Select an organization to load its connected publish accounts.</Alert>
       ) : isLoading ? (
-        <Box sx={{ py: 3, display: "flex", justifyContent: "center" }}><CircularProgress size={24} /></Box>
+        <LoadingState label="LOADING PUBLISH ACCOUNTS..." variant="container" minHeight={72} />
       ) : error ? (
         <Alert severity="error" sx={{ borderRadius: "12px" }}>Unable to load publish accounts.</Alert>
       ) : accounts.length === 0 ? (
@@ -59,7 +70,22 @@ export default function PublishAccountsField({ organizations = [] }) {
           ))}
         </Grid>
       )}
-      {errors.social_account_ids?.message && <Typography sx={{ ...TYPOGRAPHY.helperText, color: "#D32F2F" }}>{errors.social_account_ids.message}</Typography>}
+      {errors.social_account_ids?.message && (
+        <Typography
+          sx={{
+            ...TYPOGRAPHY.helperText,
+            mt: 0.75,
+            color: "#DC2626",
+            fontSize: "13px",
+            fontWeight: 500,
+            lineHeight: 1.45,
+            whiteSpace: "normal",
+            overflowWrap: "anywhere",
+          }}
+        >
+          {errors.social_account_ids.message}
+        </Typography>
+      )}
     </Stack>
   );
 }

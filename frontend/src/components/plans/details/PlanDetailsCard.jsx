@@ -313,6 +313,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import { plansGlassSurfaceSx } from "../plansGlassSx";
 
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN").format(Number(value) || 0);
@@ -415,17 +416,14 @@ export default function PlanDetailsCard({ plan }) {
       elevation={0}
       sx={{
         width: "100%",
+        minWidth: 0,
 
         p: {
           xs: 2.5,
           sm: 2.75,
         },
 
-        borderRadius: "18px",
-
-        border: "1px solid #E2E8F0",
-
-        backgroundColor: "#FFFFFF",
+        ...plansGlassSurfaceSx,
 
         boxSizing: "border-box",
       }}

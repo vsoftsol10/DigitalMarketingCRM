@@ -69,7 +69,7 @@
 
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Box, CircularProgress, Paper, Divider } from "@mui/material";
+import { Alert, Box, Paper, Divider } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -77,6 +77,8 @@ import CreateContentIdeaHeader from "../../components/planner/create/CreateConte
 import IdeaDetailsForm from "../../components/planner/create/IdeaDetailsForm";
 import ContentDetailsForm from "../../components/planner/create/ContentDetailsForm";
 import CreateContentIdeaFooter from "../../components/planner/create/CreateContentIdeaFooter";
+import LoadingState from "../../components/ui/LoadingState";
+import { glassFormDividerSx, glassFormPaperSx } from "../../components/ui/form/glassFormSx";
 
 import { contentIdeaSchema } from "../../validation/contentIdea.schema";
 import { contentIdeaDefaultValues } from "../../constants/forms/contentIdeaDefaultValues";
@@ -176,18 +178,7 @@ export default function CreateContentIdea() {
   // ============================================================
 
   if (loadingOrganizations) {
-    return (
-      <Box
-        sx={{
-          minHeight: 500,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={30} />
-      </Box>
-    );
+    return <LoadingState page="Create Content Idea" />;
   }
 
   return (
@@ -222,21 +213,13 @@ export default function CreateContentIdea() {
         <Paper
           elevation={0}
           sx={{
+            ...glassFormPaperSx,
             maxWidth: "980px",
-            mx: "auto",
-
-            p: 4,
-
-            borderRadius: "24px",
-
-            border: "1px solid #E2E8F0",
-
-            bgcolor: "#FFFFFF",
           }}
         >
           <IdeaDetailsForm organizations={organizations} />
 
-          <Divider sx={{ my: 5 }} />
+          <Divider sx={glassFormDividerSx} />
 
           <ContentDetailsForm />
 

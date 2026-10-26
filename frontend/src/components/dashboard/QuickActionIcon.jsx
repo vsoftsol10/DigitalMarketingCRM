@@ -9,26 +9,26 @@ import BoltOutlinedIcon from "@mui/icons-material/BoltOutlined";
 const CONFIG = {
   post: {
     icon: AddPhotoAlternateOutlinedIcon,
-    color: "#2563EB",
-    background: "#EEF4FF",
+    color: "#287FCF",
+    background: "#E5F0FF",
   },
 
   planner: {
     icon: EventNoteOutlinedIcon,
-    color: "#16A34A",
-    background: "#ECFDF3",
+    color: "#7652D2",
+    background: "#EEE8FF",
   },
 
   organization: {
     icon: BusinessOutlinedIcon,
-    color: "#7C3AED",
-    background: "#F3E8FF",
+    color: "#3F70B8",
+    background: "#E5EEFF",
   },
 
   calendar: {
     icon: CalendarTodayOutlinedIcon,
-    color: "#D97706",
-    background: "#FFF7ED",
+    color: "#168DB8",
+    background: "#DFF4FB",
   },
 
   default: {
@@ -54,7 +54,9 @@ export default function QuickActionIcon({
 
         borderRadius: "12px",
 
-        bgcolor: config.background,
+        background: `linear-gradient(145deg, ${config.background}, rgba(255,255,255,.76))`,
+        border: "1px solid rgba(255,255,255,.92)",
+        boxShadow: "0 5px 10px rgba(76,98,154,.12), inset 0 2px 2px rgba(255,255,255,.96), inset 0 -1px 2px rgba(93,112,162,.08)",
 
         display: "flex",
         justifyContent: "center",

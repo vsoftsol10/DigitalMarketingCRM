@@ -50,3 +50,24 @@ class UserNotificationReadAPIView(APIView):
             },
             message="Notification marked as read.",
         )
+
+
+class UserNotificationClearAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        now = timezone.now()
+        cleared_count = UserNotification.objects.filter(
+            recipient=request.user,
+            organization__created_by=request.user,
+            is_deleted=False,
+        ).update(
+            is_deleted=True,
+            deleted_at=now,
+            updated_at=now,
+        )
+
+        return success_response(
+            data={"cleared_count": cleared_count, "unread_count": 0},
+            message="Notifications cleared successfully.",
+        )

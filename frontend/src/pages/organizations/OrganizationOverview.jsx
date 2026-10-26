@@ -1271,7 +1271,7 @@
 //   );
 // }
 
-import { Alert, Box, CircularProgress, Snackbar } from "@mui/material";
+import { Alert, Box, Snackbar } from "@mui/material";
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -1286,6 +1286,7 @@ import instagramService from "../../services/social/instagram.service";
 
 import OverviewHeader from "../../components/organization/overview/OverviewHeader";
 import OverviewLayout from "../../components/organization/overview/OverviewLayout";
+import overviewGlassCardSx from "../../components/organization/overview/overviewGlassCardSx";
 
 import OrganizationProfileCard from "../../components/organization/overview/cards/OrganizationProfileCard";
 import BrandInformationCard from "../../components/organization/overview/cards/BrandInformationCard";
@@ -1297,6 +1298,7 @@ import SubscriptionCard from "../../components/organization/overview/cards/Subsc
 // ============================================================
 
 import SocialAccountsSection from "../../components/organization/social/SocialAccountsSection";
+import LoadingState from "../../components/ui/LoadingState";
 import MetaPageSelectionDialog from "../../components/organization/social/MetaPageSelectionDialog";
 
 // ============================================================
@@ -1460,7 +1462,9 @@ export default function OrganizationOverview() {
     setSocialAccountsRefreshKey((current) => current + 1);
   }, []);
 
-  const { disconnectAccount } = useSocialAccounts(organizationId);
+  const { disconnectAccount } = useSocialAccounts(organizationId, {
+    enabled: false,
+  });
 
   // ============================================================
   // LOAD ORGANIZATION
@@ -2241,18 +2245,7 @@ export default function OrganizationOverview() {
   // ============================================================
 
   if (loading) {
-    return (
-      <Box
-        sx={{
-          minHeight: 500,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={30} />
-      </Box>
-    );
+    return <LoadingState page="Organization Overview" />;
   }
 
   // ============================================================
@@ -2306,7 +2299,9 @@ export default function OrganizationOverview() {
           severity="error"
           sx={{
             mb: 3,
-            borderRadius: "12px",
+            borderRadius: "16px",
+            border: "1px solid rgba(255,255,255,.86)",
+            boxShadow: "0 6px 16px rgba(77,59,75,.08)",
           }}
         >
           {subscriptionActionError || plansError}
@@ -2322,7 +2317,9 @@ export default function OrganizationOverview() {
           severity="error"
           sx={{
             mb: 3,
-            borderRadius: "12px",
+            borderRadius: "16px",
+            border: "1px solid rgba(255,255,255,.86)",
+            boxShadow: "0 6px 16px rgba(77,59,75,.08)",
           }}
           onClose={() => setSocialConnectError("")}
         >
@@ -2334,38 +2331,49 @@ export default function OrganizationOverview() {
           OVERVIEW
       ====================================================== */}
 
-      <OverviewLayout
-        brandInformation={<BrandInformationCard organization={organization} />}
-        contactInformation={
-          <ContactInformationCard organization={organization} />
-        }
-        socialAccounts={
-          <SocialAccountsSection
-            organizationId={organizationId}
-            onConnect={handleSocialConnect}
-            onDisconnect={handleSocialDisconnect}
-            onReconnect={handleSocialReconnect}
-            connectingPlatform={connectingPlatform}
-            refreshKey={socialAccountsRefreshKey}
-          />
-        }
-        profile={<OrganizationProfileCard organization={organization} />}
-        subscription={
-          <SubscriptionCard
-            organization={organization}
-            onRenew={handleOpenRenew}
-            onChangePlan={
-              isSubscriptionActive ? handleOpenChangePlan : undefined
-            }
-            onCancel={isSubscriptionActive ? handleOpenCancel : undefined}
-            onStartSubscription={
-              !hasCurrentSubscription ? handleOpenStartSubscription : undefined
-            }
-            onViewHistory={handleOpenHistory}
-            actionLoading={subscriptionActionLoading}
-          />
-        }
-      />
+      <Box
+        sx={{
+          "& .MuiCard-root, & .MuiPaper-root": {
+            ...overviewGlassCardSx,
+          },
+          "& .MuiDivider-root": {
+            borderColor: "rgba(146,168,201,.24)",
+          },
+        }}
+      >
+        <OverviewLayout
+          brandInformation={<BrandInformationCard organization={organization} />}
+          contactInformation={
+            <ContactInformationCard organization={organization} />
+          }
+          socialAccounts={
+            <SocialAccountsSection
+              organizationId={organizationId}
+              onConnect={handleSocialConnect}
+              onDisconnect={handleSocialDisconnect}
+              onReconnect={handleSocialReconnect}
+              connectingPlatform={connectingPlatform}
+              refreshKey={socialAccountsRefreshKey}
+            />
+          }
+          profile={<OrganizationProfileCard organization={organization} />}
+          subscription={
+            <SubscriptionCard
+              organization={organization}
+              onRenew={handleOpenRenew}
+              onChangePlan={
+                isSubscriptionActive ? handleOpenChangePlan : undefined
+              }
+              onCancel={isSubscriptionActive ? handleOpenCancel : undefined}
+              onStartSubscription={
+                !hasCurrentSubscription ? handleOpenStartSubscription : undefined
+              }
+              onViewHistory={handleOpenHistory}
+              actionLoading={subscriptionActionLoading}
+            />
+          }
+        />
+      </Box>
 
       {/* ======================================================
           FACEBOOK PAGE SELECTION
@@ -2420,6 +2428,7 @@ export default function OrganizationOverview() {
       />
 
       <ConfirmDialog
+        glass
         open={socialDisconnectOpen}
         title="Disconnect social account"
         message="Are you sure you want to disconnect"
@@ -2448,6 +2457,7 @@ export default function OrganizationOverview() {
       ====================================================== */}
 
       <ConfirmDialog
+        glass
         open={deleteOpen}
         title="Delete organization"
         message="Are you sure you want to delete"

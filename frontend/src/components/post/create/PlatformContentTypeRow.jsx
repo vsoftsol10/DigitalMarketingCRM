@@ -243,11 +243,14 @@ export default function PlatformContentTypeRow({
 
             border: "1px solid",
 
-            borderColor: invalidSelection ? "error.main" : "divider",
+            borderColor: invalidSelection ? "error.main" : "rgba(255,255,255,.94)",
 
-            borderRadius: 2,
+            borderRadius: "14px",
 
-            bgcolor: "background.paper",
+            background:
+              "linear-gradient(145deg, rgba(250,252,255,.9), rgba(237,244,255,.78))",
+            boxShadow:
+              "0 3px 8px rgba(75,96,151,.07), inset 0 1px 0 rgba(255,255,255,.96)",
 
             textAlign: "left",
 
@@ -256,7 +259,7 @@ export default function PlatformContentTypeRow({
             "&:hover": {
               borderColor: invalidSelection ? "error.main" : "primary.main",
 
-              bgcolor: "action.hover",
+              bgcolor: "rgba(232,241,255,.92)",
             },
 
             "&:focus-visible": {
@@ -342,7 +345,11 @@ export default function PlatformContentTypeRow({
 
                 maxHeight: 320,
 
-                borderRadius: 2,
+                border: "1px solid rgba(255,255,255,.94)",
+                borderRadius: "15px",
+                background:
+                  "linear-gradient(145deg, rgba(250,252,255,.98), rgba(237,244,255,.96))",
+                boxShadow: "0 12px 24px rgba(75,96,151,.16)",
               },
             },
           }}

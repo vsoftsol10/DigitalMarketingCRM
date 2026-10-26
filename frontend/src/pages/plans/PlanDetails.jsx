@@ -1,4 +1,4 @@
-import { Alert, Box, CircularProgress } from "@mui/material";
+import { Alert, Box } from "@mui/material";
 
 import { useEffect, useState } from "react";
 
@@ -11,6 +11,7 @@ import PlanSummaryCard from "../../components/plans/details/PlanSummaryCard";
 import PlanDetailsCard from "../../components/plans/details/PlanDetailsCard";
 
 import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
+import LoadingState from "../../components/ui/LoadingState";
 
 export default function PlanDetails() {
   const navigate = useNavigate();
@@ -94,18 +95,7 @@ export default function PlanDetails() {
   };
 
   if (loading) {
-    return (
-      <Box
-        sx={{
-          minHeight: 400,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={26} />
-      </Box>
-    );
+    return <LoadingState page="Plan Details" />;
   }
 
   if (error) {
@@ -130,7 +120,7 @@ export default function PlanDetails() {
          * Original UI content width.
          * Header + cards same alignment.
          */
-        maxWidth: 970,
+        maxWidth: 1120,
 
         mx: "auto",
 
@@ -154,7 +144,7 @@ export default function PlanDetails() {
 
           gridTemplateColumns: {
             xs: "1fr",
-            md: "minmax(0, 1fr) 300px",
+            md: "minmax(0, 1fr) 330px",
           },
 
           gap: {

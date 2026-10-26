@@ -294,6 +294,57 @@ class UserNotificationLifecycleTests(TestCase):
         self.assertEqual(response.data["data"]["notifications"], [])
         self.assertEqual(response.data["data"]["unread_count"], 0)
 
+    def test_clear_notifications_soft_deletes_only_authenticated_users_notifications(self):
+        self.create_activity(
+            event_type=ActivityEventType.POST_FAILED,
+            key=f"post-platform:{self.target.id}:failed:1",
+            target=self.target,
+        )
+        own_notification = UserNotification.objects.get(recipient=self.user)
+        other_user = User.objects.create_user(
+            email="notification-other@example.com",
+            first_name="Other",
+            password="password",
+        )
+        other_notification = UserNotification.objects.create(
+            recipient=other_user,
+            organization=self.organization,
+            post_platform=self.target,
+            event_type=UserNotificationType.FAILED_POST,
+            event_key=f"other-user-failure:{self.target.id}",
+            title="Failed Post",
+            message="Publishing failed.",
+        )
+
+        response = self.client.post("/api/notifications/clear/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["data"]["cleared_count"], 1)
+        own_notification.refresh_from_db()
+        other_notification.refresh_from_db()
+        self.assertTrue(own_notification.is_deleted)
+        self.assertIsNotNone(own_notification.deleted_at)
+        self.assertFalse(other_notification.is_deleted)
+        reloaded = self.client.get("/api/notifications/")
+        self.assertEqual(reloaded.data["data"]["notifications"], [])
+        self.assertEqual(reloaded.data["data"]["unread_count"], 0)
+
+    def test_clear_notifications_is_safe_for_an_empty_list_and_repeated_requests(self):
+        first = self.client.post("/api/notifications/clear/")
+        second = self.client.post("/api/notifications/clear/")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.data["data"]["cleared_count"], 0)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.data["data"]["cleared_count"], 0)
+
+    def test_clear_notifications_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+
+        response = self.client.post("/api/notifications/clear/")
+
+        self.assertEqual(response.status_code, 401)
+
     def test_read_endpoint_cannot_change_another_users_notification(self):
         other_user = User.objects.create_user(
             email="notification-other@example.com",

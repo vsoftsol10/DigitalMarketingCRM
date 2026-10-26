@@ -24,6 +24,7 @@ import {
 
 import insightsService from "../../services/insights.service";
 import formatCompactNumber from "../../utils/formatters/formatCompactNumber";
+import { insightsGlassControlSx, insightsGlassSurfaceSx } from "./insightsGlassSx";
 
 const PAGE_FETCH_CONCURRENCY = 3;
 const PAGE_CACHE_STALE_TIME = 60_000;
@@ -236,7 +237,7 @@ function DailyMetricTooltip({ active, payload, metricKey, platform }) {
     || TOOLTIP_METRICS_BY_PLATFORM.instagram;
 
   return (
-    <Box sx={{ minWidth: 210, px: 1.75, py: 1.35, border: "1px solid #E7ECF4", borderRadius: 2, bgcolor: "#fff", boxShadow: "0 8px 24px rgba(25, 42, 70, 0.12)" }}>
+    <Box sx={{ minWidth: 210, px: 1.75, py: 1.35, ...insightsGlassSurfaceSx, borderRadius: 2.5, boxShadow: "0 12px 26px rgba(50,82,139,0.2), inset 0 1px 0 #FFFFFF" }}>
       <Typography sx={{ color: "#26354B", fontSize: 12.5, fontWeight: 700, mb: 0.8 }}>
         {dayjs(point.date).format("dddd, MMM D")}
       </Typography>
@@ -269,7 +270,7 @@ function TooltipMetricRow({ label, value, selected = false }) {
 function ChartMessage({ children, action }) {
   return (
     <Box sx={{ height: { xs: 260, sm: 320 }, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", px: 2 }}>
-      <Box>
+      <Box sx={{ px: 3, py: 2, border: "1px solid rgba(205,222,248,0.82)", borderRadius: 3, background: "linear-gradient(145deg, rgba(255,255,255,0.78), rgba(231,242,255,0.72))", boxShadow: "inset 0 2px 5px rgba(83,116,171,0.06), 0 1px 0 rgba(255,255,255,0.92)" }}>
         <Typography sx={{ color: "#52647C", fontSize: 14, fontWeight: 600 }}>{children}</Typography>
         {action}
       </Box>
@@ -339,12 +340,12 @@ export default function PostPerformanceCard({
   const hasAvailableMetric = chartData.some((point) => point.posts > 0 && typeof point.value === "number");
 
   return (
-    <Card elevation={0} sx={{ width: "100%", minWidth: 0, border: "1px solid #E5EAF2", borderRadius: "18px", bgcolor: "#fff", boxShadow: "0 3px 12px rgba(22, 42, 78, 0.045)" }}>
+    <Card elevation={0} sx={{ width: "100%", minWidth: 0, ...insightsGlassSurfaceSx, borderRadius: "22px" }}>
       <CardContent sx={{ p: { xs: 2, sm: 2.5, lg: 3 }, "&:last-child": { pb: { xs: 2, sm: 2.5, lg: 3 } } }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 1.5 }}>
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ color: "#252B38", fontSize: 20, lineHeight: 1.3, fontWeight: 700 }}>Post Performance</Typography>
-            <Typography sx={{ mt: 0.5, color: "#718096", fontSize: 14 }}>
+            <Typography sx={{ color: "#1D3157", fontSize: 20, lineHeight: 1.3, fontWeight: 750 }}>Post Performance</Typography>
+            <Typography sx={{ mt: 0.5, color: "#687E9F", fontSize: 14 }}>
               Daily performance of posts published{snapshotRange ? ` during ${snapshotRange}` : " during the saved snapshot period"}.
             </Typography>
           </Box>
@@ -356,7 +357,7 @@ export default function PostPerformanceCard({
                 metricKey: event.target.value,
               })}
               inputProps={{ "aria-label": "Post performance metric" }}
-              sx={{ height: 50, borderRadius: "14px", color: "#344054", fontSize: 14, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#D7DEE8" } }}
+              sx={{ height: 46, ...insightsGlassControlSx, borderRadius: 999, color: "#203965", fontSize: 14, "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#79A8F6", borderWidth: 1 } }}
             >
               {metrics.map((metric) => <MenuItem key={metric.key} value={metric.key}>{metric.label}</MenuItem>)}
             </Select>
@@ -382,28 +383,28 @@ export default function PostPerformanceCard({
         ) : !hasAvailableMetric ? (
           <ChartMessage>{selectedMetric.label} data is unavailable for the posts in this published snapshot.</ChartMessage>
         ) : (
-          <Box sx={{ width: "100%", height: { xs: 260, sm: 320 }, minWidth: 0 }}>
+          <Box sx={{ width: "100%", height: { xs: 260, sm: 320 }, minWidth: 0, p: { xs: 0.5, sm: 1 }, border: "1px solid rgba(208,224,247,0.84)", borderRadius: 3, background: "linear-gradient(180deg, rgba(240,247,255,0.64), rgba(255,255,255,0.52))", boxShadow: "inset 0 2px 6px rgba(83,116,171,0.06), 0 1px 0 rgba(255,255,255,0.92)" }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 20, right: 14, left: -12, bottom: 8 }}>
                 <defs>
                   <linearGradient id="post-performance-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3563F5" stopOpacity={0.14} />
-                    <stop offset="100%" stopColor="#3563F5" stopOpacity={0.015} />
+                    <stop offset="0%" stopColor="#7650DF" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="#7650DF" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#E9EEF5" vertical={false} />
-                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#8292AA" }} minTickGap={22} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#8292AA" }} tickFormatter={formatCompactNumber} width={48} allowDecimals={false} />
+                <CartesianGrid stroke="#D9E5F5" strokeDasharray="3 4" vertical />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#7387A6" }} minTickGap={22} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#7387A6" }} tickFormatter={formatCompactNumber} width={48} allowDecimals={false} />
                 <Tooltip filterNull={false} content={<DailyMetricTooltip metricKey={activeMetricKey} platform={platform} />} />
                 <Area
                   type="linear"
                   dataKey="value"
                   name={selectedMetric.label}
-                  stroke="#3563F5"
+                  stroke="#7650DF"
                   strokeWidth={3}
                   fill="url(#post-performance-fill)"
                   connectNulls={false}
-                  activeDot={{ r: 4, fill: "#3563F5", stroke: "#fff", strokeWidth: 2 }}
+                  activeDot={{ r: 4, fill: "#7650DF", stroke: "#fff", strokeWidth: 2 }}
                   dot={false}
                   isAnimationActive={false}
                 />

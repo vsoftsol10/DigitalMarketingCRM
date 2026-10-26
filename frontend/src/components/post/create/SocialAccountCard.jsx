@@ -129,11 +129,16 @@ export default function SocialAccountCard({
 
         border: "1px solid",
 
-        borderColor: selected ? "primary.main" : "divider",
+        borderColor: selected ? "rgba(131,145,226,.78)" : "rgba(255,255,255,.92)",
 
         borderRadius: "14px",
 
-        bgcolor: selected ? "action.selected" : "background.paper",
+        background: selected
+          ? "linear-gradient(145deg, rgba(235,239,255,.96), rgba(220,232,255,.82))"
+          : "linear-gradient(145deg, rgba(250,252,255,.88), rgba(239,245,255,.78))",
+        boxShadow: selected
+          ? "0 5px 12px rgba(91,105,174,.13), inset 0 2px 0 rgba(255,255,255,.96)"
+          : "0 3px 8px rgba(75,96,151,.07), inset 0 1px 0 rgba(255,255,255,.96)",
 
         textAlign: "left",
 
@@ -151,9 +156,8 @@ export default function SocialAccountCard({
           : {
               borderColor: "primary.main",
 
-              bgcolor: "action.hover",
-
-              boxShadow: "0 3px 12px rgba(15, 23, 42, 0.05)",
+              bgcolor: "rgba(232,241,255,.92)",
+              boxShadow: "0 5px 12px rgba(75,96,151,.12)",
             },
 
         "&:focus-visible": {

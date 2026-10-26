@@ -12,6 +12,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { TYPOGRAPHY } from "../../theme/typography";
 
 import CalendarFilterField from "./CalendarFilterField";
+import { calendarGlassSurfaceSx } from "./calendarGlassSx";
 
 export default function CalendarFilters({
   open,
@@ -45,15 +46,16 @@ export default function CalendarFilters({
           display: "flex",
           flexDirection: "column",
 
-          bgcolor: "background.paper",
-
-          boxShadow: "0 20px 60px rgba(15, 23, 42, 0.16)",
+          ...calendarGlassSurfaceSx,
+          background: "linear-gradient(155deg, rgba(250,253,255,0.99) 0%, rgba(231,241,255,0.98) 100%)",
+          boxShadow: "-18px 0 48px rgba(56,89,147,0.2), inset 1px 0 0 rgba(255,255,255,0.96)",
         },
       }}
       slotProps={{
         backdrop: {
           sx: {
-            bgcolor: "rgba(15, 23, 42, 0.42)",
+            bgcolor: "rgba(58, 81, 119, 0.28)",
+            backdropFilter: "blur(4px)",
           },
         },
       }}
@@ -102,11 +104,11 @@ export default function CalendarFilters({
             width: 40,
             height: 40,
 
-            borderRadius: 2,
+            borderRadius: "50%",
 
             color: "text.secondary",
 
-            bgcolor: "transparent",
+            bgcolor: "rgba(255,255,255,0.52)",
 
             border: "1px solid transparent",
 
@@ -114,9 +116,8 @@ export default function CalendarFilters({
               "background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease",
 
             "&:hover": {
-              bgcolor: "action.hover",
-
-              borderColor: "divider",
+              bgcolor: "rgba(220,235,255,0.92)",
+              borderColor: "rgba(186,207,242,0.9)",
 
               color: "text.primary",
             },
@@ -182,7 +183,7 @@ export default function CalendarFilters({
         </Typography>
       </Box>
 
-      <Divider />
+      <Divider sx={{ borderColor: "rgba(190,211,242,0.68)" }} />
 
       {/* ========================================= */}
       {/* FILTER CONTENT */}
@@ -206,7 +207,7 @@ export default function CalendarFilters({
           },
 
           "&::-webkit-scrollbar-thumb": {
-            bgcolor: "divider",
+            bgcolor: "rgba(142,170,211,0.45)",
 
             borderRadius: 10,
           },
@@ -271,7 +272,7 @@ export default function CalendarFilters({
       {/* FOOTER */}
       {/* ========================================= */}
 
-      <Divider />
+      <Divider sx={{ borderColor: "rgba(190,211,242,0.68)" }} />
 
       <Box
         sx={{
@@ -284,7 +285,7 @@ export default function CalendarFilters({
 
           flexShrink: 0,
 
-          bgcolor: "background.paper",
+          background: "linear-gradient(180deg, rgba(247,251,255,0.98), rgba(231,241,255,0.97))",
         }}
       >
         <Stack
@@ -309,9 +310,10 @@ export default function CalendarFilters({
 
               border: "1px solid",
 
-              borderColor: "divider",
+              borderColor: "rgba(194,214,246,0.86)",
 
-              bgcolor: "background.paper",
+              background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(232,242,255,0.9))",
+              boxShadow: "0 4px 10px rgba(70,106,172,0.09), inset 0 1px 0 #FFFFFF",
 
               color: "text.secondary",
 
@@ -323,9 +325,8 @@ export default function CalendarFilters({
                 "background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease",
 
               "&:hover": {
-                bgcolor: "action.hover",
-
-                borderColor: "text.secondary",
+                bgcolor: "rgba(220,235,255,0.92)",
+                borderColor: "#AFC8F0",
 
                 color: "text.primary",
               },
@@ -347,11 +348,12 @@ export default function CalendarFilters({
 
               px: 2.5,
 
-              border: "none",
+              border: "1px solid rgba(255,255,255,0.8)",
 
-              borderRadius: 2,
+              borderRadius: 999,
 
-              bgcolor: "primary.main",
+              background: "linear-gradient(105deg, #9872ED 0%, #5D86EA 60%, #39AFE0 100%)",
+              boxShadow: "0 7px 16px rgba(78,112,207,0.25), inset 0 1px 0 rgba(255,255,255,0.38)",
 
               color: "primary.contrastText",
 
@@ -363,7 +365,8 @@ export default function CalendarFilters({
                 "background-color 0.2s ease, transform 0.15s ease",
 
               "&:hover": {
-                bgcolor: "primary.dark",
+                background: "linear-gradient(105deg, #875EE0 0%, #4F76DE 60%, #2A9FD0 100%)",
+                boxShadow: "0 10px 20px rgba(78,112,207,0.32)",
               },
 
               "&:active": {

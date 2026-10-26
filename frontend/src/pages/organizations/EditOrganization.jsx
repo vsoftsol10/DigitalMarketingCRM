@@ -1,4 +1,4 @@
-import { Alert, Box, CircularProgress, Divider, Paper } from "@mui/material";
+import { Alert, Box, Divider, Paper } from "@mui/material";
 
 import { FormProvider, useForm } from "react-hook-form";
 
@@ -15,10 +15,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import EditHeader from "../../components/organization/edit/EditHeader";
 
 import UpdateOrganizationFooter from "../../components/organization/edit/UpdateOrganizationFooter";
+import LoadingState from "../../components/ui/LoadingState";
 
 import OrganizationDetailsForm from "../../components/organization/create/OrganizationDetailsForm";
 
 import PrimaryContactForm from "../../components/organization/create/PrimaryContactForm";
+import { glassFormDividerSx, glassFormPaperSx } from "../../components/ui/form/glassFormSx";
 
 // ============================================================
 // VALIDATION / CONSTANTS
@@ -327,21 +329,7 @@ export default function EditOrganization() {
   // ==========================================================
 
   if (loadingOrganization) {
-    return (
-      <Box
-        sx={{
-          minHeight: 500,
-
-          display: "flex",
-
-          alignItems: "center",
-
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={30} />
-      </Box>
-    );
+    return <LoadingState page="Edit Organization" />;
   }
 
   // ==========================================================
@@ -409,7 +397,9 @@ export default function EditOrganization() {
 
               mb: 3,
 
-              borderRadius: "12px",
+            borderRadius: "16px",
+            border: "1px solid rgba(255,255,255,.85)",
+            boxShadow: "0 6px 16px rgba(77, 59, 75, .08)",
             }}
           >
             {serverError}
@@ -430,7 +420,9 @@ export default function EditOrganization() {
 
               mb: 3,
 
-              borderRadius: "12px",
+              borderRadius: "16px",
+              border: "1px solid rgba(255,255,255,.85)",
+              boxShadow: "0 6px 16px rgba(77, 59, 75, .08)",
             }}
           >
             Please fix the highlighted fields before saving.
@@ -444,17 +436,8 @@ export default function EditOrganization() {
         <Paper
           elevation={0}
           sx={{
+            ...glassFormPaperSx,
             maxWidth: "980px",
-
-            mx: "auto",
-
-            p: 4,
-
-            borderRadius: "24px",
-
-            border: "1px solid #E2E8F0",
-
-            bgcolor: "#FFFFFF",
           }}
         >
           {/* ==================================================
@@ -463,7 +446,7 @@ export default function EditOrganization() {
 
           <OrganizationDetailsForm />
 
-          <Divider sx={{ my: 5 }} />
+          <Divider sx={glassFormDividerSx} />
 
           {/* ==================================================
               PRIMARY CONTACT
@@ -483,7 +466,7 @@ export default function EditOrganization() {
             the dedicated Subscription Management flow.
           */}
 
-          <Divider sx={{ my: 5 }} />
+          <Divider sx={glassFormDividerSx} />
 
           {/* ==================================================
               FOOTER

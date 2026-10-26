@@ -33,6 +33,7 @@ import { buildCreatePostPayload } from "../../utils/post/createPostPayload";
 import { getPlatformStates } from "../../utils/post/platformCapability.utils";
 
 import { CREATE_POST } from "../../data/post";
+import LoadingState from "../../components/ui/LoadingState";
 
 export default function CreatePost() {
   const location = useLocation();
@@ -393,7 +394,7 @@ export default function CreatePost() {
   // ============================================================
 
   if (isLoadingOrganizations) {
-    return null;
+    return <LoadingState page="Create Post" />;
   }
 
   // ============================================================

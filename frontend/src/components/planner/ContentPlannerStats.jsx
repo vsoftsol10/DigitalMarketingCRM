@@ -13,21 +13,25 @@ export default function ContentPlannerStats({ statistics = {} }) {
       label: "Total Ideas",
       value: statistics.total_ideas ?? 0,
       icon: LightbulbOutlinedIcon,
+      tone: "violet",
     },
     {
       label: "Planned This Month",
       value: statistics.planned_this_month ?? 0,
       icon: CalendarMonthOutlinedIcon,
+      tone: "rose",
     },
     {
       label: "Using Content Planner",
       value: statistics.using_content_planner ?? 0,
       icon: CheckCircleOutlineRoundedIcon,
+      tone: "mint",
     },
     {
       label: "Not Using Content Planner",
       value: statistics.not_using_content_planner ?? 0,
       icon: RadioButtonUncheckedRoundedIcon,
+      tone: "sky",
     },
   ];
 

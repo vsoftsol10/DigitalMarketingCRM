@@ -14,55 +14,55 @@ const CONFIG = {
   POST_PUBLISHED: {
     icon: CheckCircleOutlineRoundedIcon,
     color: "#10B981",
-    background: "#F8FAFC",
+    background: "#E7F8F1",
   },
 
   ORGANIZATION_CREATED: {
     icon: BusinessOutlinedIcon,
     color: "#2563EB",
-    background: "#F8FAFC",
+    background: "#E8F1FF",
   },
 
   SUBSCRIPTION_ACTIVATED: {
     icon: WorkspacePremiumOutlinedIcon,
     color: "#2563EB",
-    background: "#F8FAFC",
+    background: "#EDE8FF",
   },
 
   SUBSCRIPTION_RENEWED: {
     icon: AutorenewRoundedIcon,
     color: "#2563EB",
-    background: "#F8FAFC",
+    background: "#E8EEFF",
   },
 
   SUBSCRIPTION_CANCELLED: {
     icon: CancelOutlinedIcon,
     color: "#64748B",
-    background: "#F8FAFC",
+    background: "#F0EBFF",
   },
 
   POST_CREATED: {
     icon: AddCircleOutlineRoundedIcon,
     color: "#F97316",
-    background: "#F8FAFC",
+    background: "#EEF1F8",
   },
 
   POST_SCHEDULED: {
     icon: ScheduleOutlinedIcon,
     color: "#2563EB",
-    background: "#F8FAFC",
+    background: "#E9F2FF",
   },
 
   POST_FAILED: {
     icon: ErrorOutlineRoundedIcon,
     color: "#EF4444",
-    background: "#F8FAFC",
+    background: "#FFEAF0",
   },
 
   DEFAULT: {
     icon: InfoOutlinedIcon,
     color: "#64748B",
-    background: "#F8FAFC",
+    background: "#EEF1F8",
   },
 };
 
@@ -79,7 +79,9 @@ export default function ActivityIcon({ type }) {
 
         borderRadius: "12px",
 
-        bgcolor: config.background,
+        background: `linear-gradient(145deg, ${config.background}, rgba(255,255,255,.74))`,
+        border: "1px solid rgba(255,255,255,.9)",
+        boxShadow: "0 4px 9px rgba(76,98,154,.1), inset 0 1px 2px rgba(255,255,255,.92), inset 0 -1px 2px rgba(95,116,170,.08)",
 
         display: "flex",
         justifyContent: "center",

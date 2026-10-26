@@ -1,10 +1,11 @@
-import { Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
+import overviewGlassCardSx from "../overview/overviewGlassCardSx";
 
 // ============================================================
 // PLATFORM ICONS
@@ -34,6 +35,7 @@ export default function ConnectSocialAccountCard({
   connected = false,
   disabled = false,
   loading = false,
+  overviewStyle = false,
 
   onConnect,
 }) {
@@ -120,24 +122,23 @@ export default function ConnectSocialAccountCard({
     <Box
       component="article"
       sx={{
-        flex: "1 1 180px",
+        flex: overviewStyle ? "1 1 0" : "1 1 180px",
 
-        minWidth: {
-          xs: 160,
-          sm: 180,
-        },
+        minWidth: overviewStyle ? 0 : { xs: 160, sm: 180 },
 
-        maxWidth: 210,
+        maxWidth: overviewStyle ? "none" : 210,
 
-        minHeight: 150,
+        minHeight: overviewStyle ? 166 : 150,
+        height: overviewStyle ? "100%" : undefined,
 
-        p: 2,
+        p: overviewStyle ? 1.5 : 2,
 
         borderRadius: "16px",
 
-        border: "1px solid #E2E8F0",
+        border: "1px solid rgba(255,255,255,.95)",
 
-        bgcolor: "#FFFFFF",
+        background: "linear-gradient(145deg, rgba(250,252,255,.96), rgba(235,243,255,.88))",
+        boxShadow: "0 7px 16px rgba(75,96,151,.1), inset 0 0 0 1px rgba(177,196,227,.12), inset 0 2px 0 rgba(255,255,255,.98)",
 
         display: "flex",
 
@@ -154,13 +155,15 @@ export default function ConnectSocialAccountCard({
 
         opacity: disabled ? 0.55 : 1,
 
+        ...(overviewStyle ? overviewGlassCardSx : {}),
+
         "&:hover": disabled
           ? {}
           : {
-              borderColor: "#2563EB",
-              bgcolor: "#F8FBFF",
+              borderColor: "rgba(140,166,211,.7)",
+              background: "linear-gradient(145deg, rgba(240,247,255,.98), rgba(228,239,255,.94))",
               transform: "translateY(-2px)",
-              boxShadow: "0 8px 20px rgba(15,23,42,.06)",
+              boxShadow: "0 10px 20px rgba(75,96,151,.15), inset 0 2px 0 rgba(255,255,255,.98)",
             },
       }}
     >
@@ -175,6 +178,8 @@ export default function ConnectSocialAccountCard({
           borderRadius: "12px",
 
           bgcolor: platformBackgroundColor,
+          border: "1px solid rgba(255,255,255,.94)",
+          boxShadow: "0 4px 10px rgba(75,96,151,.08), inset 0 2px 2px rgba(255,255,255,.82)",
 
           display: "flex",
           alignItems: "center",
@@ -241,34 +246,32 @@ export default function ConnectSocialAccountCard({
         }
         aria-label={connectLabel}
         aria-busy={loading}
-        startIcon={
-          loading ? <CircularProgress size={14} color="inherit" /> : null
-        }
         sx={{
-          minWidth: 105,
+          minWidth: overviewStyle ? 0 : 105,
+          width: overviewStyle ? "100%" : undefined,
           height: 34,
 
-          px: 1.5,
+          px: overviewStyle ? 0.75 : 1.5,
 
           borderRadius: "10px",
 
-          borderColor: "#CBD5E1",
+          borderColor: "rgba(165,183,211,.72)",
 
           color: "#475569",
 
           textTransform: "none",
 
-          fontSize: 13,
+          fontSize: overviewStyle ? 12 : 13,
 
           fontWeight: 600,
 
-          boxShadow: "none",
+          boxShadow: "0 3px 8px rgba(75,96,151,.07), inset 0 1px 0 rgba(255,255,255,.98)",
 
           "&:hover": {
-            borderColor: "#2563EB",
+            borderColor: "rgba(116,150,208,.72)",
             color: "#2563EB",
-            bgcolor: "#F8FBFF",
-            boxShadow: "none",
+            background: "linear-gradient(145deg, rgba(240,247,255,.98), rgba(228,239,255,.94))",
+            boxShadow: "0 5px 10px rgba(75,96,151,.1), inset 0 1px 0 rgba(255,255,255,.98)",
           },
 
           "&.Mui-disabled": {

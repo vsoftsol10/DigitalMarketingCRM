@@ -10,6 +10,7 @@ import CalendarNavigation from "./CalendarNavigation";
 import CalendarSearch from "./CalendarSearch";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import { calendarGlassSurfaceSx } from "./calendarGlassSx";
 
 export default function CalendarToolbar({
   currentDate,
@@ -28,12 +29,9 @@ export default function CalendarToolbar({
       sx={{
         width: "100%",
 
-        border: "1px solid",
-        borderColor: "divider",
+        ...calendarGlassSurfaceSx,
 
-        borderRadius: 3,
-
-        bgcolor: "background.paper",
+        borderRadius: 4,
 
         px: {
           xs: 1.5,
@@ -159,21 +157,18 @@ export default function CalendarToolbar({
 
               flexShrink: 0,
 
-              borderRadius: 2,
-
-              borderColor: "divider",
-
-              bgcolor: "background.paper",
-
+              borderRadius: 999,
+              borderColor: "rgba(255,255,255,0.96)",
+              background: "linear-gradient(145deg, #FFFFFF 0%, #EAF3FF 100%)",
+              boxShadow: "0 5px 12px rgba(70,106,172,0.12), inset 0 1px 0 #FFFFFF",
               color: "text.primary",
 
               ...TYPOGRAPHY.button,
 
               "&:hover": {
-                bgcolor: "action.hover",
-
-                borderColor:
-                  "text.disabled",
+                bgcolor: "rgba(220,235,255,0.9)",
+                borderColor: "rgba(174,198,237,0.9)",
+                boxShadow: "0 7px 16px rgba(70,106,172,0.16)",
               },
             }}
           >

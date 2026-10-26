@@ -13,21 +13,25 @@ export default function DashboardStats({ statistics }) {
       label: "Total Organizations",
       value: statistics?.total_organizations ?? 0,
       icon: BusinessOutlinedIcon,
+      tone: "violet",
     },
     {
       label: "Connected Social Accounts",
       value: statistics?.connected_social_accounts ?? 0,
       icon: ShareOutlinedIcon,
+      tone: "rose",
     },
     {
       label: "Scheduled Posts Today",
       value: statistics?.scheduled_posts_today ?? 0,
       icon: CalendarTodayOutlinedIcon,
+      tone: "mint",
     },
     {
       label: "Published Posts Today",
       value: statistics?.published_posts_today ?? 0,
       icon: CampaignOutlinedIcon,
+      tone: "sky",
     },
   ];
 

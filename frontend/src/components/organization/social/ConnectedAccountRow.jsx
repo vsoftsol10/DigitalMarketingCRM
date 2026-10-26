@@ -563,7 +563,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Stack,
   Typography,
 } from "@mui/material";
@@ -870,8 +869,10 @@ function ConnectedAccountRow({
           sm: 2.5,
         },
         py: 2,
-        border: "1px solid #E2E8F0",
+        border: "1px solid rgba(255,255,255,.96)",
         borderRadius: "18px",
+        background: "linear-gradient(145deg, rgba(250,252,255,.97), rgba(235,243,255,.9))",
+        boxShadow: "0 6px 15px rgba(75,96,151,.09), inset 0 0 0 1px rgba(177,196,227,.12), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -1px 3px rgba(112,127,177,.05)",
         display: "flex",
         justifyContent: "space-between",
         alignItems: {
@@ -885,8 +886,8 @@ function ConnectedAccountRow({
         },
         transition: "border-color .2s ease, box-shadow .2s ease",
         "&:hover": {
-          borderColor: "#CBD5E1",
-          boxShadow: "0 8px 20px rgba(15,23,42,.05)",
+          borderColor: "rgba(155,179,215,.64)",
+          boxShadow: "0 9px 19px rgba(75,96,151,.13), inset 0 2px 0 rgba(255,255,255,.98)",
         },
       }}
     >
@@ -912,9 +913,10 @@ function ConnectedAccountRow({
           sx={{
             width: 50,
             height: 50,
-            bgcolor: "#F8FAFC",
+            bgcolor: "rgba(255,255,255,.82)",
             color: "#111827",
-            border: "1px solid #E2E8F0",
+            border: "1px solid rgba(255,255,255,.96)",
+            boxShadow: "0 4px 10px rgba(75,96,151,.09), inset 0 1px 0 rgba(255,255,255,.98)",
             flexShrink: 0,
           }}
         >
@@ -1126,9 +1128,6 @@ function ConnectedAccountRow({
             onClick={handleReconnect}
             disabled={loading}
             aria-label={`Reconnect ${accountName}`}
-            startIcon={
-              loading ? <CircularProgress size={14} color="inherit" /> : null
-            }
             sx={{
               height: PILL_HEIGHT,
               minWidth: 92,
@@ -1159,9 +1158,6 @@ function ConnectedAccountRow({
             onClick={handleDisconnect}
             disabled={loading}
             aria-label={`Disconnect ${accountName}`}
-            startIcon={
-              loading ? <CircularProgress size={14} color="inherit" /> : null
-            }
             sx={{
               height: PILL_HEIGHT,
               minWidth: 92,

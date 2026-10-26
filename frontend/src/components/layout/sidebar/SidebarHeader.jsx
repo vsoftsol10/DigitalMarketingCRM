@@ -7,17 +7,22 @@ export default function SidebarHeader() {
       sx={{
         display: "flex",
         alignItems: "center",
-        gap: 1.8,
-        px: 3,
-        py: 3,
+        gap: 1.5,
+        px: 2.5,
+        py: 1.5,
+        "@media (max-height: 700px)": { py: 1 },
+        "@media (max-height: 600px)": { py: 0.5 },
+        "@media (max-height: 520px)": { py: 0 },
       }}
     >
       <Box
         sx={{
           width: 44,
           height: 44,
-          borderRadius: "14px",
-          bgcolor: "transparent",
+          borderRadius: "50%",
+          bgcolor: "rgba(255,255,255,.82)",
+          border: "1px solid rgba(124, 58, 237, .15)",
+          boxShadow: "0 6px 16px rgba(124, 58, 237, .15)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -44,7 +49,7 @@ export default function SidebarHeader() {
       <Box>
         <Typography
           sx={{
-            fontSize: 16,
+            fontSize: 17,
             fontWeight: 700,
             lineHeight: 1.2,
           }}

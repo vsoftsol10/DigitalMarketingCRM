@@ -1,0 +1,177 @@
+{
+  "regular_instagram": {
+    "organization": { "name": "Synthetic Retail Studio" },
+    "account": { "platform": "instagram", "name": "synthetic_ig_account" },
+    "date_range": { "since": "2026-09-01", "until": "2026-09-07", "duration_days": 7 },
+    "stats": [
+      { "label": "Total Reach", "metric": { "value": 84210, "availability": "available" } },
+      { "label": "Total Engagement", "metric": { "value": 5376, "availability": "available" } },
+      { "label": "Total Followers", "metric": { "value": 12400, "availability": "available" } },
+      { "label": "Total Views", "metric": { "value": 163200, "availability": "available" } },
+      { "label": "Total Posts", "metric": { "value": 5, "availability": "available" } }
+    ],
+    "daily_reach": [
+      { "date": "2026-09-01", "value": 850, "posts": 1 },
+      { "date": "2026-09-02", "value": 1210, "posts": 1 },
+      { "date": "2026-09-03", "value": 980, "posts": 1 },
+      { "date": "2026-09-04", "value": 1530, "posts": 1 },
+      { "date": "2026-09-05", "value": 1100, "posts": 1 },
+      { "date": "2026-09-06", "value": 740, "posts": 1 },
+      { "date": "2026-09-07", "value": 1320, "posts": 1 }
+    ],
+    "content_fields": [
+      { "key": "reach", "label": "Reach" },
+      { "key": "engagement", "label": "Engagement" },
+      { "key": "likes", "label": "Likes / Reactions" },
+      { "key": "comments", "label": "Comments" },
+      { "key": "shares", "label": "Shares" }
+    ],
+    "content_performance": [
+      { "provider_media_id": "synthetic-ig-1", "media_type": "IMAGE", "caption": "A bright product launch with a simple studio setup.", "published_at": "2026-09-01T10:00:00+00:00", "metrics": { "reach": { "value": 7400, "availability": "available" }, "engagement": { "value": 810, "availability": "available" }, "likes": { "value": 620, "availability": "available" }, "comments": { "value": 95, "availability": "available" }, "shares": { "value": 95, "availability": "available" } } },
+      { "provider_media_id": "synthetic-ig-2", "media_type": "VIDEO", "caption": "A short behind the scenes video.", "published_at": "2026-09-02T11:30:00+00:00", "metrics": { "reach": { "value": 6900, "availability": "available" }, "engagement": { "value": 760, "availability": "available" }, "likes": { "value": 580, "availability": "available" }, "comments": { "value": 80, "availability": "available" }, "shares": { "value": 100, "availability": "available" } } },
+      { "provider_media_id": "synthetic-ig-3", "media_type": "IMAGE", "caption": "Three practical ways to organize a workspace.", "published_at": "2026-09-03T09:15:00+00:00", "metrics": { "reach": { "value": 6200, "availability": "available" }, "engagement": { "value": 700, "availability": "available" }, "likes": { "value": 540, "availability": "available" }, "comments": { "value": 75, "availability": "available" }, "shares": { "value": 85, "availability": "available" } } },
+      { "provider_media_id": "synthetic-ig-4", "media_type": "VIDEO", "caption": "A quick demonstration of the new collection.", "published_at": "2026-09-04T14:45:00+00:00", "metrics": { "reach": { "value": 5900, "availability": "available" }, "engagement": { "value": 640, "availability": "available" }, "likes": { "value": 480, "availability": "available" }, "comments": { "value": 70, "availability": "available" }, "shares": { "value": 90, "availability": "available" } } },
+      { "provider_media_id": "synthetic-ig-5", "media_type": "IMAGE", "caption": "A customer favorite in a warm neutral palette.", "published_at": "2026-09-05T16:20:00+00:00", "metrics": { "reach": { "value": 5400, "availability": "available" }, "engagement": { "value": 590, "availability": "available" }, "likes": { "value": 440, "availability": "available" }, "comments": { "value": 65, "availability": "available" }, "shares": { "value": 85, "availability": "available" } } }
+    ],
+    "meta_ads": [],
+    "mode": "current"
+  },
+  "regular_facebook": {
+    "organization": { "name": "Synthetic Retail Studio" },
+    "account": { "platform": "facebook", "name": "Synthetic Facebook Page" },
+    "date_range": { "since": "2026-09-01", "until": "2026-09-07", "duration_days": 7 },
+    "stats": [
+      { "label": "Total Reach", "metric": { "value": 54820, "availability": "available" } },
+      { "label": "Total Engagement", "metric": { "value": 3210, "availability": "available" } },
+      { "label": "Total Followers", "metric": { "value": 9100, "availability": "available" } },
+      { "label": "Total Views", "metric": { "value": 72800, "availability": "available" } },
+      { "label": "Total Posts", "metric": { "value": 3, "availability": "available" } }
+    ],
+    "daily_reach": [
+      { "date": "2026-09-01", "value": 610, "posts": 1 },
+      { "date": "2026-09-02", "value": null, "posts": 0 },
+      { "date": "2026-09-03", "value": 870, "posts": 1 },
+      { "date": "2026-09-04", "value": null, "posts": 0 },
+      { "date": "2026-09-05", "value": 790, "posts": 1 },
+      { "date": "2026-09-06", "value": null, "posts": 0 },
+      { "date": "2026-09-07", "value": null, "posts": 0 }
+    ],
+    "content_fields": [
+      { "key": "reach", "label": "Reach" },
+      { "key": "views", "label": "Views" },
+      { "key": "reactions", "label": "Reactions" },
+      { "key": "comments", "label": "Comments" },
+      { "key": "clicks", "label": "Clicks" }
+    ],
+    "content_performance": [
+      { "provider_media_id": "synthetic-fb-1", "media_type": "IMAGE", "caption": "A community update with useful product tips.", "published_at": "2026-09-01T13:00:00+00:00", "metrics": { "reach": { "value": 5100, "availability": "available" }, "views": { "value": 6500, "availability": "available" }, "reactions": { "value": 430, "availability": "available" }, "comments": { "value": 55, "availability": "available" }, "clicks": { "value": 90, "availability": "available" } } },
+      { "provider_media_id": "synthetic-fb-2", "media_type": "VIDEO", "caption": "A short tutorial for new customers.", "published_at": "2026-09-03T12:15:00+00:00", "metrics": { "reach": { "value": 4700, "availability": "available" }, "views": { "value": 6100, "availability": "available" }, "reactions": { "value": 380, "availability": "available" }, "comments": { "value": 48, "availability": "available" }, "clicks": { "value": 105, "availability": "available" } } },
+      { "provider_media_id": "synthetic-fb-3", "media_type": "IMAGE", "caption": "A seasonal collection photographed in natural light.", "published_at": "2026-09-05T15:40:00+00:00", "metrics": { "reach": { "value": 4200, "availability": "available" }, "views": { "value": 5400, "availability": "available" }, "reactions": { "value": 340, "availability": "available" }, "comments": { "value": 42, "availability": "available" }, "clicks": { "value": 81, "availability": "available" } } }
+    ],
+    "meta_ads": [],
+    "mode": "current"
+  },
+  "empty_instagram": {
+    "organization": { "name": "Synthetic Retail Studio" },
+    "account": { "platform": "instagram", "name": "synthetic_empty_account" },
+    "date_range": { "since": "2026-09-01", "until": "2026-09-07", "duration_days": 7 },
+    "stats": [
+      { "label": "Total Reach", "metric": { "value": null, "availability": "unavailable" } },
+      { "label": "Total Engagement", "metric": { "value": null, "availability": "unavailable" } },
+      { "label": "Total Followers", "metric": { "value": null, "availability": "unavailable" } },
+      { "label": "Total Views", "metric": { "value": null, "availability": "unavailable" } },
+      { "label": "Total Posts", "metric": { "value": 0, "availability": "available" } }
+    ],
+    "daily_reach": [
+      { "date": "2026-09-01", "value": null, "posts": 0 },
+      { "date": "2026-09-02", "value": null, "posts": 0 },
+      { "date": "2026-09-03", "value": null, "posts": 0 },
+      { "date": "2026-09-04", "value": null, "posts": 0 },
+      { "date": "2026-09-05", "value": null, "posts": 0 },
+      { "date": "2026-09-06", "value": null, "posts": 0 },
+      { "date": "2026-09-07", "value": null, "posts": 0 }
+    ],
+    "content_fields": [
+      { "key": "reach", "label": "Reach" },
+      { "key": "engagement", "label": "Engagement" },
+      { "key": "likes", "label": "Likes / Reactions" },
+      { "key": "comments", "label": "Comments" },
+      { "key": "shares", "label": "Shares" }
+    ],
+    "content_performance": [],
+    "meta_ads": [],
+    "mode": "current"
+  },
+  "long_caption_instagram": {
+    "organization": { "name": "Synthetic Retail Studio" },
+    "account": { "platform": "instagram", "name": "synthetic_long_caption_account" },
+    "date_range": { "since": "2026-09-01", "until": "2026-09-07", "duration_days": 7 },
+    "stats": [
+      { "label": "Total Reach", "metric": { "value": 84210, "availability": "available" } },
+      { "label": "Total Engagement", "metric": { "value": 5376, "availability": "available" } },
+      { "label": "Total Followers", "metric": { "value": 12400, "availability": "available" } },
+      { "label": "Total Views", "metric": { "value": 163200, "availability": "available" } },
+      { "label": "Total Posts", "metric": { "value": 1, "availability": "available" } }
+    ],
+    "daily_reach": [
+      { "date": "2026-09-01", "value": 850, "posts": 1 },
+      { "date": "2026-09-02", "value": null, "posts": 0 },
+      { "date": "2026-09-03", "value": null, "posts": 0 },
+      { "date": "2026-09-04", "value": null, "posts": 0 },
+      { "date": "2026-09-05", "value": null, "posts": 0 },
+      { "date": "2026-09-06", "value": null, "posts": 0 },
+      { "date": "2026-09-07", "value": null, "posts": 0 }
+    ],
+    "content_fields": [
+      { "key": "reach", "label": "Reach" },
+      { "key": "engagement", "label": "Engagement" },
+      { "key": "likes", "label": "Likes / Reactions" },
+      { "key": "comments", "label": "Comments" },
+      { "key": "shares", "label": "Shares" }
+    ],
+    "content_performance": [
+      { "provider_media_id": "synthetic-long-caption-1", "media_type": "IMAGE", "caption": "A synthetic long caption for layout testing. This text intentionally exceeds the available table width to exercise the existing ellipsis and clipping styles without containing real account or customer information. It describes a sample product, its materials, its care instructions, and a fictional seasonal collection. The remaining copy is repeated only to stress the same caption cell: sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail, sample detail.", "published_at": "2026-09-01T10:00:00+00:00", "metrics": { "reach": { "value": 7400, "availability": "available" }, "engagement": { "value": 810, "availability": "available" }, "likes": { "value": 620, "availability": "available" }, "comments": { "value": 95, "availability": "available" }, "shares": { "value": 95, "availability": "available" } } }
+    ],
+    "meta_ads": [],
+    "mode": "current"
+  },
+  "ads_instagram": {
+    "organization": { "name": "Synthetic Retail Studio" },
+    "account": { "platform": "instagram", "name": "synthetic_ads_account" },
+    "date_range": { "since": "2026-09-01", "until": "2026-09-07", "duration_days": 7 },
+    "stats": [
+      { "label": "Total Reach", "metric": { "value": 84210, "availability": "available" } },
+      { "label": "Total Engagement", "metric": { "value": 5376, "availability": "available" } },
+      { "label": "Total Followers", "metric": { "value": 12400, "availability": "available" } },
+      { "label": "Total Views", "metric": { "value": 163200, "availability": "available" } },
+      { "label": "Total Posts", "metric": { "value": 5, "availability": "available" } }
+    ],
+    "daily_reach": [
+      { "date": "2026-09-01", "value": 850, "posts": 1 },
+      { "date": "2026-09-02", "value": 1210, "posts": 1 },
+      { "date": "2026-09-03", "value": 980, "posts": 1 },
+      { "date": "2026-09-04", "value": 1530, "posts": 1 },
+      { "date": "2026-09-05", "value": 1100, "posts": 1 },
+      { "date": "2026-09-06", "value": 740, "posts": 1 },
+      { "date": "2026-09-07", "value": 1320, "posts": 1 }
+    ],
+    "content_fields": [
+      { "key": "reach", "label": "Reach" },
+      { "key": "engagement", "label": "Engagement" },
+      { "key": "likes", "label": "Likes / Reactions" },
+      { "key": "comments", "label": "Comments" },
+      { "key": "shares", "label": "Shares" }
+    ],
+    "content_performance": [
+      { "provider_media_id": "synthetic-ads-content-1", "media_type": "VIDEO", "caption": "A synthetic post shown alongside entered campaign rows.", "published_at": "2026-09-01T10:00:00+00:00", "metrics": { "reach": { "value": 7400, "availability": "available" }, "engagement": { "value": 810, "availability": "available" }, "likes": { "value": 620, "availability": "available" }, "comments": { "value": 95, "availability": "available" }, "shares": { "value": 95, "availability": "available" } } }
+    ],
+    "meta_ads": [
+      { "date": "2026-09-01", "total_leads": "2.50" },
+      { "date": "2026-09-02", "total_leads": "0" },
+      { "date": "2026-09-03", "total_leads": "8.25" },
+      { "date": "2026-09-04", "total_leads": "1" },
+      { "date": "2026-09-05", "total_leads": "4.75" }
+    ],
+    "mode": "add_ads"
+  }
+}

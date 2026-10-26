@@ -209,7 +209,8 @@ export default function CalendarEventDetails({
           maxHeight: "100dvh",
           display: "flex",
           flexDirection: "column",
-          bgcolor: "background.paper",
+          background: "linear-gradient(155deg, rgba(250,253,255,0.99) 0%, rgba(231,241,255,0.98) 100%)",
+          boxShadow: "-18px 0 48px rgba(56,89,147,0.2), inset 1px 0 0 rgba(255,255,255,0.96)",
           boxSizing: "border-box",
           overflowX: "hidden",
         },
@@ -233,7 +234,8 @@ export default function CalendarEventDetails({
         },
         backdrop: {
           sx: {
-            bgcolor: "rgba(15, 23, 42, 0.42)",
+            bgcolor: "rgba(58, 81, 119, 0.28)",
+            backdropFilter: "blur(4px)",
           },
         },
       }}
@@ -253,8 +255,8 @@ export default function CalendarEventDetails({
           pr: { xs: 6.5, sm: 7 },
           py: 1.75,
           borderBottom: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.paper",
+          borderColor: "rgba(190,211,242,0.68)",
+          background: "linear-gradient(180deg, rgba(249,252,255,0.96), rgba(236,245,255,0.92))",
         }}
       >
         <Stack

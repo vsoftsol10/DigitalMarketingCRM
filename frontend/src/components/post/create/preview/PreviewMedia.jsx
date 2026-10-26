@@ -135,7 +135,8 @@ export default function PreviewMedia({
         sx={{
           height: 320,
 
-          bgcolor: "#F8FAFC",
+          background:
+            "linear-gradient(145deg, rgba(239,245,255,.92), rgba(225,236,255,.8))",
 
           display: "flex",
           flexDirection: "column",
@@ -170,7 +171,8 @@ export default function PreviewMedia({
         sx={{
           height: 320,
 
-          bgcolor: "#F8FAFC",
+          background:
+            "linear-gradient(145deg, rgba(239,245,255,.92), rgba(225,236,255,.8))",
 
           display: "flex",
           flexDirection: "column",
@@ -269,7 +271,7 @@ export default function PreviewMedia({
 
         maxHeight: 520,
 
-        bgcolor: isVideo ? "#000000" : "#F8FAFC",
+        bgcolor: isVideo ? "#000000" : "rgba(232,241,255,.82)",
 
         overflow: "hidden",
       }}

@@ -1,4 +1,6 @@
 import { Card, CardContent, Typography, Box } from "@mui/material";
+import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 
 import { TYPOGRAPHY } from "../../theme/typography";
 
@@ -12,9 +14,32 @@ export default function DashboardNotificationsCard({
     <Card
       elevation={0}
       sx={{
-        border: "1px solid #E2E8F0",
-        borderRadius: "22px",
-        height: 520,
+        position: "relative",
+        overflow: "hidden",
+        border: "1px solid rgba(255,255,255,.9)",
+        borderRadius: "24px",
+        height: { xs: 360, lg: 390 },
+        background: "linear-gradient(145deg, rgba(255,241,245,.98) 0%, rgba(255,225,233,.96) 100%)",
+        boxShadow: "0 16px 30px rgba(166, 90, 119, .14), 0 3px 8px rgba(180,92,124,.08), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 5px rgba(192,104,132,.08)",
+        "&::before": {
+          content: "\"\"",
+          position: "absolute",
+          inset: 4,
+          borderRadius: "20px",
+          border: "1px solid rgba(255,255,255,.72)",
+          pointerEvents: "none",
+        },
+        "&::after": {
+          content: "\"\"",
+          position: "absolute",
+          width: 150,
+          height: 150,
+          top: -70,
+          right: -50,
+          borderRadius: "50%",
+          bgcolor: "rgba(226,98,134,.07)",
+          pointerEvents: "none",
+        },
 
         display: "flex",
         flexDirection: "column",
@@ -23,7 +48,9 @@ export default function DashboardNotificationsCard({
     >
       <CardContent
         sx={{
-          p: 3,
+          position: "relative",
+          zIndex: 1,
+          p: { xs: 2.5, md: 3 },
 
           display: "flex",
           flexDirection: "column",
@@ -32,7 +59,7 @@ export default function DashboardNotificationsCard({
           minHeight: 0,
 
           "&:last-child": {
-            pb: 3,
+            pb: { xs: 2.5, md: 3 },
           },
         }}
       >
@@ -62,12 +89,25 @@ export default function DashboardNotificationsCard({
               justifyContent: "center",
               alignItems: "center",
 
-              color: "#94A3B8",
+              color: "#D84E73",
 
               fontSize: 15,
+              textAlign: "center",
             }}
           >
-            Nothing needs attention
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5 }}>
+              <Box sx={{ position: "relative", width: 82, height: 82, borderRadius: "50%", display: "grid", placeItems: "center", background: "linear-gradient(145deg, rgba(255,236,243,.98), rgba(255,218,230,.94))", border: "3px solid rgba(255,255,255,.94)", boxShadow: "0 10px 21px rgba(219,87,126,.2), 0 2px 5px rgba(180,76,115,.12), inset 0 2px 3px rgba(255,255,255,.96), inset 0 -3px 5px rgba(216,90,129,.14)" }}>
+                <NotificationsActiveOutlinedIcon sx={{ fontSize: 34, color: "#E5557A" }} />
+                <AutoAwesomeRoundedIcon aria-hidden="true" sx={{ position: "absolute", top: 5, right: -24, fontSize: 16, color: "#E67C9A" }} />
+                <AutoAwesomeRoundedIcon aria-hidden="true" sx={{ position: "absolute", bottom: 8, left: -22, fontSize: 13, color: "#E67C9A", opacity: .75 }} />
+              </Box>
+              <Typography sx={{ fontSize: 17, fontWeight: 700, color: "#263451" }}>
+                Nothing needs attention
+              </Typography>
+              <Typography sx={{ fontSize: 14, color: "#74819F" }}>
+                No urgent items at the moment.
+              </Typography>
+            </Box>
           </Box>
         ) : (
           <Box

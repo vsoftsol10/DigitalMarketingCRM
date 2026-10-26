@@ -2,6 +2,7 @@ import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 
 import CheckIcon from "@mui/icons-material/Check";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import { planTone } from "../plansGlassSx";
 
 import { useFormContext } from "react-hook-form";
 
@@ -14,10 +15,7 @@ export default function PlanLivePreview() {
 
   const values = watch();
 
-  const price =
-    values.billing_cycle === "yearly"
-      ? values.yearly_price
-      : values.monthly_price;
+  const tone = planTone(values.type);
 
   /*
    * ==========================================
@@ -39,9 +37,10 @@ export default function PlanLivePreview() {
    * ==========================================
    */
 
-  const features = Array.isArray(values.features)
-    ? values.features.filter(Boolean)
-    : [];
+  const features = String(values.highlights || "")
+    .split(/\n/)
+    .map((feature) => feature.trim())
+    .filter(Boolean);
 
   return (
     <Box
@@ -70,12 +69,7 @@ export default function PlanLivePreview() {
           pl: 0.25,
         }}
       >
-        <AutoAwesomeOutlinedIcon
-          sx={{
-            fontSize: 17,
-            color: "#94A3B8",
-          }}
-        />
+        <AutoAwesomeOutlinedIcon sx={{ fontSize: 17, color: tone.icon }} />
 
         <Typography
           sx={{
@@ -105,11 +99,12 @@ export default function PlanLivePreview() {
 
           borderRadius: "20px",
 
-          border: "1px solid #D7E3F4",
+          border: `1px solid ${tone.border}`,
 
-          backgroundColor: "#FFFFFF",
+          background: tone.surface,
+          backdropFilter: "blur(16px)",
 
-          boxShadow: "0 2px 8px rgba(15, 23, 42, 0.03)",
+          boxShadow: "0 16px 30px rgba(73,95,157,0.14), inset 0 1px 0 rgba(255,255,255,0.98)",
         }}
       >
         {/* ====================================
@@ -186,45 +181,8 @@ export default function PlanLivePreview() {
         </Typography>
 
         {/* ====================================
-            PRICE
+            PRICING
         ==================================== */}
-
-        {/* <Box
-          sx={{
-            width: "100%",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "baseline",
-            // mt: 2,
-            mb: 3,
-          }}
-        >
-          <Typography
-            component="span"
-            sx={{
-              fontSize: "30px",
-              fontWeight: 700,
-              lineHeight: "38px",
-              letterSpacing: "-0.025em",
-              color: "#2563EB",
-            }}
-          >
-            ₹{formatPrice(price)}
-          </Typography>
-
-          <Typography
-            component="span"
-            sx={{
-              ml: 0.4,
-              fontSize: "16px",
-              fontWeight: 400,
-              lineHeight: "24px",
-              color: "#94A3B8",
-            }}
-          >
-            /{values.billing_cycle === "yearly" ? "year" : "month"}
-          </Typography>
-        </Box> */}
         <Box
           sx={{
             mt: 2.5,
@@ -240,7 +198,7 @@ export default function PlanLivePreview() {
               sx={{
                 fontSize: "24px",
                 fontWeight: 700,
-                color: "#2563EB",
+                color: tone.accent,
                 textAlign: "center",
               }}
             >
@@ -263,7 +221,7 @@ export default function PlanLivePreview() {
               sx={{
                 fontSize: "24px",
                 fontWeight: 700,
-                color: "#2563EB",
+                color: tone.accent,
                 textAlign: "center",
               }}
             >
@@ -407,6 +365,45 @@ export default function PlanLivePreview() {
             },
           }}
         />
+        {features.length > 0 && (
+          <Box
+            sx={{
+              mt: 2.25,
+              pt: 2,
+              borderTop: "1px solid rgba(145,166,202,0.24)",
+            }}
+          >
+            <Typography
+              sx={{
+                mb: 1,
+                color: "#7183A1",
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              Plan Highlights
+            </Typography>
+            <Stack spacing={0.65}>
+              {features.map((feature, index) => (
+                <Stack
+                  key={`highlight-${index}`}
+                  direction="row"
+                  alignItems="flex-start"
+                  spacing={0.8}
+                >
+                  <CheckIcon sx={{ mt: 0.2, color: tone.accent, fontSize: 16, flexShrink: 0 }} />
+                  <Typography
+                    sx={{ color: "#526783", fontSize: 13.5, lineHeight: 1.5 }}
+                  >
+                    {feature}
+                  </Typography>
+                </Stack>
+              ))}
+            </Stack>
+          </Box>
+        )}
       </Paper>
     </Box>
   );

@@ -5,10 +5,11 @@ export default function FormSection({
   title,
   description,
   children,
+  spacing = 4,
 }) {
   return (
     <Box>
-      <Stack spacing={4}>
+      <Stack spacing={spacing}>
         <Stack spacing={0.5}>
           <Typography sx={TYPOGRAPHY.sectionTitle}>
             {title}

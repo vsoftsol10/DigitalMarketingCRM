@@ -26,10 +26,12 @@ export default function MediaDropzone({
     alignItems: "center",
     justifyContent: "center",
     gap: 0.7,
-    border: "1px solid #D4DCE8",
-    borderRadius: "11px",
-    bgcolor: "#FFFFFF",
-    color: "#4D586B",
+    border: "1px solid rgba(255,255,255,.96)",
+    borderRadius: "13px",
+    bgcolor: "rgba(242,247,255,.86)",
+    color: "#526887",
+    boxShadow:
+      "0 4px 9px rgba(75,96,151,.1), inset 0 1px 0 rgba(255,255,255,.98), inset 0 -1px 3px rgba(112,127,177,.08)",
     cursor: "pointer",
     fontFamily: "inherit",
     fontSize: 13,
@@ -39,7 +41,7 @@ export default function MediaDropzone({
       "border-color .2s ease, background-color .2s ease, color .2s ease",
     "&:hover": {
       borderColor: theme.palette.primary.main,
-      bgcolor: "#F8FBFF",
+      bgcolor: "rgba(230,239,255,.92)",
       color: theme.palette.primary.main,
     },
     "&:focus-visible": {
@@ -70,7 +72,10 @@ export default function MediaDropzone({
 
         borderRadius: "18px",
 
-        bgcolor: "#FFFFFF",
+        background:
+          "linear-gradient(145deg, rgba(248,251,255,.84), rgba(234,242,255,.72))",
+        boxShadow:
+          "inset 0 2px 5px rgba(101,122,169,.06), inset 0 1px 0 rgba(255,255,255,.9)",
 
         display: "flex",
         alignItems: "center",
@@ -82,7 +87,7 @@ export default function MediaDropzone({
 
         "&:hover": {
           borderColor: theme.palette.primary.main,
-          bgcolor: "#FBFDFF",
+          bgcolor: "rgba(232,241,255,.82)",
         },
       }}
     >
@@ -107,9 +112,12 @@ export default function MediaDropzone({
 
             flexShrink: 0,
 
-            borderRadius: "16px",
-
-            bgcolor: "#EEF1F6",
+            borderRadius: "50%",
+            border: "1px solid rgba(255,255,255,.96)",
+            background:
+              "linear-gradient(145deg, rgba(255,255,255,.98), rgba(222,233,255,.9))",
+            boxShadow:
+              "0 6px 12px rgba(80,101,164,.14), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 4px rgba(104,124,175,.1)",
 
             display: "flex",
             alignItems: "center",
@@ -122,7 +130,7 @@ export default function MediaDropzone({
           <CloudUploadOutlinedIcon
             sx={{
               fontSize: 29,
-              color: "#8B9AB5",
+              color: "#557FE1",
             }}
           />
         </Box>

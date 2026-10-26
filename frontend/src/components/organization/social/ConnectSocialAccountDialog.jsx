@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 
 import {
@@ -8,9 +7,17 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   Typography,
 } from "@mui/material";
+import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
+import {
+  glassDialogActionsSx,
+  glassDialogCardSx,
+  glassDialogContentSx,
+  glassDialogPaperSx,
+  glassDialogSecondaryButtonSx,
+  glassDialogTitleSx,
+} from "../../ui/dialog/glassDialogSx";
 
 // ============================================================
 // PLATFORM CONFIGURATION
@@ -186,6 +193,7 @@ const ConnectSocialAccountDialog = ({
       onClose={handleClose}
       fullWidth
       maxWidth="sm"
+      PaperProps={{ sx: glassDialogPaperSx }}
       aria-labelledby="social-account-dialog-title"
       aria-describedby="social-account-dialog-description"
     >
@@ -195,14 +203,7 @@ const ConnectSocialAccountDialog = ({
 
       <DialogTitle
         id="social-account-dialog-title"
-        sx={{
-          px: 3,
-          pt: 3,
-          pb: 1,
-          fontSize: "1.25rem",
-          fontWeight: 600,
-          color: "#111827",
-        }}
+        sx={glassDialogTitleSx}
       >
         {config.title}
       </DialogTitle>
@@ -213,10 +214,7 @@ const ConnectSocialAccountDialog = ({
 
       <DialogContent
         id="social-account-dialog-description"
-        sx={{
-          px: 3,
-          py: 2,
-        }}
+        sx={glassDialogContentSx}
       >
         {/* ====================================================
             INTRO
@@ -226,8 +224,9 @@ const ConnectSocialAccountDialog = ({
           variant="body2"
           sx={{
             mb: 2.5,
-            color: "#6B7280",
+            color: "#657899",
             fontSize: "0.875rem",
+            fontWeight: 600,
           }}
         >
           Before you continue
@@ -251,6 +250,9 @@ const ConnectSocialAccountDialog = ({
                 display: "flex",
                 alignItems: "flex-start",
                 gap: 1.5,
+                p: 1.5,
+                borderRadius: "15px",
+                ...glassDialogCardSx,
               }}
             >
               {/* ==================================================
@@ -266,10 +268,11 @@ const ConnectSocialAccountDialog = ({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "#F3F4F6",
-                  color: "#374151",
+                  background: "linear-gradient(145deg, #B78AF0, #6684E7)",
+                  color: "#fff",
                   fontSize: "0.75rem",
                   fontWeight: 600,
+                  boxShadow: "0 4px 10px rgba(91,103,197,.24), inset 0 1px 0 rgba(255,255,255,.42)",
                 }}
               >
                 {index + 1}
@@ -291,7 +294,7 @@ const ConnectSocialAccountDialog = ({
                     fontSize: "0.875rem",
                     fontWeight: 600,
                     lineHeight: 1.5,
-                    color: "#111827",
+                    color: "#17294D",
                   }}
                 >
                   {requirement.title}
@@ -303,7 +306,7 @@ const ConnectSocialAccountDialog = ({
                     mt: 0.5,
                     fontSize: "0.8125rem",
                     lineHeight: 1.6,
-                    color: "#6B7280",
+                    color: "#657899",
                   }}
                 >
                   {requirement.description}
@@ -322,10 +325,14 @@ const ConnectSocialAccountDialog = ({
             mt: 3,
             px: 2,
             py: 1.5,
-            borderRadius: "10px",
-            backgroundColor: mode === "reconnect" ? "#FFFBEB" : "#F9FAFB",
-            border:
-              mode === "reconnect" ? "1px solid #FDE68A" : "1px solid #E5E7EB",
+            borderRadius: "15px",
+            background: mode === "reconnect"
+              ? "linear-gradient(145deg, rgba(255,248,229,.94), rgba(255,255,255,.78))"
+              : "linear-gradient(145deg, rgba(229,241,255,.88), rgba(255,255,255,.78))",
+            border: mode === "reconnect"
+              ? "1px solid rgba(246,202,134,.62)"
+              : "1px solid rgba(193,216,248,.74)",
+            boxShadow: "0 4px 10px rgba(73,99,153,.06), inset 0 1px 0 rgba(255,255,255,.96)",
           }}
         >
           <Typography
@@ -333,7 +340,7 @@ const ConnectSocialAccountDialog = ({
             sx={{
               fontSize: "0.8125rem",
               lineHeight: 1.6,
-              color: mode === "reconnect" ? "#92400E" : "#4B5563",
+              color: mode === "reconnect" ? "#865B20" : "#52698B",
             }}
           >
             {config.message}
@@ -345,14 +352,8 @@ const ConnectSocialAccountDialog = ({
           ACTIONS
       ====================================================== */}
 
-      <Divider />
-
       <DialogActions
-        sx={{
-          px: 3,
-          py: 2,
-          gap: 1,
-        }}
+        sx={glassDialogActionsSx}
       >
         {/* ====================================================
             CANCEL
@@ -363,18 +364,7 @@ const ConnectSocialAccountDialog = ({
           variant="outlined"
           onClick={handleClose}
           disabled={isLoading}
-          sx={{
-            minWidth: 90,
-            textTransform: "none",
-            borderRadius: "8px",
-            borderColor: "#D1D5DB",
-            color: "#374151",
-
-            "&:hover": {
-              borderColor: "#9CA3AF",
-              backgroundColor: "#F9FAFB",
-            },
-          }}
+          sx={{ minWidth: 90, ...glassDialogSecondaryButtonSx }}
         >
           Cancel
         </Button>
@@ -388,21 +378,7 @@ const ConnectSocialAccountDialog = ({
           variant="contained"
           onClick={handleContinue}
           disabled={isLoading}
-          sx={{
-            minWidth: 180,
-            textTransform: "none",
-            borderRadius: "8px",
-            backgroundColor: "#111827",
-
-            "&:hover": {
-              backgroundColor: "#1F2937",
-            },
-
-            "&.Mui-disabled": {
-              backgroundColor: "#D1D5DB",
-              color: "#6B7280",
-            },
-          }}
+          sx={{ minWidth: 180, ...glassPrimaryButtonSx }}
         >
           {isLoading ? config.loadingLabel : config.continueLabel}
         </Button>

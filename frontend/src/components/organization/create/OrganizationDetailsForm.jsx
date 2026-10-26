@@ -1,16 +1,22 @@
-import { Grid } from "@mui/material";
+import { Box, Grid } from "@mui/material";
 
 import FormSection from "../../ui/form/FormSection";
 import FormTextField from "../../ui/form/FormTextField";
 import FormTextArea from "../../ui/form/FormTextArea";
+import { glassFormSectionSx } from "../../ui/form/glassFormSx";
 
 export default function OrganizationDetailsForm() {
   return (
-    <FormSection
-      title="Organization Details"
-      description="The basic information about this organization."
+    <Box
+      sx={{
+        ...glassFormSectionSx,
+      }}
     >
-      <Grid container spacing={3}>
+      <FormSection
+        title="Organization Details"
+        description="The basic information about this organization."
+      >
+        <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
           <FormTextField
             name="name"
@@ -53,7 +59,8 @@ export default function OrganizationDetailsForm() {
             rows={4}
           />
         </Grid>
-      </Grid>
-    </FormSection>
+        </Grid>
+      </FormSection>
+    </Box>
   );
 }

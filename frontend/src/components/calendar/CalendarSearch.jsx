@@ -6,6 +6,7 @@ import {
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import { calendarGlassControlSx } from "./calendarGlassSx";
 
 export default function CalendarSearch({
   value = "",
@@ -42,25 +43,26 @@ export default function CalendarSearch({
         },
 
         "& .MuiOutlinedInput-root": {
-          height: 44,
+          height: 48,
 
-          borderRadius: 2,
+          borderRadius: 999,
 
-          bgcolor: "background.paper",
+          ...calendarGlassControlSx,
 
           "& fieldset": {
-            borderColor: "divider",
+            borderColor: "transparent",
           },
 
           "&:hover fieldset": {
             borderColor:
-              "text.disabled",
+              "rgba(174,198,237,0.95)",
           },
 
           "&.Mui-focused fieldset": {
             borderColor:
-              "primary.main",
+              "#79A8F6",
             borderWidth: 1,
+            boxShadow: "0 0 0 3px rgba(91,143,236,0.12), inset 0 1px 0 #FFFFFF",
           },
         },
 

@@ -1,15 +1,21 @@
-import { Grid } from "@mui/material";
+import { Box, Grid } from "@mui/material";
 
 import FormSection from "../../ui/form/FormSection";
 import FormTextField from "../../ui/form/FormTextField";
+import { glassFormSectionSx } from "../../ui/form/glassFormSx";
 
 export default function PrimaryContactForm() {
   return (
-    <FormSection
-      title="Primary Contact"
-      description="Primary contact person for this organization."
+    <Box
+      sx={{
+        ...glassFormSectionSx,
+      }}
     >
-      <Grid container spacing={3}>
+      <FormSection
+        title="Primary Contact"
+        description="Primary contact person for this organization."
+      >
+        <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
           <FormTextField
             name="contact_name"
@@ -37,7 +43,8 @@ export default function PrimaryContactForm() {
             placeholder="+91 9876543210"
           />
         </Grid>
-      </Grid>
-    </FormSection>
+        </Grid>
+      </FormSection>
+    </Box>
   );
 }

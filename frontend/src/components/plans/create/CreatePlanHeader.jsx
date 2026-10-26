@@ -73,7 +73,7 @@ export default function CreatePlanHeader({ onBack }) {
 
               fontWeight: 700,
 
-              color: "#1E293B",
+              color: "#12264D",
 
               m: 0,
             }}
@@ -93,7 +93,7 @@ export default function CreatePlanHeader({ onBack }) {
 
               lineHeight: "24px",
 
-              color: "#64748B",
+              color: "#647A9B",
 
               mt: 0.5,
 
@@ -132,13 +132,13 @@ export default function CreatePlanHeader({ onBack }) {
 
             mt: 0.25,
 
-            borderRadius: "16px",
+            borderRadius: 999,
 
-            borderColor: "#D5DCE6",
+            borderColor: "rgba(255,255,255,0.95)",
 
-            color: "#475569",
+            color: "#203965",
 
-            backgroundColor: "#FFFFFF",
+            background: "linear-gradient(145deg, rgba(255,255,255,0.9), rgba(233,243,255,0.82))",
 
             fontSize: "15px",
 
@@ -148,14 +148,14 @@ export default function CreatePlanHeader({ onBack }) {
 
             textTransform: "none",
 
-            boxShadow: "none",
+            boxShadow: "0 7px 16px rgba(70,106,172,0.1), inset 0 1px 0 #FFFFFF",
 
             "&:hover": {
-              borderColor: "#CBD5E1",
+              borderColor: "#B9CEF0",
 
-              backgroundColor: "#FFFFFF",
+              background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)",
 
-              boxShadow: "none",
+              boxShadow: "0 8px 18px rgba(70,106,172,0.14), inset 0 1px 0 #FFFFFF",
             },
           }}
         >

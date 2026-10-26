@@ -11,7 +11,7 @@ export default function DashboardLayout({
       container
       spacing={3}
       sx={{
-        mt: 4,
+        mt: 3,
       }}
     >
       {/* Schedule */}

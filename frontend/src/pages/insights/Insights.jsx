@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { Alert, Box, Button, CircularProgress, LinearProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 
 import insightsService from "../../services/insights.service";
 import InsightsHeader from "../../components/insights/InsightsHeader";
@@ -9,6 +9,8 @@ import InsightsStats from "../../components/insights/InsightsStats";
 import PostPerformanceCard from "../../components/insights/PostPerformanceCard";
 import ContentPerformanceCard from "../../components/insights/ContentPerformanceCard";
 import InsightsExportDialog from "../../components/reports/InsightsExportDialog";
+import { insightsGlassSurfaceSx } from "../../components/insights/insightsGlassSx";
+import LoadingState from "../../components/ui/LoadingState";
 
 const PERIOD_DAYS = { "7D": 7, "30D": 30, "28D": 28 };
 const ACTIVE_SYNC_STATUSES = ["queued", "syncing"];
@@ -341,7 +343,25 @@ export default function Insights() {
   }
 
   return (
-    <Stack spacing={2.5}>
+    <Stack
+      spacing={2.5}
+      sx={{
+        width: "100%",
+        minWidth: 0,
+        "& .MuiAlert-root": {
+          border: "1px solid rgba(255,255,255,0.92)",
+          borderRadius: 3,
+          backgroundImage: "linear-gradient(145deg, rgba(255,255,255,0.58), rgba(232,242,255,0.46))",
+          boxShadow: "0 6px 14px rgba(70,106,172,0.09), inset 0 1px 0 rgba(255,255,255,0.9)",
+          backdropFilter: "blur(12px)",
+          "& .MuiAlert-action": { alignItems: "center" },
+        },
+        "& .MuiLinearProgress-root": {
+          border: "1px solid rgba(255,255,255,0.82)",
+          boxShadow: "inset 0 1px 3px rgba(83,116,171,0.1)",
+        },
+      }}
+    >
       <InsightsHeader
         organizations={organizations}
         organizationId={organizationId}
@@ -490,7 +510,7 @@ export default function Insights() {
       {selected && isRefreshingInsights && (
         <Alert severity="info">
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <CircularProgress size={16} />
+            <LoadingState label="UPDATING INSIGHTS..." variant="inline" />
             <span>
               {isFinalizingSync
                 ? "Loading the published snapshot…"
@@ -531,7 +551,7 @@ export default function Insights() {
         </Alert>
       )}
 
-      <Stack spacing={2.5}>
+      <Stack spacing={2.5} sx={{ width: "100%", minWidth: 0 }}>
         <InsightsStats metrics={metrics} loading={accountLoading} selected={selected && !accountSnapshotQuery.isError} />
         <PostPerformanceCard
           organizationId={organizationId}
@@ -556,9 +576,8 @@ export default function Insights() {
 
       {selected && (accountSnapshotQuery.isFetching || contentSnapshotQuery.isFetching)
         && !accountSnapshotQuery.isLoading && !contentSnapshotQuery.isLoading && (
-        <Box sx={{ position: "fixed", right: 22, bottom: 20, bgcolor: "#fff", border: "1px solid #E3EAF4", borderRadius: 5, p: 0.7, display: "flex", alignItems: "center", gap: 1, boxShadow: "0 5px 18px #1F315018" }}>
-          <CircularProgress size={16} />
-          <Typography sx={{ color: "#637997", fontSize: 12 }}>Updating Insights…</Typography>
+        <Box sx={{ position: "fixed", right: 22, bottom: 20, ...insightsGlassSurfaceSx, borderRadius: 999, px: 1.25, py: 0.8, display: "flex", alignItems: "center", gap: 1, boxShadow: "0 8px 18px rgba(70,106,172,0.16), inset 0 1px 0 #FFFFFF" }}>
+          <LoadingState label="UPDATING INSIGHTS..." variant="inline" />
         </Box>
       )}
     </Stack>

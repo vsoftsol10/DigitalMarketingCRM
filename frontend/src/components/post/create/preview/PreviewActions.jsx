@@ -16,6 +16,9 @@ export default function PreviewActions() {
       sx={{
         px: 2,
         py: 1.5,
+        color: "#526887",
+        borderTop: "1px solid rgba(255,255,255,.82)",
+        background: "rgba(247,250,255,.58)",
       }}
     >
       <FavoriteBorderRoundedIcon fontSize="small" />

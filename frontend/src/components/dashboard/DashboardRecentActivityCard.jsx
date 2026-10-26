@@ -12,9 +12,21 @@ export default function DashboardRecentActivityCard({
     <Card
       elevation={0}
       sx={{
-        border: "1px solid #E2E8F0",
-        borderRadius: "22px",
-        height: 520,
+        position: "relative",
+        overflow: "hidden",
+        border: "1px solid rgba(255,255,255,.9)",
+        borderRadius: "24px",
+        height: { xs: 390, lg: 370 },
+        background: "linear-gradient(145deg, rgba(250,252,255,.98) 0%, rgba(242,247,255,.95) 100%)",
+        boxShadow: "0 14px 28px rgba(75,96,151,.12), 0 3px 8px rgba(79,99,154,.07), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 5px rgba(112,127,177,.06)",
+        "&::before": {
+          content: "\"\"",
+          position: "absolute",
+          inset: 4,
+          borderRadius: "20px",
+          border: "1px solid rgba(255,255,255,.8)",
+          pointerEvents: "none",
+        },
 
         display: "flex",
         flexDirection: "column",
@@ -23,6 +35,8 @@ export default function DashboardRecentActivityCard({
     >
       <CardContent
         sx={{
+          position: "relative",
+          zIndex: 1,
           p: 3,
 
           display: "flex",

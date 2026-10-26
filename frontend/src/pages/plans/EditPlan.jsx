@@ -5,8 +5,6 @@ import {
   Box,
   Paper,
   Stack,
-  Divider,
-  CircularProgress,
   Alert,
 } from "@mui/material";
 
@@ -22,6 +20,7 @@ import PlanLimitsForm from "../../components/plans/create/PlanLimitsForm";
 import PlanHighlightsForm from "../../components/plans/create/PlanHighlightsForm";
 
 import EditPlanFooter from "../../components/plans/edit/EditPlanFooter";
+import LoadingState from "../../components/ui/LoadingState";
 
 import PlanLivePreview from "../../components/plans/create/PlanLivePreview";
 
@@ -31,6 +30,7 @@ import { planSchema } from "../../validation/plan.schema";
 import { planDefaultValues } from "../../constants/forms/planDefaultValues";
 
 import plansService from "../../services/plans.service";
+import { planSectionSx } from "../../components/plans/plansGlassSx";
 
 export default function EditPlan() {
   const navigate = useNavigate();
@@ -184,20 +184,7 @@ export default function EditPlan() {
   ========================================= */
 
   if (loading) {
-    return (
-      <Box
-        sx={{
-          width: "100%",
-          minHeight: 400,
-
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={28} />
-      </Box>
-    );
+    return <LoadingState page="Edit Plan" />;
   }
 
   /* =========================================
@@ -228,11 +215,7 @@ export default function EditPlan() {
 
         boxSizing: "border-box",
 
-        px: {
-          xs: 2,
-          sm: 3,
-          md: 4,
-        },
+        pb: 2,
       }}
     >
       {/* =====================================
@@ -294,22 +277,7 @@ export default function EditPlan() {
 
               <Paper
                 elevation={0}
-                sx={{
-                  width: "100%",
-
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-
-                  borderRadius: "18px",
-
-                  border: "1px solid #E2E8F0",
-
-                  backgroundColor: "#FFFFFF",
-
-                  boxSizing: "border-box",
-                }}
+                sx={planSectionSx}
               >
                 <PlanDetailsForm />
               </Paper>
@@ -318,22 +286,7 @@ export default function EditPlan() {
 
               <Paper
                 elevation={0}
-                sx={{
-                  width: "100%",
-
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-
-                  borderRadius: "18px",
-
-                  border: "1px solid #E2E8F0",
-
-                  backgroundColor: "#FFFFFF",
-
-                  boxSizing: "border-box",
-                }}
+                sx={planSectionSx}
               >
                 <PricingForm />
               </Paper>
@@ -342,22 +295,7 @@ export default function EditPlan() {
 
               <Paper
                 elevation={0}
-                sx={{
-                  width: "100%",
-
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-
-                  borderRadius: "18px",
-
-                  border: "1px solid #E2E8F0",
-
-                  backgroundColor: "#FFFFFF",
-
-                  boxSizing: "border-box",
-                }}
+                sx={planSectionSx}
               >
                 <PlanLimitsForm />
               </Paper>
@@ -366,22 +304,7 @@ export default function EditPlan() {
 
               <Paper
                 elevation={0}
-                sx={{
-                  width: "100%",
-
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-
-                  borderRadius: "18px",
-
-                  border: "1px solid #E2E8F0",
-
-                  backgroundColor: "#FFFFFF",
-
-                  boxSizing: "border-box",
-                }}
+                sx={planSectionSx}
               >
                 <PlanHighlightsForm />
               </Paper>

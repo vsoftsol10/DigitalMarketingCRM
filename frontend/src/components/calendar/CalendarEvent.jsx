@@ -366,7 +366,6 @@ export default function CalendarEvent({
     contentType,
     status,
     color,
-    backgroundColor,
   } = event;
 
   // ==========================================
@@ -405,6 +404,19 @@ export default function CalendarEvent({
       }
     : null;
 
+  const eventTints = {
+    INSTAGRAM: { background: "linear-gradient(135deg, #F8EAFE 0%, #F4EAFB 100%)", border: "#C97BEA" },
+    FACEBOOK: { background: "linear-gradient(135deg, #E2F7F3 0%, #DDF5F0 100%)", border: "#47B8A4" },
+    LINKEDIN: { background: "linear-gradient(135deg, #E5F1FF 0%, #DDEEFF 100%)", border: "#5C9FE8" },
+    YOUTUBE: { background: "linear-gradient(135deg, #FDE8EE 0%, #FBE5EC 100%)", border: "#E86D8F" },
+    X: { background: "linear-gradient(135deg, #E9EDF4 0%, #E4EAF3 100%)", border: "#77859B" },
+    THREADS: { background: "linear-gradient(135deg, #EEF0F6 0%, #E7EAF2 100%)", border: "#818AA0" },
+  };
+  const tint = eventTints[platformKey] || {
+    background: "linear-gradient(135deg, #EDF3FF 0%, #E5EEFC 100%)",
+    border: color || "#7DA5E7",
+  };
+
   return (
     <Box
       component="button"
@@ -416,23 +428,24 @@ export default function CalendarEvent({
       sx={{
         width: "100%",
         minWidth: 0,
-        border: "none",
+        border: "1px solid rgba(255,255,255,0.96)",
         borderLeft: "3px solid",
-        borderColor: color || "primary.main",
-        borderRadius: 1.75,
-        bgcolor: backgroundColor || "action.hover",
-        px: 1,
-        py: 0.9,
+        borderLeftColor: tint.border,
+        borderRadius: 2.25,
+        background: tint.background,
+        px: 1.15,
+        py: 1,
         textAlign: "left",
         cursor: "pointer",
         overflow: "hidden",
         boxSizing: "border-box",
         transition:
-          "background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease",
+          "background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease",
+        boxShadow: "0 4px 10px rgba(67,100,151,0.11), inset 0 1px 0 rgba(255,255,255,0.98), inset 0 -1px 0 rgba(179,202,236,0.35)",
 
         "&:hover": {
-          bgcolor: backgroundColor || "action.selected",
-          boxShadow: "0 2px 8px rgba(15, 23, 42, 0.08)",
+          background: "linear-gradient(135deg, #FFFFFF 0%, #E8F2FF 100%)",
+          boxShadow: "0 8px 16px rgba(67,100,151,0.18), inset 0 1px 0 #FFFFFF",
         },
 
         "&:active": {

@@ -540,7 +540,6 @@
 import {
   Alert,
   Box,
-  CircularProgress,
   Pagination,
   Stack,
   Typography,
@@ -548,7 +547,6 @@ import {
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
@@ -556,11 +554,11 @@ import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 
 import { useNavigate } from "react-router-dom";
 
-import Breadcrumb from "../../components/organization/list/Breadcrumb";
 import Header from "../../components/organization/list/Header";
 import StatsCards from "../../components/organization/list/StatsCards";
 import SearchTabs from "../../components/organization/list/SearchTabs";
 import OrganizationGrid from "../../components/organization/list/OrganizationGrid";
+import LoadingState from "../../components/ui/LoadingState";
 
 import organizationService from "../../services/organization/organization.service";
 
@@ -629,6 +627,7 @@ export default function OrganizationList() {
   // ============================================================
 
   const isFirstLoad = useRef(true);
+  const loadRequestId = useRef(0);
 
   // ============================================================
   // SEARCH DEBOUNCE
@@ -645,28 +644,13 @@ export default function OrganizationList() {
   }, [searchInput]);
 
   // ============================================================
-  // BREADCRUMB
-  // ============================================================
-
-  const breadcrumbItems = useMemo(
-    () => [
-      {
-        label: "Dashboard",
-        icon: DashboardOutlinedIcon,
-        path: "/",
-      },
-      {
-        label: "Organizations",
-      },
-    ],
-    [],
-  );
-
-  // ============================================================
   // LOAD ORGANIZATIONS
   // ============================================================
 
   const loadOrganizations = useCallback(async () => {
+    const requestId = loadRequestId.current + 1;
+    loadRequestId.current = requestId;
+
     try {
       setError(null);
 
@@ -690,6 +674,10 @@ export default function OrganizationList() {
         pageSize: 10,
         ordering: "-created_at",
       });
+
+      if (requestId !== loadRequestId.current) {
+        return;
+      }
 
       if (!response?.success) {
         throw new Error(response?.message || "Unable to load organizations.");
@@ -724,6 +712,10 @@ export default function OrganizationList() {
 
       setPagination(nextPagination);
     } catch (error) {
+      if (requestId !== loadRequestId.current) {
+        return;
+      }
+
       console.error("Failed to load organizations:", error);
 
       const errorMessage =
@@ -759,10 +751,12 @@ export default function OrganizationList() {
         });
       }
     } finally {
-      setInitialLoading(false);
-      setRefreshing(false);
+      if (requestId === loadRequestId.current) {
+        setInitialLoading(false);
+        setRefreshing(false);
 
-      isFirstLoad.current = false;
+        isFirstLoad.current = false;
+      }
     }
   }, [activeTab, search, page]);
 
@@ -803,22 +797,22 @@ export default function OrganizationList() {
   const statistics = useMemo(
     () => [
       {
-        title: "TOTAL CLIENTS",
+        title: "Total Clients",
         value: summary.total_clients || 0,
         icon: BusinessOutlinedIcon,
       },
       {
-        title: "ACTIVE ORGANIZATIONS",
+        title: "Active Organizations",
         value: summary.active_organizations || 0,
         icon: TrendingUpOutlinedIcon,
       },
       {
-        title: "CONNECTED ACCOUNTS",
+        title: "Connected Accounts",
         value: summary.connected_accounts || 0,
         icon: GroupsOutlinedIcon,
       },
       {
-        title: "ACTIVE SUBSCRIPTIONS",
+        title: "Active Subscriptions",
         value: summary.active_subscriptions || 0,
         icon: CampaignOutlinedIcon,
       },
@@ -896,19 +890,7 @@ export default function OrganizationList() {
   // ============================================================
 
   if (initialLoading) {
-    return (
-      <Box
-        sx={{
-          minHeight: 400,
-
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={28} />
-      </Box>
-    );
+    return <LoadingState page="Organizations" />;
   }
 
   // ============================================================
@@ -918,7 +900,7 @@ export default function OrganizationList() {
   if (error && !hasOrganizations && !hasActiveFilters) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error" sx={{ borderRadius: "16px", border: "1px solid rgba(255,255,255,.85)", boxShadow: "0 6px 16px rgba(77, 59, 75, .08)" }}>{error}</Alert>
       </Box>
     );
   }
@@ -929,12 +911,6 @@ export default function OrganizationList() {
 
   return (
     <>
-      {/* ======================================================
-          BREADCRUMB
-      ====================================================== */}
-
-      <Breadcrumb items={breadcrumbItems} />
-
       {/* ======================================================
           HEADER
       ====================================================== */}
@@ -1013,6 +989,7 @@ export default function OrganizationList() {
           onTabChange={handleTabChange}
           counts={counts}
         >
+          <Box sx={{ position: "relative" }}>
           {/* ==================================================
               NO FILTER / NO DATA
           ================================================== */}
@@ -1024,14 +1001,18 @@ export default function OrganizationList() {
               sx={{
                 minHeight: 280,
                 textAlign: "center",
+                px: 2,
               }}
             >
+              <Box sx={{ width: 58, height: 58, mb: 2, display: "grid", placeItems: "center", borderRadius: "50%", color: "#705AD1", background: "linear-gradient(145deg, #F0ECFF, #FFFFFF)", border: "1px solid rgba(255,255,255,.95)", boxShadow: "0 6px 15px rgba(91, 87, 165, .13), inset 0 1px 0 #fff" }}>
+                <BusinessOutlinedIcon sx={{ fontSize: 27 }} />
+              </Box>
               <Typography
                 sx={{
                   fontSize: "16px",
                   fontWeight: 700,
                   lineHeight: "24px",
-                  color: "#111827",
+                  color: "#17294D",
                 }}
               >
                 No organizations found
@@ -1062,14 +1043,18 @@ export default function OrganizationList() {
               sx={{
                 minHeight: 280,
                 textAlign: "center",
+                px: 2,
               }}
             >
+              <Box sx={{ width: 58, height: 58, mb: 2, display: "grid", placeItems: "center", borderRadius: "50%", color: "#5685CC", background: "linear-gradient(145deg, #EAF4FF, #FFFFFF)", border: "1px solid rgba(255,255,255,.95)", boxShadow: "0 6px 15px rgba(72, 117, 170, .12), inset 0 1px 0 #fff" }}>
+                <BusinessOutlinedIcon sx={{ fontSize: 27 }} />
+              </Box>
               <Typography
                 sx={{
                   fontSize: "16px",
                   fontWeight: 700,
                   lineHeight: "24px",
-                  color: "#111827",
+                  color: "#17294D",
                 }}
               >
                 No matching organizations
@@ -1097,9 +1082,12 @@ export default function OrganizationList() {
             <OrganizationGrid
               organizations={organizations}
               onOrganizationClick={handleOrganizationClick}
-              loading={refreshing}
             />
           )}
+          {refreshing && (
+            <LoadingState page="Organizations" variant="overlay" />
+          )}
+          </Box>
         </SearchTabs>
       </Box>
 
@@ -1124,6 +1112,20 @@ export default function OrganizationList() {
             shape="rounded"
             showFirstButton
             showLastButton
+            sx={{
+              "& .MuiPaginationItem-root": {
+                color: "#536A8A",
+                borderRadius: "11px",
+                border: "1px solid rgba(255,255,255,.85)",
+                background: "linear-gradient(145deg, rgba(255,255,255,.82), rgba(235,243,255,.75))",
+                boxShadow: "0 2px 7px rgba(74, 100, 145, .07), inset 0 1px 0 #fff",
+              },
+              "& .MuiPaginationItem-root.Mui-selected": {
+                color: "#355FBC",
+                background: "linear-gradient(145deg, #E4EDFF, #F6F8FF)",
+                borderColor: "rgba(123, 153, 211, .42)",
+              },
+            }}
           />
         </Box>
       )}
@@ -1137,7 +1139,9 @@ export default function OrganizationList() {
           severity="error"
           sx={{
             mt: 2,
-            borderRadius: "12px",
+            borderRadius: "16px",
+            border: "1px solid rgba(255,255,255,.85)",
+            boxShadow: "0 6px 16px rgba(77, 59, 75, .08)",
           }}
         >
           {error}

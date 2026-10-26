@@ -1,5 +1,7 @@
 import { Box, Button } from "@mui/material";
 import { TYPOGRAPHY } from "../../../theme/typography";
+import PrimaryButton from "../../ui/button/PrimaryButton";
+import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 
 export default function CreateContentIdeaFooter({ loading = false, onCancel }) {
   return (
@@ -43,27 +45,19 @@ export default function CreateContentIdeaFooter({ loading = false, onCancel }) {
 
       {/* Submit */}
 
-      <Button
+      <PrimaryButton
         type="submit"
-        variant="contained"
-        disabled={loading}
+        loading={loading}
+        fullWidth={false}
+        height={48}
         sx={{
           minWidth: 180,
-          height: 48,
-
-          borderRadius: "14px",
-
-          boxShadow: "none",
-
           ...TYPOGRAPHY.formButton,
-
-          "&:hover": {
-            boxShadow: "none",
-          },
+          ...glassPrimaryButtonSx,
         }}
       >
         {loading ? "Creating..." : "Create Idea"}
-      </Button>
+      </PrimaryButton>
     </Box>
   );
 }

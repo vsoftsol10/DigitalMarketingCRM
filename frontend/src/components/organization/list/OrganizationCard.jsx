@@ -11,8 +11,10 @@ import {
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
+import FiberManualRecordRoundedIcon from "@mui/icons-material/FiberManualRecordRounded";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import overviewGlassCardSx from "../overview/overviewGlassCardSx";
 
 export default function OrganizationCard({ organization, onClick }) {
   const {
@@ -109,15 +111,15 @@ export default function OrganizationCard({ organization, onClick }) {
       elevation={0}
       onClick={onClick}
       sx={{
+        ...overviewGlassCardSx,
         height: "100%",
-        borderRadius: "18px",
-        border: "1px solid #E2E8F0",
         p: 3,
         cursor: "pointer",
-        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+        transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease",
 
         "&:hover": {
-          boxShadow: "0 8px 24px rgba(15,23,42,.08)",
+          borderColor: "rgba(255,255,255,1)",
+          boxShadow: "0 13px 27px rgba(69,96,145,.17), 0 3px 8px rgba(74,99,145,.07), inset 0 0 0 1px rgba(171,194,229,.25), inset 0 2px 0 rgba(255,255,255,1), inset 0 -2px 4px rgba(113,136,179,.07)",
           transform: "translateY(-2px)",
         },
       }}
@@ -148,8 +150,11 @@ export default function OrganizationCard({ organization, onClick }) {
               height: 54,
               flexShrink: 0,
               bgcolor: logo_color || "#2563EB",
+              background: `linear-gradient(145deg, ${logo_color || "#2563EB"}, rgba(122, 99, 228, .94))`,
               fontWeight: 700,
               fontSize: 22,
+              border: "2px solid rgba(255,255,255,.9)",
+              boxShadow: "0 5px 12px rgba(73, 100, 148, .18), inset 0 1px 0 rgba(255,255,255,.5)",
             }}
           >
             {initials}
@@ -163,9 +168,7 @@ export default function OrganizationCard({ organization, onClick }) {
             <Typography
               sx={{
                 ...TYPOGRAPHY.cardTitle,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                overflowWrap: "anywhere",
               }}
             >
               {name || "-"}
@@ -183,6 +186,14 @@ export default function OrganizationCard({ organization, onClick }) {
         </Stack>
 
         <Chip
+          icon={
+            <FiberManualRecordRoundedIcon
+              sx={{
+                fontSize: "9px !important",
+                color: `${statusStyle.color} !important`,
+              }}
+            />
+          }
           label={formatStatus(organization_status)}
           size="small"
           sx={{
@@ -236,7 +247,8 @@ export default function OrganizationCard({ organization, onClick }) {
           sx={{
             fontSize: 17,
             flexShrink: 0,
-            color: "#94A3B8",
+            color: "#5684CB",
+            filter: "drop-shadow(0 1px 2px rgba(86,132,203,.18))",
           }}
         />
 
@@ -271,7 +283,8 @@ export default function OrganizationCard({ organization, onClick }) {
             sx={{
               fontSize: 17,
               flexShrink: 0,
-              color: "#94A3B8",
+              color: "#3D9BBA",
+              filter: "drop-shadow(0 1px 2px rgba(61,155,186,.18))",
             }}
           />
 
@@ -305,7 +318,7 @@ export default function OrganizationCard({ organization, onClick }) {
         <GroupsOutlinedIcon
           sx={{
             fontSize: 17,
-            color: "#64748B",
+            color: "#765FD0",
           }}
         />
 

@@ -8,8 +8,6 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import SettingsSuggestOutlinedIcon from "@mui/icons-material/SettingsSuggestOutlined";
 
-import { TYPOGRAPHY } from "../../theme/typography";
-
 export default function PlansHeader({
   onCustomPlan,
   onCreatePlan,
@@ -18,10 +16,11 @@ export default function PlansHeader({
     <Box
       sx={{
         width: "100%",
+        minWidth: 0,
         display: "flex",
-        alignItems: "flex-start",
+        alignItems: { xs: "stretch", sm: "flex-start" },
         justifyContent: "space-between",
-        gap: 3,
+        gap: { xs: 2, md: 3 },
 
         flexDirection: {
           xs: "column",
@@ -35,10 +34,10 @@ export default function PlansHeader({
           component="h1"
           sx={{
             fontSize: "28px",
-            fontWeight: 700,
+            fontWeight: 750,
             lineHeight: "36px",
-            letterSpacing: "-0.02em",
-            color: "#1E293B",
+            color: "#12264D",
+            letterSpacing: "-0.03em",
           }}
         >
           Plans
@@ -50,7 +49,7 @@ export default function PlansHeader({
             fontSize: "15px",
             fontWeight: 400,
             lineHeight: "22px",
-            color: "#64748B",
+            color: "#647A9B",
             mt: 0.5,
           }}
         >
@@ -61,14 +60,11 @@ export default function PlansHeader({
       {/* RIGHT */}
       <Stack
         direction="row"
-        spacing={1}
+        spacing={{ xs: 0.75, md: 1 }}
         sx={{
           flexShrink: 0,
-
-          width: {
-            xs: "100%",
-            sm: "auto",
-          },
+          flexWrap: { xs: "wrap", sm: "nowrap" },
+          width: { xs: "100%", sm: "auto" },
         }}
       >
         <Button
@@ -84,11 +80,11 @@ export default function PlansHeader({
           sx={{
             height: 46,
             px: 2,
-            borderRadius: "12px",
-
-            borderColor: "#D7DEE8",
-            color: "#1E293B",
-            backgroundColor: "#FFFFFF",
+            borderRadius: 999,
+            borderColor: "rgba(255,255,255,0.95)",
+            color: "#203965",
+            background: "linear-gradient(145deg, rgba(255,255,255,0.9), rgba(233,243,255,0.82))",
+            boxShadow: "0 7px 16px rgba(70,106,172,0.1), inset 0 1px 0 #FFFFFF",
 
             fontSize: "14px",
             fontWeight: 600,
@@ -96,10 +92,11 @@ export default function PlansHeader({
             textTransform: "none",
 
             whiteSpace: "nowrap",
+            flex: { xs: "1 1 auto", sm: "0 0 auto" },
 
             "&:hover": {
-              backgroundColor: "#F8FAFC",
-              borderColor: "#CBD5E1",
+              background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)",
+              borderColor: "#B9CEF0",
             },
           }}
         >
@@ -120,9 +117,9 @@ export default function PlansHeader({
           sx={{
             height: 46,
             px: 2.1,
-            borderRadius: "12px",
-
-            backgroundColor: "#2563EB",
+            borderRadius: 999,
+            background: "linear-gradient(105deg, #9358F2 0%, #5578F5 58%, #2C9BEB 100%)",
+            boxShadow: "0 10px 20px rgba(106,91,224,0.24), inset 0 1px 0 rgba(255,255,255,0.45)",
 
             fontSize: "14px",
             fontWeight: 600,
@@ -130,9 +127,10 @@ export default function PlansHeader({
             textTransform: "none",
 
             whiteSpace: "nowrap",
+            flex: { xs: "1 1 auto", sm: "0 0 auto" },
 
             "&:hover": {
-              backgroundColor: "#1D4ED8",
+              background: "linear-gradient(105deg, #8549E9 0%, #496AEF 58%, #228CE1 100%)",
             },
           }}
         >

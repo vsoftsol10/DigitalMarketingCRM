@@ -6,13 +6,11 @@ import {
 } from "@mui/material";
 
 import { Controller, useFormContext } from "react-hook-form";
-import { useTheme } from "@mui/material/styles";
 
 import { TYPOGRAPHY } from "../../../../theme/typography";
 import { PUBLISH_TYPE_OPTIONS } from "../../../../data/publishing";
 
 export default function PublishTypeSelector() {
-  const theme = useTheme();
   const { control } = useFormContext();
 
   return (
@@ -49,21 +47,29 @@ export default function PublishTypeSelector() {
 
                   border: "1px solid",
                   borderColor: selected
-                    ? theme.palette.primary.main
-                    : theme.palette.divider,
+                    ? "rgba(131,145,226,.72)"
+                    : "rgba(255,255,255,.92)",
 
-                  borderRadius: 2,
+                  borderRadius: "14px",
 
-                  bgcolor: selected
-                    ? theme.palette.action.selected
-                    : theme.palette.background.paper,
+                  background: selected
+                    ? "linear-gradient(145deg, rgba(238,241,255,.94), rgba(225,234,255,.82))"
+                    : "linear-gradient(145deg, rgba(250,252,255,.88), rgba(239,245,255,.76))",
+                  boxShadow: selected
+                    ? "0 5px 12px rgba(91,105,174,.12), inset 0 2px 0 rgba(255,255,255,.95)"
+                    : "inset 0 1px 0 rgba(255,255,255,.95)",
 
                   transition:
                     "border-color 0.2s ease, background-color 0.2s ease",
 
                   "&:hover": {
                     borderColor:
-                      theme.palette.primary.main,
+                      "rgba(131,145,226,.72)",
+                    bgcolor: "rgba(237,243,255,.9)",
+                  },
+                  "&:focus-visible": {
+                    outline: "2px solid rgba(126,143,232,.72)",
+                    outlineOffset: 2,
                   },
                 }}
               >
@@ -85,15 +91,17 @@ export default function PublishTypeSelector() {
 
                     mr: 1.25,
 
-                    borderRadius: 1.5,
+                    borderRadius: "11px",
 
-                    bgcolor: selected
-                      ? theme.palette.primary.main
-                      : theme.palette.action.hover,
+                    background: selected
+                      ? "linear-gradient(145deg, #8E78E8, #628BEA)"
+                      : "linear-gradient(145deg, rgba(255,255,255,.94), rgba(224,235,255,.82))",
 
                     color: selected
-                      ? theme.palette.primary.contrastText
-                      : theme.palette.text.secondary,
+                      ? "#FFFFFF"
+                      : "#687FAD",
+                    boxShadow:
+                      "0 3px 7px rgba(82,101,159,.12), inset 0 1px 0 rgba(255,255,255,.88)",
 
                     display: "flex",
                     alignItems: "center",

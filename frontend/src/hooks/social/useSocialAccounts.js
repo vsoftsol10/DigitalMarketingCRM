@@ -164,7 +164,7 @@
 //   };
 // }
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import socialAccountService from "../../services/social/socialAccount.service";
 
@@ -175,6 +175,7 @@ export default function useSocialAccounts(
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const requestRef = useRef({ id: 0, controller: null });
 
   // ============================================================
   // FETCH ACCOUNTS
@@ -182,9 +183,20 @@ export default function useSocialAccounts(
 
   const fetchAccounts = useCallback(async () => {
     if (!organizationId || !enabled) {
+      requestRef.current.controller?.abort();
+      requestRef.current = {
+        id: requestRef.current.id + 1,
+        controller: null,
+      };
       setAccounts([]);
+      setLoading(false);
       return;
     }
+
+    requestRef.current.controller?.abort();
+    const requestId = requestRef.current.id + 1;
+    const controller = new AbortController();
+    requestRef.current = { id: requestId, controller };
 
     try {
       setLoading(true);
@@ -193,7 +205,12 @@ export default function useSocialAccounts(
       const response =
         await socialAccountService.getOrganizationSocialAccounts(
           organizationId,
+          { signal: controller.signal },
         );
+
+      if (requestRef.current.id !== requestId) {
+        return;
+      }
 
       if (!response?.success) {
         throw new Error(response?.message || "Unable to load social accounts.");
@@ -203,6 +220,10 @@ export default function useSocialAccounts(
 
       setAccounts(accountsData);
     } catch (error) {
+      if (controller.signal.aborted || requestRef.current.id !== requestId) {
+        return;
+      }
+
       console.error("Failed to load social accounts:", error);
 
       setError(
@@ -213,7 +234,10 @@ export default function useSocialAccounts(
 
       setAccounts([]);
     } finally {
-      setLoading(false);
+      if (requestRef.current.id === requestId) {
+        requestRef.current = { id: requestId, controller: null };
+        setLoading(false);
+      }
     }
   }, [organizationId, enabled]);
 
@@ -223,6 +247,12 @@ export default function useSocialAccounts(
 
   useEffect(() => {
     fetchAccounts();
+
+    return () => {
+      const activeRequest = requestRef.current;
+      activeRequest.controller?.abort();
+      requestRef.current = { id: activeRequest.id + 1, controller: null };
+    };
   }, [fetchAccounts]);
 
   // ============================================================

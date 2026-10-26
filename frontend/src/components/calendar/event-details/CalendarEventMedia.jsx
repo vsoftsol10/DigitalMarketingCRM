@@ -66,9 +66,9 @@ function MediaFrame({
         height: aspectRatio === "16 / 10" ? "clamp(180px, 32vh, 280px)" : 88,
         overflow: "hidden",
         borderRadius: rounded,
-        bgcolor: "action.hover",
-        border: "1px solid",
-        borderColor: "divider",
+        bgcolor: "rgba(235,244,255,0.86)",
+        border: "1px solid rgba(255,255,255,0.96)",
+        boxShadow: "0 7px 18px rgba(70,106,172,0.14), inset 0 1px 0 #FFFFFF",
         flexShrink: 0,
         ...(hoverZoom && {
           "&:hover img": {
@@ -268,7 +268,7 @@ export default function CalendarEventMedia({ event }) {
               aria-label="Previous media"
               onClick={() => showMedia(currentIndex - 1)}
               size="small"
-              sx={{ border: "1px solid", borderColor: "divider" }}
+              sx={{ border: "1px solid rgba(194,214,246,0.86)", background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)", boxShadow: "0 3px 8px rgba(70,106,172,0.1)" }}
             >
               <ChevronLeftRoundedIcon />
             </IconButton>
@@ -282,7 +282,7 @@ export default function CalendarEventMedia({ event }) {
               aria-label="Next media"
               onClick={() => showMedia(currentIndex + 1)}
               size="small"
-              sx={{ border: "1px solid", borderColor: "divider" }}
+              sx={{ border: "1px solid rgba(194,214,246,0.86)", background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)", boxShadow: "0 3px 8px rgba(70,106,172,0.1)" }}
             >
               <ChevronRightRoundedIcon />
             </IconButton>

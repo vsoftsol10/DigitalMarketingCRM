@@ -206,6 +206,16 @@ import {
 } from "@mui/material";
 
 import { useEffect, useState } from "react";
+import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
+import {
+  glassDialogActionsSx,
+  glassDialogCardSx,
+  glassDialogContentSx,
+  glassDialogPaperSx,
+  glassDialogSecondaryButtonSx,
+  glassDialogTitleSx,
+  glassDialogToggleGroupSx,
+} from "../../ui/dialog/glassDialogSx";
 
 export default function RenewSubscriptionDialog({
   open,
@@ -253,17 +263,13 @@ export default function RenewSubscriptionDialog({
       onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="sm"
+      PaperProps={{ sx: glassDialogPaperSx }}
     >
-      <DialogTitle
-        sx={{
-          fontWeight: 700,
-          color: "#0F172A",
-        }}
-      >
+      <DialogTitle sx={glassDialogTitleSx}>
         Renew Subscription
       </DialogTitle>
 
-      <DialogContent dividers>
+      <DialogContent dividers sx={glassDialogContentSx}>
         <Typography
           sx={{
             fontSize: 14,
@@ -278,9 +284,7 @@ export default function RenewSubscriptionDialog({
           sx={{
             mb: 2.5,
             p: 2,
-            borderRadius: "12px",
-            backgroundColor: "#F8FAFC",
-            border: "1px solid #E2E8F0",
+            ...glassDialogCardSx,
           }}
         >
           <Typography
@@ -328,29 +332,7 @@ export default function RenewSubscriptionDialog({
             }
           }}
           disabled={loading}
-          sx={{
-            gap: 1,
-
-            "& .MuiToggleButton-root": {
-              flex: 1,
-              minHeight: 48,
-              borderRadius: "12px !important",
-              border: "1px solid #E2E8F0",
-              textTransform: "none",
-              fontSize: 14,
-              fontWeight: 600,
-            },
-
-            "& .MuiToggleButton-root.Mui-selected": {
-              backgroundColor: "#EEF4FF",
-              color: "#2563EB",
-              border: "2px solid #2563EB",
-
-              "&:hover": {
-                backgroundColor: "#EEF4FF",
-              },
-            },
-          }}
+          sx={glassDialogToggleGroupSx}
         >
           <ToggleButton value="monthly">Monthly</ToggleButton>
 
@@ -370,20 +352,12 @@ export default function RenewSubscriptionDialog({
         )}
       </DialogContent>
 
-      <DialogActions
-        sx={{
-          px: 3,
-          py: 2,
-          gap: 1,
-        }}
-      >
+      <DialogActions sx={glassDialogActionsSx}>
         <Button
           onClick={onClose}
           disabled={loading}
           color="inherit"
-          sx={{
-            textTransform: "none",
-          }}
+          sx={glassDialogSecondaryButtonSx}
         >
           Cancel
         </Button>
@@ -392,15 +366,7 @@ export default function RenewSubscriptionDialog({
           variant="contained"
           onClick={handleSubmit}
           disabled={loading}
-          sx={{
-            textTransform: "none",
-            fontWeight: 600,
-            boxShadow: "none",
-
-            "&:hover": {
-              boxShadow: "none",
-            },
-          }}
+          sx={glassPrimaryButtonSx}
         >
           {loading ? "Renewing..." : "Renew Subscription"}
         </Button>

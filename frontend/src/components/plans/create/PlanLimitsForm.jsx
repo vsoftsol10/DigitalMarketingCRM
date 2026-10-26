@@ -219,6 +219,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import { planInputSx } from "../plansGlassSx";
 
 const FIELD_HEIGHT = 52;
 
@@ -418,7 +419,7 @@ export default function PlanLimitsForm() {
                       helperText={
                         error?.message
                       }
-                      sx={inputSx}
+                      sx={[inputSx, planInputSx]}
                       slotProps={{
                         input: {
                           startAdornment: (

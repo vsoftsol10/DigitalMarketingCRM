@@ -10,66 +10,22 @@ import {
 
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
-import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
-
-import FormSection from "../../ui/form/FormSection";
 import FormSelect from "../../ui/form/FormSelect";
+import {
+  glassFieldErrorInputSx,
+  glassFieldErrorMessageSx,
+} from "../../ui/form/glassFormSx";
 
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN").format(Number(value) || 0);
 }
 
-function PriceCard({ label, value }) {
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        flex: 1,
-        minWidth: 0,
-
-        p: 2,
-
-        borderRadius: "14px",
-        border: "1px solid #E2E8F0",
-        backgroundColor: "#F8FAFC",
-      }}
-    >
-      <Typography
-        sx={{
-          fontSize: "12px",
-          fontWeight: 500,
-          lineHeight: "18px",
-          color: "#94A3B8",
-
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
-        }}
-      >
-        {label}
-      </Typography>
-
-      <Typography
-        sx={{
-          mt: 0.35,
-
-          fontSize: "20px",
-          fontWeight: 700,
-          lineHeight: "28px",
-
-          color: "#1E293B",
-        }}
-      >
-        ₹{formatPrice(value)}
-      </Typography>
-    </Paper>
-  );
+function formatBillingCycle(value) {
+  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : "Not selected";
 }
 
 export default function SubscriptionForm({ plans = [] }) {
-  const {
-    control,
-    formState: { errors },
-  } = useFormContext();
+  const { control } = useFormContext();
 
   const selectedPlanId = useWatch({
     control,
@@ -96,239 +52,128 @@ export default function SubscriptionForm({ plans = [] }) {
   }));
 
   return (
-    <FormSection
-      icon={<CreditCardOutlinedIcon />}
-      title="Subscription"
-      description="Configure the organization's subscription plan and billing."
-    >
-      <Grid container spacing={3}>
-        {/* =====================================================
-            PLAN
-        ===================================================== */}
-
-        <Grid
-          size={{
-            xs: 12,
-          }}
-        >
+    <Box sx={{ width: "100%", minWidth: 0 }}>
+      <Grid container spacing={{ xs: 2, md: 2.5 }} alignItems="stretch">
+        <Grid size={{ xs: 12, md: 6 }}>
           <FormSelect
             name="subscription_plan"
             label="Plan"
             required
             placeholder="Select Plan"
             options={planOptions}
+            errorInputSx={glassFieldErrorInputSx}
+            errorMessageSx={glassFieldErrorMessageSx}
           />
         </Grid>
 
-        {/* =====================================================
-            SELECTED PLAN PRICING
-        ===================================================== */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Stack spacing={0.75}>
+            <Typography sx={{ fontSize: 14, fontWeight: 500, color: "#334155" }}>
+              Billing Cycle
+            </Typography>
+            <Controller
+              control={control}
+              name="billing_cycle"
+              render={({ field }) => (
+                <ToggleButtonGroup
+                  exclusive
+                  fullWidth
+                  value={field.value}
+                  onChange={(_, value) => {
+                    if (value) field.onChange(value);
+                  }}
+                  sx={{
+                    gap: 0.75,
+                    "& .MuiToggleButton-root": {
+                      flex: 1,
+                      minWidth: 0,
+                      height: 52,
+                      borderRadius: "12px !important",
+                      border: "1px solid rgba(255,255,255,.94)",
+                      background: "linear-gradient(145deg, rgba(255,255,255,.88), rgba(232,241,255,.8))",
+                      boxShadow: "0 4px 10px rgba(76,101,145,.09), inset 0 1px 0 #fff, inset 0 -1px 2px rgba(104,126,169,.06)",
+                      textTransform: "none",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "#475569",
+                      "&.Mui-selected": {
+                        color: "#385FC0",
+                        borderColor: "rgba(112,137,204,.58)",
+                        background: "linear-gradient(145deg, #F0EAFF, #E4F0FF)",
+                        boxShadow: "0 5px 12px rgba(93,107,180,.15), inset 0 1px 0 #fff, inset 0 -1px 2px rgba(113,128,190,.08)",
+                        "&:hover": {
+                          background: "linear-gradient(145deg, #F0EAFF, #E4F0FF)",
+                        },
+                      },
+                    },
+                  }}
+                >
+                  <ToggleButton value="monthly">Monthly</ToggleButton>
+                  <ToggleButton value="yearly">Yearly</ToggleButton>
+                </ToggleButtonGroup>
+              )}
+            />
+          </Stack>
+        </Grid>
 
-        {selectedPlan && (
-          <Grid
-            size={{
-              xs: 12,
+        <Grid size={{ xs: 12 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              minWidth: 0,
+              p: { xs: 1.75, sm: 2 },
+              borderRadius: "16px",
+              border: "1px solid rgba(255,255,255,.96)",
+              background: "linear-gradient(125deg, rgba(236,244,255,.88), rgba(249,242,255,.78) 62%, rgba(255,255,255,.82))",
+              boxShadow: "0 7px 17px rgba(79,102,153,.10), inset 0 1px 0 rgba(255,255,255,.98), inset 0 -1px 0 rgba(129,151,193,.08)",
             }}
           >
             <Stack
-              direction={{
-                xs: "column",
-                sm: "row",
-              }}
-              spacing={1.5}
+              direction={{ xs: "column", sm: "row" }}
+              spacing={{ xs: 1, sm: 2 }}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", sm: "center" }}
             >
-              <PriceCard label="Monthly" value={selectedPlan.monthly_price} />
-
-              <PriceCard label="Yearly" value={selectedPlan.yearly_price} />
-            </Stack>
-          </Grid>
-        )}
-
-        {/* =====================================================
-            BILLING CYCLE
-        ===================================================== */}
-
-        <Grid
-          size={{
-            xs: 12,
-            md: 6,
-          }}
-        >
-          <Box
-            sx={{
-              mb: 1,
-
-              fontSize: 15,
-              fontWeight: 500,
-
-              color: "#334155",
-            }}
-          >
-            Billing Cycle
-          </Box>
-
-          <Controller
-            control={control}
-            name="billing_cycle"
-            render={({ field }) => (
-              <ToggleButtonGroup
-                exclusive
-                fullWidth
-                value={field.value}
-                onChange={(_, value) => {
-                  if (value) {
-                    field.onChange(value);
-                  }
-                }}
-                sx={{
-                  gap: 1,
-
-                  "& .MuiToggleButton-root": {
-                    flex: 1,
-
-                    height: 56,
-
-                    borderRadius: "18px !important",
-
-                    border: "1px solid #E2E8F0",
-
-                    textTransform: "none",
-
-                    fontSize: 18,
-                    fontWeight: 500,
-
-                    color: "#475569",
-
-                    "&.Mui-selected": {
-                      backgroundColor: "#EEF4FF",
-
-                      color: "#2563EB",
-
-                      border: "2px solid #2563EB",
-
-                      "&:hover": {
-                        backgroundColor: "#EEF4FF",
-                      },
-                    },
-                  },
-                }}
-              >
-                <ToggleButton value="monthly">Monthly</ToggleButton>
-
-                <ToggleButton value="yearly">Yearly</ToggleButton>
-              </ToggleButtonGroup>
-            )}
-          />
-        </Grid>
-
-        {/* =====================================================
-            SELECTED BILLING PRICE
-        ===================================================== */}
-
-        {selectedPlan && (
-          <Grid
-            size={{
-              xs: 12,
-              md: 6,
-            }}
-          >
-            <Box
-              sx={{
-                height: "100%",
-                minHeight: 80,
-
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-
-                px: 2.25,
-
-                borderRadius: "14px",
-
-                backgroundColor: "#F8FAFC",
-
-                border: "1px solid #E2E8F0",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  lineHeight: "18px",
-
-                  color: "#94A3B8",
-
-                  textTransform: "uppercase",
-
-                  letterSpacing: "0.04em",
-                }}
-              >
-                Selected Price
-              </Typography>
-
-              <Typography
-                sx={{
-                  mt: 0.2,
-
-                  fontSize: "22px",
-                  fontWeight: 700,
-                  lineHeight: "30px",
-
-                  color: "#1E293B",
-                }}
-              >
-                ₹{formatPrice(selectedPrice)}
+              <Box sx={{ minWidth: 0 }}>
                 <Typography
-                  component="span"
                   sx={{
-                    ml: 0.5,
-
-                    fontSize: "14px",
-                    fontWeight: 400,
-
-                    color: "#94A3B8",
+                    mb: 0.35,
+                    color: "#7384A4",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: ".07em",
+                    textTransform: "uppercase",
                   }}
                 >
-                  /{billingCycle === "yearly" ? "year" : "month"}
+                  Subscription Preview
                 </Typography>
-              </Typography>
-            </Box>
-          </Grid>
-        )}
-
-        {/* =====================================================
-            NO PLAN
-        ===================================================== */}
-
-        {!selectedPlan && (
-          <Grid
-            size={{
-              xs: 12,
-            }}
-          >
-            <Box
-              sx={{
-                p: 2,
-
-                borderRadius: "14px",
-
-                backgroundColor: "#F8FAFC",
-
-                border: "1px dashed #CBD5E1",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: "14px",
-                  color: "#64748B",
-                }}
-              >
-                Select a subscription plan to view pricing.
-              </Typography>
-            </Box>
-          </Grid>
-        )}
+                {selectedPlan ? (
+                  <Typography sx={{ color: "#25375C", fontSize: 15, fontWeight: 650 }}>
+                    {selectedPlan.name} · {formatBillingCycle(billingCycle)} billing
+                  </Typography>
+                ) : (
+                  <Typography sx={{ color: "#71809A", fontSize: 14 }}>
+                    Select a plan to preview your subscription.
+                  </Typography>
+                )}
+              </Box>
+              {selectedPlan && (
+                <Box sx={{ textAlign: { xs: "left", sm: "right" }, flexShrink: 0 }}>
+                  <Typography sx={{ color: "#7C8BA8", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".04em" }}>
+                    Selected price
+                  </Typography>
+                  <Typography sx={{ color: "#4D5FB8", fontSize: 18, lineHeight: 1.35, fontWeight: 700 }}>
+                    ₹{formatPrice(selectedPrice)}
+                    <Typography component="span" sx={{ ml: 0.4, color: "#8290A9", fontSize: 12, fontWeight: 500 }}>
+                      /{billingCycle === "yearly" ? "year" : "month"}
+                    </Typography>
+                  </Typography>
+                </Box>
+              )}
+            </Stack>
+          </Paper>
+        </Grid>
       </Grid>
-    </FormSection>
+    </Box>
   );
 }

@@ -52,7 +52,7 @@ export default function ContentPerformanceTable({
   const headers = isFacebook ? FACEBOOK_HEADERS : INSTAGRAM_HEADERS;
 
   return (
-    <Paper elevation={0} sx={{ border: 0, borderRadius: 0, overflow: "hidden", bgcolor: "#fff" }}>
+    <Paper elevation={0} sx={{ border: "1px solid rgba(205,222,248,0.84)", borderRadius: 3, overflow: "hidden", background: "linear-gradient(145deg, rgba(255,255,255,0.88), rgba(238,246,255,0.82))", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.96), 0 4px 12px rgba(70,106,172,0.08)" }}>
       <TableContainer sx={{ overflowX: "auto" }}>
         <Table size="small" sx={{ minWidth: 1060, tableLayout: "fixed", width: "100%", "& th, & td": { verticalAlign: "middle" } }}>
           <colgroup>
@@ -65,9 +65,9 @@ export default function ContentPerformanceTable({
             <col style={{ width: "8%" }} />
           </colgroup>
           <TableHead>
-            <TableRow sx={{ bgcolor: "#F8FAFC" }}>
+            <TableRow sx={{ background: "linear-gradient(180deg, rgba(225,238,255,0.88), rgba(239,247,255,0.9))" }}>
               {headers.map((header, index) => (
-                <TableCell key={header} align={index === 0 ? "left" : "center"} sx={{ py: 1.5, px: index === 0 ? 2 : 1.5, color: "#8795A9", borderBottom: "1px solid #E8EDF4", fontSize: 10.5, fontWeight: 700, letterSpacing: 0.55, textTransform: "uppercase", whiteSpace: "nowrap", bgcolor: "#fff" }}>
+                <TableCell key={header} align={index === 0 ? "left" : "center"} sx={{ py: 1.5, px: index === 0 ? 2 : 1.5, color: "#60799E", borderBottom: "1px solid rgba(190,211,242,0.72)", fontSize: 10.5, fontWeight: 750, letterSpacing: 0.55, textTransform: "uppercase", whiteSpace: "nowrap", background: "transparent" }}>
                   {header}
                 </TableCell>
               ))}
@@ -92,7 +92,7 @@ export default function ContentPerformanceTable({
           )}
         </Table>
       </TableContainer>
-      <Paper elevation={0} square sx={{ px: 1.5, py: 0.6, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1, borderTop: "1px solid #EDF1F7" }}>
+      <Paper elevation={0} square sx={{ px: 1.5, py: 0.75, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1, borderTop: "1px solid rgba(190,211,242,0.72)", background: "linear-gradient(180deg, rgba(241,248,255,0.92), rgba(229,240,255,0.84))" }}>
         <Typography sx={{ mr: 0.5, color: "#7D8CA1", fontSize: 11.5 }}>
           {selected && !loading
             ? `Page ${pageNumber}${pagination?.total_pages ? ` of ${pagination.total_pages}` : ""} · Showing ${results.length} of ${pagination?.total_items ?? results.length} items`
@@ -103,14 +103,14 @@ export default function ContentPerformanceTable({
           size="small"
           disabled={!hasPrevious || loading}
           onClick={onPrevious}
-          sx={{ border: "1px solid #DBE4F0", borderRadius: "7px", width: 29, height: 29 }}
+          sx={{ border: "1px solid rgba(194,214,246,0.86)", borderRadius: "50%", width: 32, height: 32, background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)", boxShadow: "0 3px 8px rgba(70,106,172,0.1)", "&:hover": { background: "#DFECFF" } }}
         ><ChevronLeftRoundedIcon fontSize="small" /></IconButton>
         <IconButton
           aria-label="Next content page"
           size="small"
           disabled={!hasNext || loading}
           onClick={onNext}
-          sx={{ border: "1px solid #DBE4F0", borderRadius: "7px", width: 29, height: 29 }}
+          sx={{ border: "1px solid rgba(194,214,246,0.86)", borderRadius: "50%", width: 32, height: 32, background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)", boxShadow: "0 3px 8px rgba(70,106,172,0.1)", "&:hover": { background: "#DFECFF" } }}
         ><ChevronRightRoundedIcon fontSize="small" /></IconButton>
       </Paper>
     </Paper>

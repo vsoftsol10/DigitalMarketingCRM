@@ -1,7 +1,6 @@
 import {
   Alert,
   Box,
-  CircularProgress,
   Stack,
   Typography,
 } from "@mui/material";
@@ -11,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import plansService from "../../services/plans.service";
 
 import PlansHeader from "../../components/plans/PlansHeader";
+import LoadingState from "../../components/ui/LoadingState";
 import PlansGrid from "../../components/plans/PlansGrid";
 
 import { TYPOGRAPHY } from "../../theme/typography";
@@ -64,18 +64,7 @@ export default function Plans() {
   };
 
   if (loading) {
-    return (
-      <Box
-        sx={{
-          minHeight: 400,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={28} />
-      </Box>
-    );
+    return <LoadingState page="Plans" />;
   }
 
   if (error) {

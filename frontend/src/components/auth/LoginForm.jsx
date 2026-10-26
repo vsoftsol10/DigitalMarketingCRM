@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   IconButton,
   InputAdornment,
   Stack,
@@ -142,9 +141,6 @@ export default function LoginForm() {
           size="large"
           fullWidth
           disabled={isSubmitting}
-          startIcon={
-            isSubmitting ? <CircularProgress size={18} color="inherit" /> : null
-          }
           sx={{
             mt: 1,
             py: 1.4,

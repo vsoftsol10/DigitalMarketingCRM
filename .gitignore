@@ -43,3 +43,6 @@ staged-review.txt
 *.crt
 *.key
 
+# Frontend build ZIP
+frontend/dist.zip
+

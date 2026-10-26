@@ -33,6 +33,12 @@ export default function OverviewHeader({
             gap: 0.5,
             cursor: "pointer",
             color: "#64748B",
+            px: 1.25,
+            py: 0.7,
+            borderRadius: "999px",
+            background: "linear-gradient(145deg, rgba(255,255,255,.8), rgba(232,241,255,.68))",
+            border: "1px solid rgba(255,255,255,.9)",
+            boxShadow: "0 3px 9px rgba(76,102,148,.08), inset 0 1px 0 #fff",
             transition: "0.2s",
 
             "&:hover": {
@@ -80,23 +86,25 @@ export default function OverviewHeader({
         spacing={2}
       >
         <Button
-          variant="outlined"
+          variant="contained"
           startIcon={<EditOutlinedIcon />}
           onClick={onEdit}
           sx={{
-            height: 46,
-            px: 3,
-            borderRadius: "14px",
+            height: 48,
+            px: 2.8,
+            borderRadius: "17px",
             textTransform: "none",
 
             ...TYPOGRAPHY.formButton,
 
-            borderColor: "#CBD5E1",
-            color: "#334155",
+            border: "1px solid rgba(255,255,255,.7)",
+            color: "#FFFFFF",
+            background: "linear-gradient(115deg, #A96BEA 0%, #7074ED 54%, #4A91ED 100%)",
+            boxShadow: "0 11px 22px rgba(100,92,203,.3), 0 3px 7px rgba(65,101,210,.17), inset 0 1px 0 rgba(255,255,255,.46), inset 0 -2px 3px rgba(67,71,163,.16)",
 
             "&:hover": {
-              borderColor: "#94A3B8",
-              bgcolor: "#F8FAFC",
+              background: "linear-gradient(115deg, #9D60E3 0%, #5E70E8 56%, #3D8FEA 100%)",
+              boxShadow: "0 13px 24px rgba(100,92,203,.34), 0 3px 8px rgba(65,101,210,.2), inset 0 1px 0 rgba(255,255,255,.42)",
             },
           }}
         >
@@ -109,17 +117,20 @@ export default function OverviewHeader({
           startIcon={<DeleteOutlineRoundedIcon />}
           onClick={onDelete}
           sx={{
-            height: 46,
-            px: 3,
-            borderRadius: "14px",
+            height: 48,
+            px: 2.8,
+            borderRadius: "17px",
             textTransform: "none",
 
             ...TYPOGRAPHY.formButton,
 
-            boxShadow: "none",
+            border: "1px solid rgba(255,255,255,.58)",
+            background: "linear-gradient(115deg, #E65D78 0%, #D94A63 100%)",
+            boxShadow: "0 10px 20px rgba(157,54,83,.22), 0 3px 7px rgba(130,42,68,.12), inset 0 1px 0 rgba(255,255,255,.48), inset 0 -2px 3px rgba(128,35,60,.12)",
 
             "&:hover": {
-              boxShadow: "none",
+              background: "linear-gradient(115deg, #DC4D68 0%, #CB3B56 100%)",
+              boxShadow: "0 12px 22px rgba(157,54,83,.27), 0 3px 8px rgba(130,42,68,.15), inset 0 1px 0 rgba(255,255,255,.48), inset 0 -2px 3px rgba(128,35,60,.14)",
             },
           }}
         >

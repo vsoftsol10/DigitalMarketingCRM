@@ -3,7 +3,6 @@ import {
   Avatar,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -14,8 +13,17 @@ import {
   Radio,
   Typography,
 } from "@mui/material";
+import LoadingState from "../../ui/LoadingState";
 
 import { useEffect, useState } from "react";
+import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
+import {
+  glassDialogActionsSx,
+  glassDialogContentSx,
+  glassDialogPaperSx,
+  glassDialogSecondaryButtonSx,
+  glassDialogTitleSx,
+} from "../../ui/dialog/glassDialogSx";
 
 export default function MetaPageSelectionDialog({
   open,
@@ -52,13 +60,14 @@ export default function MetaPageSelectionDialog({
       }}
       fullWidth
       maxWidth="sm"
+      PaperProps={{ sx: glassDialogPaperSx }}
       aria-labelledby="facebook-page-selection-dialog-title"
     >
-      <DialogTitle id="facebook-page-selection-dialog-title">
+      <DialogTitle id="facebook-page-selection-dialog-title" sx={glassDialogTitleSx}>
         Select a Facebook Page
       </DialogTitle>
 
-      <DialogContent dividers>
+      <DialogContent dividers sx={glassDialogContentSx}>
         <Typography
           variant="body2"
           color="text.secondary"
@@ -71,16 +80,11 @@ export default function MetaPageSelectionDialog({
         </Typography>
 
         {loading && (
-          <Box
-            sx={{
-              minHeight: 180,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CircularProgress size={30} />
-          </Box>
+          <LoadingState
+            label="LOADING FACEBOOK PAGES..."
+            variant="container"
+            minHeight={180}
+          />
         )}
 
         {!loading && error && (
@@ -123,12 +127,18 @@ export default function MetaPageSelectionDialog({
                   onClick={() => setSelectedPageId(pageId)}
                   sx={{
                     border: "1px solid",
-                    borderColor: isSelected ? "primary.main" : "divider",
-                    borderRadius: "12px",
+                    borderColor: isSelected ? "#7D96D4" : "rgba(202,220,248,.84)",
+                    borderRadius: "15px",
                     alignItems: "flex-start",
                     px: 2,
                     py: 1.5,
-                    transition: "border-color 0.2s ease",
+                    background: isSelected
+                      ? "linear-gradient(145deg, rgba(230,240,255,.95), rgba(255,255,255,.86))"
+                      : "linear-gradient(145deg, rgba(255,255,255,.9), rgba(238,245,255,.76))",
+                    boxShadow: isSelected
+                      ? "0 5px 12px rgba(84,112,179,.12), inset 0 1px 0 #fff"
+                      : "0 3px 8px rgba(73,99,153,.05), inset 0 1px 0 #fff",
+                    transition: "border-color 0.2s ease, box-shadow 0.2s ease, background .2s ease",
                   }}
                 >
                   <Radio
@@ -168,13 +178,8 @@ export default function MetaPageSelectionDialog({
         )}
       </DialogContent>
 
-      <DialogActions
-        sx={{
-          px: 3,
-          py: 2,
-        }}
-      >
-        <Button onClick={onClose} disabled={submitting}>
+      <DialogActions sx={glassDialogActionsSx}>
+        <Button onClick={onClose} disabled={submitting} sx={glassDialogSecondaryButtonSx}>
           Cancel
         </Button>
 
@@ -182,9 +187,7 @@ export default function MetaPageSelectionDialog({
           variant="contained"
           onClick={handleConfirm}
           disabled={loading || submitting || !selectedPageId}
-          startIcon={
-            submitting ? <CircularProgress size={18} color="inherit" /> : null
-          }
+          sx={{ minWidth: 150, ...glassPrimaryButtonSx }}
         >
           {submitting ? "Connecting..." : "Connect Page"}
         </Button>

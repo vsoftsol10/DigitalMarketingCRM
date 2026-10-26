@@ -82,7 +82,6 @@
 
 import {
   Box,
-  CircularProgress,
   Table,
   TableBody,
   TableCell,
@@ -93,6 +92,8 @@ import {
 } from "@mui/material";
 
 import ContentPlannerRow from "./ContentPlannerRow";
+import overviewGlassCardSx from "../organization/overview/overviewGlassCardSx";
+import LoadingState from "../ui/LoadingState";
 
 export default function ContentPlannerTable({
   ideas = [],
@@ -105,17 +106,16 @@ export default function ContentPlannerTable({
   return (
     <TableContainer
       sx={{
-        position: "relative",
-
+        ...overviewGlassCardSx,
         width: "100%",
-
-        border: "1px solid #E2E8F0",
-
-        borderRadius: "18px",
-
-        overflow: "hidden",
-
-        backgroundColor: "#FFFFFF",
+        overflowX: "auto",
+        overflowY: "hidden",
+        "&::-webkit-scrollbar": { height: 8 },
+        "&::-webkit-scrollbar-track": { background: "transparent" },
+        "&::-webkit-scrollbar-thumb": {
+          backgroundColor: "rgba(133,154,193,.42)",
+          borderRadius: 10,
+        },
       }}
     >
       {/* =====================================================
@@ -123,29 +123,7 @@ export default function ContentPlannerTable({
       ===================================================== */}
 
       {loading && (
-        <Box
-          sx={{
-            position: "absolute",
-
-            inset: 0,
-
-            zIndex: 10,
-
-            display: "flex",
-
-            alignItems: "center",
-
-            justifyContent: "center",
-
-            backgroundColor: "rgba(255, 255, 255, 0.72)",
-
-            backdropFilter: "blur(1px)",
-
-            pointerEvents: "none",
-          }}
-        >
-          <CircularProgress size={28} />
-        </Box>
+        <LoadingState page="Content Planner" variant="overlay" />
       )}
 
       <Table
@@ -153,6 +131,8 @@ export default function ContentPlannerTable({
           tableLayout: "fixed",
 
           width: "100%",
+          minWidth: { xs: 960, md: "100%" },
+          background: "transparent",
         }}
       >
         {/* ===================================================
@@ -273,11 +253,11 @@ function headerStyle(extra = {}) {
 
     letterSpacing: "0.05em",
 
-    color: "#64748B",
+    color: "#607493",
 
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(224,235,251,.72)",
 
-    borderBottom: "1px solid #E2E8F0",
+    borderBottom: "1px solid rgba(146,168,201,.26)",
 
     whiteSpace: "nowrap",
 

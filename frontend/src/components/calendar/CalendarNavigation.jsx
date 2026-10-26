@@ -14,6 +14,7 @@ import { useState } from "react";
 import dayjs from "dayjs";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import { calendarGlassControlSx, calendarGlassSurfaceSx } from "./calendarGlassSx";
 
 export default function CalendarNavigation({
   currentDate,
@@ -81,18 +82,17 @@ export default function CalendarNavigation({
           width: 44,
           height: 44,
 
-          border: "1px solid",
-          borderColor: "divider",
-
-          bgcolor: "background.paper",
+          ...calendarGlassControlSx,
+          borderRadius: "50%",
 
           color: "text.primary",
 
           flexShrink: 0,
 
           "&:hover": {
-            bgcolor: "action.hover",
-            borderColor: "text.disabled",
+            bgcolor: "#E4F0FF",
+            borderColor: "#B5CEF4",
+            boxShadow: "0 7px 14px rgba(70,106,172,0.18)",
           },
         }}
       >
@@ -118,18 +118,19 @@ export default function CalendarNavigation({
             sm: 2,
           },
 
-          borderRadius: 2,
+          borderRadius: 999,
 
           color: "text.primary",
 
-          bgcolor: "background.paper",
+          ...calendarGlassControlSx,
 
           flexShrink: 0,
 
           ...TYPOGRAPHY.button,
 
           "&:hover": {
-            bgcolor: "action.hover",
+            bgcolor: "#E4F0FF",
+            boxShadow: "0 7px 14px rgba(70,106,172,0.16)",
           },
         }}
       >
@@ -147,18 +148,17 @@ export default function CalendarNavigation({
           width: 44,
           height: 44,
 
-          border: "1px solid",
-          borderColor: "divider",
-
-          bgcolor: "background.paper",
+          ...calendarGlassControlSx,
+          borderRadius: "50%",
 
           color: "text.primary",
 
           flexShrink: 0,
 
           "&:hover": {
-            bgcolor: "action.hover",
-            borderColor: "text.disabled",
+            bgcolor: "#E4F0FF",
+            borderColor: "#B5CEF4",
+            boxShadow: "0 7px 14px rgba(70,106,172,0.18)",
           },
         }}
       >
@@ -214,15 +214,11 @@ export default function CalendarNavigation({
 
             border: "1px solid",
 
-            borderColor: monthPickerOpen
-              ? "primary.main"
-              : "divider",
+            borderRadius: 999,
 
-            borderRadius: 2,
-
-            bgcolor: monthPickerOpen
-              ? "action.selected"
-              : "background.paper",
+            ...calendarGlassControlSx,
+            borderColor: monthPickerOpen ? "#7CAAF4" : "rgba(255,255,255,0.96)",
+            bgcolor: monthPickerOpen ? "#E5F0FF" : undefined,
 
             color: "text.primary",
 
@@ -231,10 +227,8 @@ export default function CalendarNavigation({
             ...TYPOGRAPHY.button,
 
             "&:hover": {
-              bgcolor: "action.hover",
-
-              borderColor:
-                "text.disabled",
+              bgcolor: "#E4F0FF",
+              borderColor: "#B5CEF4",
             },
           }}
         >
@@ -264,15 +258,9 @@ export default function CalendarNavigation({
 
               p: 2,
 
-              bgcolor: "background.paper",
-
-              border: "1px solid",
-              borderColor: "divider",
-
-              borderRadius: 2.5,
-
-              boxShadow:
-                "0 12px 32px rgba(15, 23, 42, 0.12)",
+              ...calendarGlassSurfaceSx,
+              borderRadius: 3.5,
+              boxShadow: "0 18px 38px rgba(58,94,155,0.2), inset 0 1px 0 #FFFFFF",
 
               boxSizing: "border-box",
             }}
@@ -290,7 +278,7 @@ export default function CalendarNavigation({
               }}
             >
               <Typography
-                sx={TYPOGRAPHY.cardTitle}
+                sx={{ ...TYPOGRAPHY.cardTitle, color: "#203765", fontWeight: 750 }}
               >
                 {currentYear}
               </Typography>
@@ -326,21 +314,20 @@ export default function CalendarNavigation({
                       sx={{
                         minHeight: 40,
 
-                        borderRadius: 1.5,
+                        borderRadius: 2,
 
-                        color: selected
-                          ? "primary.main"
-                          : "text.primary",
+                        color: selected ? "#1458C6" : "text.primary",
 
-                        bgcolor: selected
-                          ? "action.selected"
-                          : "transparent",
+                        bgcolor: selected ? "#DDEBFF" : "rgba(255,255,255,0.28)",
+                        border: "1px solid",
+                        borderColor: selected ? "#AFC9F3" : "transparent",
+                        boxShadow: selected ? "0 4px 10px rgba(64,107,178,0.14), inset 0 1px 0 #FFFFFF" : "none",
 
                         ...TYPOGRAPHY.button,
 
                         "&:hover": {
                           bgcolor:
-                            "action.hover",
+                            "rgba(221,235,255,0.82)",
                         },
                       }}
                     >

@@ -120,11 +120,14 @@ export default function AISuggestionCard({
         py: 1.5,
 
         border: "1px solid",
-        borderColor: "divider",
+        borderColor: "rgba(255,255,255,.92)",
 
-        borderRadius: "12px",
+        borderRadius: "15px",
 
-        bgcolor: "background.paper",
+        background:
+          "linear-gradient(145deg, rgba(250,252,255,.9), rgba(236,243,255,.8))",
+        boxShadow:
+          "0 5px 12px rgba(75,96,151,.09), inset 0 1px 0 rgba(255,255,255,.97)",
 
         overflow: "hidden",
 
@@ -132,9 +135,8 @@ export default function AISuggestionCard({
           "border-color 0.2s ease, box-shadow 0.2s ease",
 
         "&:hover": {
-          borderColor: "rgba(37, 99, 235, 0.25)",
-          boxShadow:
-            "0 3px 10px rgba(15, 23, 42, 0.05)",
+          borderColor: "rgba(139,158,220,.78)",
+          boxShadow: "0 7px 15px rgba(75,96,151,.13)",
         },
       }}
     >

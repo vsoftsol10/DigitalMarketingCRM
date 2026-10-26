@@ -7,7 +7,8 @@ export default function SettingsHeader() {
     <Box
       sx={{
         width: "100%",
-        maxWidth: 840,
+        minWidth: 0,
+        maxWidth: 1200,
         mx: "auto",
       }}
     >
@@ -16,7 +17,7 @@ export default function SettingsHeader() {
         sx={{
           ...TYPOGRAPHY.pageTitle,
 
-          color: "text.primary",
+          color: "#12264D",
 
           fontSize: {
             xs: "28px",
@@ -41,7 +42,7 @@ export default function SettingsHeader() {
 
           mt: 0.5,
 
-          color: "text.secondary",
+          color: "#647A9B",
         }}
       >
         Manage account and application settings.

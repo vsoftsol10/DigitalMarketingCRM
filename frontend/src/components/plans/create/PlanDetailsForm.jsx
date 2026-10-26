@@ -516,6 +516,7 @@ import { Box, Grid, TextField, Typography } from "@mui/material";
 
 import { Controller, useFormContext } from "react-hook-form";
 import { useEffect } from "react";
+import { planInputSx } from "../plansGlassSx";
 
 const FIELD_HEIGHT = 52;
 
@@ -785,7 +786,7 @@ export default function PlanDetailsForm({ customPlan = false }) {
                 placeholder="e.g. Professional"
                 error={Boolean(errors.name)}
                 helperText={errors.name?.message}
-                sx={inputSx}
+                sx={[inputSx, planInputSx]}
               />
             )}
           />
@@ -808,7 +809,7 @@ export default function PlanDetailsForm({ customPlan = false }) {
                 placeholder="e.g. Perfect for growing businesses"
                 error={Boolean(errors.description)}
                 helperText={errors.description?.message}
-                sx={inputSx}
+                sx={[inputSx, planInputSx]}
               />
             )}
           />
@@ -847,7 +848,7 @@ export default function PlanDetailsForm({ customPlan = false }) {
                     ? "Custom plan type is fixed."
                     : "Automatically generated from the plan name.")
                 }
-                sx={inputSx}
+                sx={[inputSx, planInputSx]}
               />
             )}
           />

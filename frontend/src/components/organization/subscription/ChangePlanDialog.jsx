@@ -10,13 +10,22 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Stack,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 
 import { useEffect, useMemo, useState } from "react";
+import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
+import {
+  glassDialogActionsSx,
+  glassDialogCardSx,
+  glassDialogContentSx,
+  glassDialogPaperSx,
+  glassDialogSecondaryButtonSx,
+  glassDialogTitleSx,
+  glassDialogToggleGroupSx,
+} from "../../ui/dialog/glassDialogSx";
 
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN").format(Number(value) || 0);
@@ -86,17 +95,13 @@ export default function ChangePlanDialog({
       onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="sm"
+      PaperProps={{ sx: glassDialogPaperSx }}
     >
-      <DialogTitle
-        sx={{
-          fontWeight: 700,
-          color: "#0F172A",
-        }}
-      >
+      <DialogTitle sx={glassDialogTitleSx}>
         Change Subscription Plan
       </DialogTitle>
 
-      <DialogContent dividers>
+      <DialogContent dividers sx={glassDialogContentSx}>
         <Typography
           sx={{
             mb: 3,
@@ -118,11 +123,7 @@ export default function ChangePlanDialog({
             mb: 3,
             p: 2,
 
-            borderRadius: "12px",
-
-            backgroundColor: "#F8FAFC",
-
-            border: "1px solid #E2E8F0",
+            ...glassDialogCardSx,
           }}
         >
           <Typography
@@ -178,6 +179,14 @@ export default function ChangePlanDialog({
             value={planId}
             label="New Plan"
             onChange={(event) => setPlanId(event.target.value)}
+            sx={{
+              minHeight: 52,
+              borderRadius: "14px",
+              background: "linear-gradient(145deg, rgba(232,241,255,.78), rgba(255,255,255,.94))",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(142,164,204,.38)",
+              },
+            }}
           >
             {plans.map((plan) => (
               <MenuItem key={plan.id} value={plan.id}>
@@ -219,37 +228,7 @@ export default function ChangePlanDialog({
               }
             }}
             disabled={loading}
-            sx={{
-              gap: 1,
-
-              "& .MuiToggleButton-root": {
-                flex: 1,
-                minHeight: 48,
-
-                borderRadius: "12px !important",
-
-                border: "1px solid #E2E8F0",
-
-                textTransform: "none",
-
-                fontSize: 14,
-                fontWeight: 600,
-
-                color: "#475569",
-              },
-
-              "& .MuiToggleButton-root.Mui-selected": {
-                backgroundColor: "#EEF4FF",
-
-                color: "#2563EB",
-
-                border: "2px solid #2563EB",
-
-                "&:hover": {
-                  backgroundColor: "#EEF4FF",
-                },
-              },
-            }}
+            sx={glassDialogToggleGroupSx}
           >
             <ToggleButton value="monthly">Monthly</ToggleButton>
 
@@ -267,11 +246,7 @@ export default function ChangePlanDialog({
               mt: 3,
               p: 2,
 
-              borderRadius: "12px",
-
-              backgroundColor: "#F8FAFC",
-
-              border: "1px solid #E2E8F0",
+              ...glassDialogCardSx,
             }}
           >
             <Typography
@@ -339,20 +314,12 @@ export default function ChangePlanDialog({
           ACTIONS
       ===================================================== */}
 
-      <DialogActions
-        sx={{
-          px: 3,
-          py: 2,
-          gap: 1,
-        }}
-      >
+      <DialogActions sx={glassDialogActionsSx}>
         <Button
           onClick={onClose}
           disabled={loading}
           color="inherit"
-          sx={{
-            textTransform: "none",
-          }}
+          sx={glassDialogSecondaryButtonSx}
         >
           Cancel
         </Button>
@@ -361,19 +328,7 @@ export default function ChangePlanDialog({
           variant="contained"
           onClick={handleSubmit}
           disabled={loading || !planId}
-          sx={{
-            minWidth: 130,
-
-            textTransform: "none",
-
-            fontWeight: 600,
-
-            boxShadow: "none",
-
-            "&:hover": {
-              boxShadow: "none",
-            },
-          }}
+          sx={{ minWidth: 130, ...glassPrimaryButtonSx }}
         >
           {loading ? "Changing..." : "Change Plan"}
         </Button>

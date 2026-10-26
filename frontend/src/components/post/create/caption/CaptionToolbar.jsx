@@ -201,10 +201,13 @@ export default function CaptionToolbar() {
           width: "fit-content",
           minHeight: 38,
           px: 0.5,
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: "10px",
-          bgcolor: "background.paper",
+          border: "1px solid rgba(255,255,255,.94)",
+          borderRadius: "13px",
+          background:
+            "linear-gradient(145deg, rgba(250,252,255,.9), rgba(237,244,255,.78))",
+          boxShadow:
+            "0 4px 9px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.98)",
+          color: "#607798",
         }}
       >
         {/* Emoji */}
@@ -278,7 +281,11 @@ export default function CaptionToolbar() {
             sx: {
               mt: 0.75,
               p: 0.5,
-              borderRadius: "12px",
+              border: "1px solid rgba(255,255,255,.94)",
+              borderRadius: "14px",
+              background:
+                "linear-gradient(145deg, rgba(250,252,255,.98), rgba(237,244,255,.96))",
+              boxShadow: "0 12px 24px rgba(75,96,151,.16)",
             },
           },
         }}

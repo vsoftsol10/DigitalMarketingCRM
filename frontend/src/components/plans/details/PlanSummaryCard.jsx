@@ -273,12 +273,13 @@
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 
 import CheckIcon from "@mui/icons-material/Check";
+import { planTone } from "../plansGlassSx";
 
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN").format(Number(value) || 0);
 }
 
-function FeatureItem({ children }) {
+function FeatureItem({ children, color }) {
   return (
     <Stack
       direction="row"
@@ -291,7 +292,7 @@ function FeatureItem({ children }) {
       <CheckIcon
         sx={{
           fontSize: 17,
-          color: "#10B981",
+          color,
           flexShrink: 0,
         }}
       />
@@ -310,7 +311,7 @@ function FeatureItem({ children }) {
   );
 }
 
-function PriceBlock({ label, value }) {
+function PriceBlock({ label, value, color }) {
   return (
     <Box
       sx={{
@@ -341,7 +342,7 @@ function PriceBlock({ label, value }) {
           fontWeight: 700,
           lineHeight: "32px",
 
-          color: "#2563EB",
+          color,
 
           whiteSpace: "nowrap",
         }}
@@ -356,6 +357,7 @@ export default function PlanSummaryCard({ plan }) {
   const limits = plan?.limits || {};
 
   const isInactive = plan?.status === "inactive";
+  const tone = planTone(plan?.type);
 
   return (
     <Box
@@ -380,11 +382,11 @@ export default function PlanSummaryCard({ plan }) {
             sm: 2.75,
           },
 
-          borderRadius: "18px",
-
-          border: "1px solid #DBE5F5",
-
-          backgroundColor: "#FFFFFF",
+          borderRadius: "22px",
+          border: `1px solid ${tone.border}`,
+          background: tone.surface,
+          backdropFilter: "blur(16px)",
+          boxShadow: "0 16px 30px rgba(73,95,157,0.14), inset 0 1px 0 rgba(255,255,255,0.98)",
 
           boxSizing: "border-box",
         }}
@@ -475,12 +477,11 @@ export default function PlanSummaryCard({ plan }) {
 
             borderRadius: "14px",
 
-            backgroundColor: "#F8FAFC",
-
-            border: "1px solid #E2E8F0",
+            backgroundColor: tone.tint,
+            border: "1px solid rgba(255,255,255,0.9)",
           }}
         >
-          <PriceBlock label="Monthly" value={plan?.monthly_price} />
+          <PriceBlock label="Monthly" value={plan?.monthly_price} color={tone.accent} />
 
           <Box
             sx={{
@@ -489,7 +490,7 @@ export default function PlanSummaryCard({ plan }) {
             }}
           />
 
-          <PriceBlock label="Yearly" value={plan?.yearly_price} />
+          <PriceBlock label="Yearly" value={plan?.yearly_price} color={tone.accent} />
         </Stack>
 
         {/* ===================================================
@@ -517,17 +518,17 @@ export default function PlanSummaryCard({ plan }) {
             textAlign: "left",
           }}
         >
-          <FeatureItem>{limits.accounts ?? 0} Social Accounts</FeatureItem>
+          <FeatureItem color={tone.accent}>{limits.accounts ?? 0} Social Accounts</FeatureItem>
 
-          <FeatureItem>
+          <FeatureItem color={tone.accent}>
             {limits.posts ?? 0} Posts / Posters per month
           </FeatureItem>
 
-          <FeatureItem>{limits.videos ?? 0} Videos per month</FeatureItem>
+          <FeatureItem color={tone.accent}>{limits.videos ?? 0} Videos per month</FeatureItem>
 
-          <FeatureItem>{limits.ads ?? 0} Ads / Campaigns</FeatureItem>
+          <FeatureItem color={tone.accent}>{limits.ads ?? 0} Ads / Campaigns</FeatureItem>
 
-          <FeatureItem>{limits.dm_automations ?? 0} DM Automations</FeatureItem>
+          <FeatureItem color={tone.accent}>{limits.dm_automations ?? 0} DM Automations</FeatureItem>
         </Stack>
 
         {/* ===================================================

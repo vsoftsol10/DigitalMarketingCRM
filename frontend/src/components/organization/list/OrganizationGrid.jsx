@@ -27,9 +27,10 @@
 //   );
 // }
 
-import { Box, CircularProgress, Grid } from "@mui/material";
+import { Box, Grid } from "@mui/material";
 
 import OrganizationCard from "./OrganizationCard";
+import LoadingState from "../../ui/LoadingState";
 
 export default function OrganizationGrid({
   organizations = [],
@@ -55,7 +56,7 @@ export default function OrganizationGrid({
             size={{
               xs: 12,
               md: 6,
-              xl: 4,
+              xl: 6,
             }}
           >
             <OrganizationCard
@@ -71,26 +72,7 @@ export default function OrganizationGrid({
       ===================================================== */}
 
       {loading && (
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-
-            zIndex: 10,
-
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-
-            backgroundColor: "rgba(255, 255, 255, 0.72)",
-
-            backdropFilter: "blur(1px)",
-
-            pointerEvents: "none",
-          }}
-        >
-          <CircularProgress size={28} />
-        </Box>
+        <LoadingState page="Organizations" variant="overlay" />
       )}
     </Box>
   );

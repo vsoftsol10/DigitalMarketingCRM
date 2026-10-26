@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import CalendarDayCell from "./CalendarDayCell";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import { calendarGlassSurfaceSx } from "./calendarGlassSx";
 
 const WEEK_DAYS = [
   "Sun",
@@ -86,7 +87,6 @@ function createCalendarDays(currentDate) {
 export default function CalendarGrid({
   currentDate = dayjs(),
   events = [],
-  filters = {},
   onEventClick,
 }) {
   const calendarDays =
@@ -97,12 +97,8 @@ export default function CalendarGrid({
       sx={{
         width: "100%",
 
-        border: "1px solid",
-        borderColor: "divider",
-
-        borderRadius: 3,
-
-        bgcolor: "background.paper",
+        ...calendarGlassSurfaceSx,
+        borderRadius: 4,
 
         overflow: "hidden",
       }}
@@ -120,9 +116,8 @@ export default function CalendarGrid({
 
           borderBottom: "1px solid",
 
-          borderColor: "divider",
-
-          bgcolor: "background.paper",
+          borderColor: "rgba(194,214,246,0.7)",
+          background: "linear-gradient(180deg, rgba(233,243,255,0.9) 0%, rgba(249,252,255,0.94) 100%)",
         }}
       >
         {WEEK_DAYS.map((day) => (
@@ -141,7 +136,7 @@ export default function CalendarGrid({
 
               borderRight: "1px solid",
 
-              borderColor: "divider",
+              borderColor: "rgba(201,219,247,0.62)",
 
               "&:last-child": {
                 borderRight: "none",

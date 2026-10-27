@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 import {
   Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow,
@@ -12,9 +13,12 @@ import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ReportDocument from "./ReportDocument";
-import reportStyles from "./report.styles.css?inline";
 import reportsService from "../../services/reports.service";
 import { insightsGlassControlSx, insightsGlassSurfaceSx } from "../insights/insightsGlassSx";
+
+const REPORT_WIDTH = 1200;
+const REPORT_HEIGHT = 760;
+const REPORT_PIXEL_RATIO = 2;
 
 function getErrorMessage(error) {
   const data = error?.response?.data;
@@ -23,9 +27,58 @@ function getErrorMessage(error) {
     || error?.message || "The report could not be generated. Please try again.";
 }
 
-function buildDocumentHtml(report) {
-  const markup = renderToStaticMarkup(<ReportDocument report={report} />);
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${reportStyles}</style></head><body style="margin:0;background:#fff">${markup}</body></html>`;
+async function renderReportPng(report) {
+  const { toBlob } = await import("html-to-image");
+  const mount = document.createElement("div");
+  mount.setAttribute("aria-hidden", "true");
+  Object.assign(mount.style, {
+    position: "fixed",
+    left: "-10000px",
+    top: "0",
+    width: `${REPORT_WIDTH}px`,
+    height: `${REPORT_HEIGHT}px`,
+    overflow: "hidden",
+    pointerEvents: "none",
+    zIndex: "-1",
+  });
+  document.body.appendChild(mount);
+
+  const root = createRoot(mount);
+  try {
+    flushSync(() => root.render(<ReportDocument report={report} />));
+    const node = mount.querySelector("#report-document");
+    if (!node) throw new Error("The report document could not be prepared.");
+
+    if (document.fonts?.ready) await document.fonts.ready;
+    await Promise.all(Array.from(node.querySelectorAll("img"), async (image) => {
+      if (!image.complete) {
+        await new Promise((resolve, reject) => {
+          image.addEventListener("load", resolve, { once: true });
+          image.addEventListener("error", () => reject(new Error("A report image could not be loaded.")), { once: true });
+        });
+      }
+      if (!image.naturalWidth) throw new Error("A report image could not be loaded.");
+      if (typeof image.decode === "function") await image.decode();
+    }));
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    const bounds = node.getBoundingClientRect();
+    if (Math.round(bounds.width) !== REPORT_WIDTH || Math.round(bounds.height) !== REPORT_HEIGHT) {
+      throw new Error("The report layout has unexpected dimensions.");
+    }
+
+    const blob = await toBlob(node, {
+      width: REPORT_WIDTH,
+      height: REPORT_HEIGHT,
+      pixelRatio: REPORT_PIXEL_RATIO,
+      backgroundColor: "#fff",
+    });
+    if (!blob || blob.type !== "image/png") throw new Error("The report image could not be generated.");
+    return blob;
+  } finally {
+    root.unmount();
+    mount.remove();
+  }
 }
 
 export default function InsightsExportDialog({ open, mode, scope, organization, account, onClose }) {
@@ -88,19 +141,16 @@ export default function InsightsExportDialog({ open, mode, scope, organization, 
     if (!preview || !scope || !organization || !account || !adsValid) return;
     setGenerating(true);
     try {
-      const response = await reportsService.preview({
+      const response = mode === "current" ? preview : await reportsService.preview({
         organization_id: organization.id,
         social_account_id: account.id,
         platform: scope.platform,
         since: scope.since,
         until: scope.until,
         mode,
-        meta_ads: mode === "add_ads" ? adsRows.map((row) => ({ date: row.date, total_leads: row.total_leads })) : [],
+        meta_ads: adsRows.map((row) => ({ date: row.date, total_leads: row.total_leads })),
       });
-      const png = await reportsService.renderPng({
-        renderToken: response.render_token,
-        html: buildDocumentHtml(response.report),
-      });
+      const png = await renderReportPng(response.report);
       if (imageUrl) URL.revokeObjectURL(imageUrl);
       setImageUrl(URL.createObjectURL(png));
       setViewerOpen(true);

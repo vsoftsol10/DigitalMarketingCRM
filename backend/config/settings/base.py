@@ -4,6 +4,7 @@ from datetime import timedelta
 import dj_database_url
 from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -67,6 +68,52 @@ CLOUDINARY_STORAGE = {
     "API_KEY": config("CLOUDINARY_API_KEY"),
     "API_SECRET": config("CLOUDINARY_API_SECRET"),
 }
+
+# Direct post-media uploads are signed by the API and sent from the browser
+# straight to Cloudinary. Keep these limits configurable per deployment/plan;
+# they are policy ceilings, not a promise that every destination accepts every
+# asset.
+MEDIA_UPLOAD_MAX_IMAGE_BYTES = config(
+    "MEDIA_UPLOAD_MAX_IMAGE_BYTES",
+    default=10 * 1024 * 1024,
+    cast=int,
+)
+MEDIA_UPLOAD_MAX_VIDEO_BYTES = config(
+    "MEDIA_UPLOAD_MAX_VIDEO_BYTES",
+    default=1024 * 1024 * 1024,
+    cast=int,
+)
+MEDIA_UPLOAD_SESSION_TTL_SECONDS = config(
+    "MEDIA_UPLOAD_SESSION_TTL_SECONDS",
+    default=6 * 60 * 60,
+    cast=int,
+)
+MEDIA_UPLOAD_CHUNK_SIZE_BYTES = config(
+    "MEDIA_UPLOAD_CHUNK_SIZE_BYTES",
+    default=20 * 1024 * 1024,
+    cast=int,
+)
+MEDIA_UPLOAD_CHUNK_THRESHOLD_BYTES = config(
+    "MEDIA_UPLOAD_CHUNK_THRESHOLD_BYTES",
+    default=20 * 1024 * 1024,
+    cast=int,
+)
+MEDIA_UPLOAD_ALLOWED_IMAGE_TYPES = tuple(
+    item.strip()
+    for item in config(
+        "MEDIA_UPLOAD_ALLOWED_IMAGE_TYPES",
+        default="image/jpeg,image/png,image/webp",
+    ).split(",")
+    if item.strip()
+)
+MEDIA_UPLOAD_ALLOWED_VIDEO_TYPES = tuple(
+    item.strip()
+    for item in config(
+        "MEDIA_UPLOAD_ALLOWED_VIDEO_TYPES",
+        default="video/mp4,video/quicktime",
+    ).split(",")
+    if item.strip()
+)
 
 STORAGES = {
     "default": {
@@ -191,6 +238,11 @@ CORS_ALLOWED_ORIGINS = [
     "https://digitalmarketing.thevsoft.com",
 ]
 
+CORS_ALLOW_HEADERS = [
+    *default_headers,
+    "idempotency-key",
+]
+
 CSRF_TRUSTED_ORIGINS = [
     "https://digitalmarketingcrm.onrender.com",
     "https://digitalmarketing.thevsoft.com",
@@ -260,6 +312,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.posts.tasks.dispatch_due_posts_task",
         "schedule": 60.0,
     },
+    "cleanup-expired-media-upload-sessions": {
+        "task": "apps.posts.tasks.cleanup_expired_media_upload_sessions_task",
+        "schedule": 15 * 60.0,
+    },
     "reconcile-ambiguous-instagram-publishes": {
         "task": "apps.posts.tasks.reconcile_ambiguous_instagram_publishes_task",
         "schedule": 300.0,
@@ -283,6 +339,10 @@ CELERY_BEAT_SCHEDULE = {
     "maintain-meta-tokens": {
         "task": ("apps.integrations.meta.tasks." "maintain_meta_tokens_task"),
         "schedule": 3600.0,
+    },
+    "cleanup-invitation-oauth-secrets": {
+        "task": "apps.social_accounts.tasks.cleanup_invitation_oauth_secrets_task",
+        "schedule": 60.0,
     },
 }
 
@@ -321,6 +381,13 @@ META_GRAPH_API_VERSION = config(
 
 META_OAUTH_REDIRECT_URI = config(
     "META_OAUTH_REDIRECT_URI",
+    default="",
+)
+
+# Invitation OAuth uses a separate callback route so anonymous acceptance
+# cannot enter the authenticated direct Facebook callback.
+META_INVITATION_OAUTH_REDIRECT_URI = config(
+    "META_INVITATION_OAUTH_REDIRECT_URI",
     default="",
 )
 
@@ -388,6 +455,13 @@ INSTAGRAM_GRAPH_API_VERSION = config(
 
 INSTAGRAM_OAUTH_REDIRECT_URI = config(
     "INSTAGRAM_OAUTH_REDIRECT_URI",
+    default="",
+)
+
+# Separate callback for anonymous invitation authorization. The direct OAuth
+# callback remains configured by INSTAGRAM_OAUTH_REDIRECT_URI.
+INSTAGRAM_INVITATION_OAUTH_REDIRECT_URI = config(
+    "INSTAGRAM_INVITATION_OAUTH_REDIRECT_URI",
     default="",
 )
 
@@ -464,6 +538,12 @@ BREVO_TEMPLATE_ACTIVATED = config(
 
 BREVO_TEMPLATE_CANCELLED = config(
     "BREVO_TEMPLATE_CANCELLED",
+    cast=int,
+)
+
+BREVO_TEMPLATE_SOCIAL_ACCOUNT_INVITATION = config(
+    "BREVO_TEMPLATE_SOCIAL_ACCOUNT_INVITATION",
+    default=0,
     cast=int,
 )
 

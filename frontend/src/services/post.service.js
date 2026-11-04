@@ -28,7 +28,7 @@ class PostService {
   // CREATE POST
   // ============================================================
   //
-  async createPost(organizationId, payload) {
+  async createPost(organizationId, payload, { idempotencyKey } = {}) {
     if (!organizationId) {
       throw new Error("Organization ID is required.");
     }
@@ -56,14 +56,25 @@ class PostService {
       formData.append("publish_time", payload.publish_time);
     }
 
-    payload.media.forEach((media, index) => {
-      formData.append(`media[${index}]file`, media.file);
-      formData.append(`media[${index}]media_type`, media.media_type);
-    });
+    if (payload.mediaAssetIds?.length) {
+      formData.append("media_asset_ids", JSON.stringify(payload.mediaAssetIds));
+    }
+
+    payload.media
+      .filter((media) => !media.upload_session_id)
+      .forEach((media, index) => {
+        formData.append(`media[${index}]file`, media.file);
+        formData.append(`media[${index}]media_type`, media.media_type);
+      });
 
     const response = await api.post(
       `/posts/organizations/${organizationId}/`,
       formData,
+      {
+        headers: idempotencyKey
+          ? { "Idempotency-Key": idempotencyKey }
+          : undefined,
+      },
     );
 
     return response.data;

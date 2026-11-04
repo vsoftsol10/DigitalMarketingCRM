@@ -1379,6 +1379,27 @@ from .services import MetaOAuthService
 logger = logging.getLogger(__name__)
 
 
+def _selection_session_error_response(exc, default_message):
+    session_messages = {
+        "selection_session_expired": (
+            "This Facebook Page selection has expired. Connect Facebook again to retry."
+        ),
+        "selection_session_consumed": (
+            "This Facebook Page selection is already complete. You may close this dialog."
+        ),
+    }
+    error_code = getattr(exc, "code", None)
+    if error_code in session_messages:
+        return Response(
+            {"success": False, "code": error_code, "message": session_messages[error_code]},
+            status=status.HTTP_410_GONE,
+        )
+    return Response(
+        {"success": False, "message": default_message},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 # ============================================================
 # FRONTEND REDIRECT
 # ============================================================
@@ -2065,13 +2086,10 @@ class MetaOAuthSelectionAPIView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        except MetaAPIError:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Unable to load Facebook Pages.",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+        except MetaAPIError as exc:
+            return _selection_session_error_response(
+                exc,
+                "Unable to load Facebook Pages.",
             )
 
         except Exception:
@@ -2229,22 +2247,24 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
             return Response(
                 {
                     "success": True,
-                    "message": ("Facebook Page connected successfully."),
+                    "message": (
+                        "Facebook Page was already connected."
+                        if result.get("already_connected")
+                        else "Facebook Page connected successfully."
+                    ),
                     "data": {
                         "accounts_connected": (facebook_count),
                         "facebook_connected": (facebook_count),
+                        "already_connected": bool(result.get("already_connected")),
                     },
                 },
                 status=status.HTTP_200_OK,
             )
 
-        except MetaAPIError:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Unable to connect Facebook Page.",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+        except MetaAPIError as exc:
+            return _selection_session_error_response(
+                exc,
+                "Unable to connect Facebook Page.",
             )
 
         except Exception:
@@ -2257,5 +2277,63 @@ class MetaOAuthSelectionConfirmAPIView(APIView):
                     "success": False,
                     "message": ("Unable to connect the selected " "Facebook Page."),
                 },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class MetaOAuthSelectionFinishAPIView(APIView):
+    """Finish an active Facebook Page selection session."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        selection_key = str(request.data.get("selection_key") or "").strip()
+        organization_id = str(request.data.get("organization_id") or "").strip()
+
+        if not selection_key or not organization_id:
+            return Response(
+                {
+                    "success": False,
+                    "message": "selection_key and organization_id are required.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        organization = Organization.objects.filter(
+            organization_id=organization_id,
+            is_deleted=False,
+        ).first()
+        if not organization:
+            return Response(
+                {"success": False, "message": "Organization not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        session = MetaOAuthSession.objects.filter(selection_key=selection_key).first()
+        if not session:
+            return Response(
+                {"success": False, "message": "Meta authorization session was not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            MetaOAuthService().finish_selection(
+                session=session,
+                organization=organization,
+                user=request.user,
+            )
+            return Response(
+                {"success": True, "message": "Facebook Page selection completed."},
+                status=status.HTTP_200_OK,
+            )
+        except MetaAPIError as exc:
+            return _selection_session_error_response(
+                exc,
+                "Unable to finish Facebook Page selection.",
+            )
+        except Exception:
+            logger.exception("Unable to finish Meta Page selection.")
+            return Response(
+                {"success": False, "message": "Unable to finish Facebook Page selection."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

@@ -34,7 +34,12 @@ export function buildCreatePostPayload(data, accounts = []) {
     media: media.map((item) => ({
       file: item.file,
       media_type: String(item.type || "").toUpperCase(),
+      upload_session_id: item.uploadSessionId || null,
     })),
+
+    mediaAssetIds: media
+      .map((item) => item.uploadSessionId)
+      .filter(Boolean),
 
     // ==========================================================
     // CAPTION

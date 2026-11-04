@@ -45,6 +45,16 @@ class PostMediaType(models.TextChoices):
     VIDEO = "VIDEO", "Video"
 
 
+class MediaUploadStatus(models.TextChoices):
+    CREATED = "CREATED", "Created"
+    UPLOADING = "UPLOADING", "Uploading"
+    PROCESSING = "PROCESSING", "Processing"
+    READY = "READY", "Ready"
+    FAILED = "FAILED", "Failed"
+    EXPIRED = "EXPIRED", "Expired"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
 # ============================================================
 # POST
 # ============================================================
@@ -74,6 +84,13 @@ class Post(BaseModel):
         null=True,
         blank=True,
         related_name="created_posts",
+    )
+
+    request_idempotency_key = models.CharField(
+        max_length=128,
+        null=True,
+        blank=True,
+        db_index=True,
     )
 
     # ---------------------------------------------------------
@@ -171,6 +188,14 @@ class Post(BaseModel):
                     "created_by",
                 ],
                 name="post_created_by_idx",
+            ),
+        ]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "request_idempotency_key"],
+                condition=Q(request_idempotency_key__isnull=False),
+                name="unique_post_request_idempotency",
             ),
         ]
 
@@ -373,6 +398,10 @@ class PostMedia(BaseModel):
     file = models.FileField(
         upload_to="posts/%Y/%m/%d/",
         storage=PostMediaCloudinaryStorage(),
+        # Direct Cloudinary media uses a prefixed public ID plus a version
+        # marker (for example, __video__/post-media/<org>/<asset>::v<version>).
+        # Keep enough room for the full immutable Cloudinary reference.
+        max_length=1024,
     )
 
     original_filename = models.CharField(
@@ -420,3 +449,81 @@ class PostMedia(BaseModel):
 
     def __str__(self):
         return self.original_filename or f"Media {self.id}"
+
+
+# ============================================================
+# MEDIA UPLOAD SESSION
+# ============================================================
+
+
+class MediaUploadSession(BaseModel):
+    """Durable state for a direct, signed Cloudinary upload."""
+
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="media_upload_sessions",
+    )
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="media_upload_sessions",
+    )
+
+    attached_post = models.ForeignKey(
+        "posts.Post",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="media_upload_sessions",
+    )
+
+    original_filename = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=100)
+    media_type = models.CharField(max_length=10, choices=PostMediaType.choices)
+    expected_size = models.PositiveBigIntegerField()
+    bytes_uploaded = models.PositiveBigIntegerField(default=0)
+
+    cloudinary_public_id = models.CharField(max_length=512)
+    cloudinary_asset_id = models.CharField(max_length=255, blank=True)
+    cloudinary_version = models.PositiveBigIntegerField(null=True, blank=True)
+    cloudinary_secure_url = models.URLField(max_length=2048, blank=True)
+    cloudinary_resource_type = models.CharField(max_length=20, default="image")
+
+    metadata = models.JSONField(default=dict, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=MediaUploadStatus.choices,
+        default=MediaUploadStatus.CREATED,
+        db_index=True,
+    )
+    error_message = models.TextField(blank=True)
+    expires_at = models.DateTimeField(db_index=True)
+    finalized_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "media_upload_sessions"
+        indexes = [
+            models.Index(
+                fields=["organization", "status"],
+                name="media_upload_org_status_idx",
+            ),
+            models.Index(
+                fields=["expires_at", "status"],
+                name="media_upload_expiry_idx",
+            ),
+        ]
+
+    @property
+    def storage_name(self):
+        version_suffix = (
+            f"::v{self.cloudinary_version}"
+            if self.cloudinary_version is not None
+            else ""
+        )
+        if self.media_type == PostMediaType.VIDEO:
+            return f"__video__/{self.cloudinary_public_id}{version_suffix}"
+        return f"__image__/{self.cloudinary_public_id}{version_suffix}"

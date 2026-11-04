@@ -164,7 +164,7 @@ export default function AIContentOptions() {
           )}
         />
 
-        <Controller
+        {/* <Controller
           name="ai_include_cta"
           control={control}
           render={({ field }) => (
@@ -188,7 +188,7 @@ export default function AIContentOptions() {
               }
             />
           )}
-        />
+        /> */}
       </Stack>
     </Box>
   );

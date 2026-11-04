@@ -11,12 +11,16 @@ from .models import (
     UserNotification,
     UserNotificationType,
 )
+import logging
 
+logger = logging.getLogger(__name__)
 
 BREVO_SEND_EMAIL_URL = "https://api.brevo.com/v3/smtp/email"
 
 
-def _resolve_notifications(*, organization, event_types, post_platform=None, subscription=None):
+def _resolve_notifications(
+    *, organization, event_types, post_platform=None, subscription=None
+):
     notifications = UserNotification.objects.filter(
         organization=organization,
         event_type__in=event_types,
@@ -32,7 +36,14 @@ def _resolve_notifications(*, organization, event_types, post_platform=None, sub
 
 
 def _record_user_notification(
-    *, activity, event_type, event_key, title, message, post_platform=None, subscription=None,
+    *,
+    activity,
+    event_type,
+    event_key,
+    title,
+    message,
+    post_platform=None,
+    subscription=None,
     reopen=False,
 ):
     organization = activity.organization
@@ -126,10 +137,14 @@ def record_activity_notification(activity):
             subscription=subscription,
         )
 
-    if event_type in {
-        ActivityEventType.SUBSCRIPTION_ACTIVATED,
-        ActivityEventType.SUBSCRIPTION_RENEWED,
-    } and subscription:
+    if (
+        event_type
+        in {
+            ActivityEventType.SUBSCRIPTION_ACTIVATED,
+            ActivityEventType.SUBSCRIPTION_RENEWED,
+        }
+        and subscription
+    ):
         _resolve_notifications(
             organization=organization,
             event_types=[
@@ -160,6 +175,11 @@ class BrevoEmailError(Exception):
     Raised when Brevo fails to accept a transactional email.
     """
 
+    def __init__(self, message, *, definitive=False, error_code="delivery_error"):
+        super().__init__(message)
+        self.definitive = definitive
+        self.error_code = error_code
+
 
 def get_brevo_template_id(event_type):
     """
@@ -173,6 +193,8 @@ def get_brevo_template_id(event_type):
     if not setting_name:
         raise BrevoEmailError(
             f"No Brevo template configured for event: {event_type}",
+            definitive=True,
+            error_code="configuration_error",
         )
 
     template_id = getattr(
@@ -184,6 +206,8 @@ def get_brevo_template_id(event_type):
     if not template_id:
         raise BrevoEmailError(
             f"Brevo template setting '{setting_name}' is not configured.",
+            definitive=True,
+            error_code="configuration_error",
         )
 
     return int(template_id)
@@ -212,7 +236,7 @@ def build_brevo_payload(
         "to": [
             {
                 "email": recipient_email,
-                "name": recipient_name or "",
+                "name": recipient_name.strip() if recipient_name else recipient_email,
             }
         ],
         "templateId": template_id,
@@ -241,6 +265,8 @@ def send_brevo_email(
     if not recipient_email:
         raise BrevoEmailError(
             "Recipient email is required.",
+            definitive=True,
+            error_code="configuration_error",
         )
 
     payload = build_brevo_payload(
@@ -272,12 +298,20 @@ def send_brevo_email(
         try:
             error_data = response.json()
         except ValueError:
-            error_data = {
-                "message": response.text,
-            }
+            error_data = {"message": response.text}
+
+        logger.error(
+            "Brevo email rejected. HTTP status=%s, response=%s",
+            response.status_code,
+            error_data,
+        )
 
         raise BrevoEmailError(
             f"Brevo rejected the email: {error_data}",
+            definitive=response.status_code < 500,
+            error_code=(
+                "provider_rejected" if response.status_code < 500 else "request_error"
+            ),
         )
 
     try:
@@ -285,6 +319,7 @@ def send_brevo_email(
     except ValueError as exc:
         raise BrevoEmailError(
             "Brevo returned an invalid response.",
+            error_code="invalid_provider_response",
         ) from exc
 
 

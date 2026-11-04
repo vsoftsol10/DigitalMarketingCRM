@@ -12,9 +12,35 @@ class PostMediaCloudinaryStorage(MediaCloudinaryStorage):
     video_extensions = {".mp4"}
     video_content_type_prefix = "video/"
     video_prefix = "__video__/"
+    image_prefix = "__image__/"
+    version_marker = "::v"
+
+    def _decode_name(self, name):
+        resource_type = None
+        cloudinary_name = name
+        if name.startswith(self.video_prefix):
+            resource_type = RESOURCE_TYPES["VIDEO"]
+            cloudinary_name = name[len(self.video_prefix) :]
+        elif name.startswith(self.image_prefix):
+            resource_type = RESOURCE_TYPES["IMAGE"]
+            cloudinary_name = name[len(self.image_prefix) :]
+
+        version = None
+        if self.version_marker in cloudinary_name:
+            cloudinary_name, version_value = cloudinary_name.rsplit(
+                self.version_marker,
+                1,
+            )
+            try:
+                version = int(version_value)
+            except (TypeError, ValueError):
+                version = None
+
+        return cloudinary_name, version, resource_type
 
     def _is_video_name(self, name):
-        return name.startswith(self.video_prefix) or (
+        decoded_resource_type = self._decode_name(name)[2]
+        return decoded_resource_type == RESOURCE_TYPES["VIDEO"] or (
             Path(name).suffix.lower() in self.video_extensions
         )
 
@@ -28,16 +54,16 @@ class PostMediaCloudinaryStorage(MediaCloudinaryStorage):
         return content_type.startswith(self.video_content_type_prefix)
 
     def _get_resource_type(self, name):
+        decoded_resource_type = self._decode_name(name)[2]
+        if decoded_resource_type:
+            return decoded_resource_type
         if self._is_video_name(name):
             return RESOURCE_TYPES["VIDEO"]
 
         return RESOURCE_TYPES["IMAGE"]
 
     def _cloudinary_name(self, name):
-        if name.startswith(self.video_prefix):
-            return name[len(self.video_prefix) :]
-
-        return name
+        return self._decode_name(name)[0]
 
     def _save(self, name, content):
         # Do not delegate to MediaCloudinaryStorage._save(). That method
@@ -91,9 +117,11 @@ class PostMediaCloudinaryStorage(MediaCloudinaryStorage):
     def _get_url(self, name):
         from cloudinary import CloudinaryResource
 
+        cloudinary_name, version, resource_type = self._decode_name(name)
         return CloudinaryResource(
-            self._cloudinary_name(name),
-            default_resource_type=self._get_resource_type(name),
+            cloudinary_name,
+            version=version,
+            default_resource_type=resource_type or self._get_resource_type(name),
         ).url
 
     def delete(self, name):

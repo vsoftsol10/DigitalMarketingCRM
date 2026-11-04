@@ -1,5 +1,7 @@
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from uuid import UUID
 
+from django.conf import settings
 from django.utils import timezone
 
 from rest_framework import serializers
@@ -7,6 +9,7 @@ from rest_framework import serializers
 from .selectors import get_calendar_event_local_datetime, get_calendar_event_status
 
 from .models import (
+    MediaUploadSession,
     Post,
     PostMedia,
     PostMediaType,
@@ -81,11 +84,11 @@ class PostMediaInputSerializer(serializers.Serializer):
         return attrs
 
     def validate_image(self, uploaded_file):
-        max_size = 10 * 1024 * 1024  # 10 MB
+        max_size = settings.MEDIA_UPLOAD_MAX_IMAGE_BYTES
 
         if uploaded_file.size > max_size:
             raise serializers.ValidationError(
-                {"file": "Image size must not exceed 10 MB."}
+                {"file": "Image exceeds the configured upload limit."}
             )
 
         try:
@@ -125,19 +128,91 @@ class PostMediaInputSerializer(serializers.Serializer):
             )
 
     def validate_video(self, uploaded_file):
-        max_size = 50 * 1024 * 1024
-        allowed_types = {"video/mp4"}
+        max_size = settings.MEDIA_UPLOAD_MAX_VIDEO_BYTES
+        allowed_types = set(settings.MEDIA_UPLOAD_ALLOWED_VIDEO_TYPES)
         content_type = (getattr(uploaded_file, "content_type", "") or "").lower()
 
         if uploaded_file.size > max_size:
             raise serializers.ValidationError(
-                {"file": "Video size must not exceed 50 MB."}
+                {
+                    "file": (
+                        "Video exceeds the configured upload limit. "
+                        f"Maximum size is {max_size // (1024 * 1024)} MB."
+                    )
+                }
             )
 
         if content_type not in allowed_types:
             raise serializers.ValidationError(
-                {"file": "Unsupported video format. Only MP4 is allowed."}
+                {"file": "Unsupported video format for this application."}
             )
+
+
+class MediaUploadSessionCreateSerializer(serializers.Serializer):
+    """Validate metadata before issuing a direct Cloudinary signature."""
+
+    filename = serializers.CharField(max_length=255)
+    content_type = serializers.CharField(max_length=100)
+    size = serializers.IntegerField(min_value=1)
+
+    def validate(self, attrs):
+        content_type = attrs["content_type"].lower().strip()
+        size = attrs["size"]
+        image_types = set(settings.MEDIA_UPLOAD_ALLOWED_IMAGE_TYPES)
+        video_types = set(settings.MEDIA_UPLOAD_ALLOWED_VIDEO_TYPES)
+
+        if content_type in image_types:
+            media_type = PostMediaType.IMAGE
+            max_size = settings.MEDIA_UPLOAD_MAX_IMAGE_BYTES
+        elif content_type in video_types:
+            media_type = PostMediaType.VIDEO
+            max_size = settings.MEDIA_UPLOAD_MAX_VIDEO_BYTES
+        else:
+            raise serializers.ValidationError(
+                {"content_type": "This media format is not supported."}
+            )
+
+        if size > max_size:
+            raise serializers.ValidationError(
+                {
+                    "size": (
+                        f"This file exceeds the configured {media_type.lower()} "
+                        "upload limit."
+                    )
+                }
+            )
+
+        attrs["content_type"] = content_type
+        attrs["media_type"] = media_type
+        return attrs
+
+
+class MediaUploadSessionFinalizeSerializer(serializers.Serializer):
+    public_id = serializers.CharField(max_length=512)
+    resource_type = serializers.CharField(max_length=20)
+    asset_id = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+
+class MediaUploadSessionReadSerializer(serializers.ModelSerializer):
+    media_asset_id = serializers.UUIDField(source="id", read_only=True)
+
+    class Meta:
+        model = MediaUploadSession
+        fields = (
+            "media_asset_id",
+            "status",
+            "original_filename",
+            "content_type",
+            "media_type",
+            "expected_size",
+            "bytes_uploaded",
+            "metadata",
+            "cloudinary_secure_url",
+            "cloudinary_version",
+            "expires_at",
+            "error_message",
+        )
+        read_only_fields = fields
 
 
 # ============================================================
@@ -420,6 +495,11 @@ class PostCreateSerializer(
         default=list,
     )
 
+    media_asset_ids = serializers.JSONField(
+        required=False,
+        write_only=True,
+    )
+
     def validate_timezone(
         self,
         value,
@@ -449,6 +529,32 @@ class PostCreateSerializer(
         self,
         attrs,
     ):
+        media_asset_ids = attrs.get("media_asset_ids")
+        if media_asset_ids is not None:
+            if not isinstance(media_asset_ids, list) or not media_asset_ids:
+                raise serializers.ValidationError(
+                    {"media_asset_ids": "Media asset IDs must be a non-empty list."}
+                )
+
+            normalized_asset_ids = []
+            for asset_id in media_asset_ids:
+                try:
+                    normalized_asset_ids.append(str(UUID(str(asset_id))))
+                except (TypeError, ValueError, AttributeError) as exc:
+                    raise serializers.ValidationError(
+                        {"media_asset_ids": "Media asset IDs are invalid."}
+                    ) from exc
+            attrs["media_asset_ids"] = normalized_asset_ids
+
+            if attrs.get("media"):
+                raise serializers.ValidationError(
+                    {
+                        "media_asset_ids": (
+                            "Use media asset IDs or multipart media, not both."
+                        )
+                    }
+                )
+
         publish_type = attrs.get(
             "publish_type",
         )

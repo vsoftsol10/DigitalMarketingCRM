@@ -8,6 +8,7 @@ from apps.common.models import BaseModel
 from apps.social_accounts.models import (
     SocialAccount,
     SocialConnection,
+    SocialAccountInvitationAcceptance,
     SocialPlatform,
 )
 
@@ -380,6 +381,47 @@ class MetaOAuthSession(BaseModel):
 
     def __str__(self):
         return f"Meta OAuth session {self.selection_key}"
+
+
+class InvitationMetaOAuthSession(BaseModel):
+    """Encrypted Facebook Page selection session for an invitation claim."""
+
+    selection_key = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        db_index=True,
+    )
+    acceptance = models.ForeignKey(
+        SocialAccountInvitationAcceptance,
+        on_delete=models.CASCADE,
+        related_name="meta_oauth_sessions",
+    )
+    oauth_attempt = models.OneToOneField(
+        "social_accounts.SocialAccountInvitationOAuthAttempt",
+        on_delete=models.CASCADE,
+        related_name="meta_selection_session",
+    )
+    provider_user_id = models.CharField(max_length=255)
+    encrypted_access_token = models.TextField()
+    encrypted_accounts = models.TextField()
+    token_expires_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        db_table = "invitation_meta_oauth_sessions"
+        indexes = [
+            models.Index(
+                fields=["acceptance", "expires_at"],
+                name="inv_meta_oauth_acc_exp_idx",
+            ),
+        ]
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+
+        return self.expires_at <= timezone.now()
 
 
 class MetaTokenMaintenanceRun(models.Model):

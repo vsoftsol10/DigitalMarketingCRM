@@ -29,9 +29,11 @@ class MetaAPIError(MetaIntegrationError):
         *,
         status_code=None,
         error_payload=None,
+        code=None,
     ):
         super().__init__(message)
 
         self.message = message
         self.status_code = status_code
         self.error_payload = error_payload or {}
+        self.code = code

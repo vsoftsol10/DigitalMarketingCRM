@@ -1,6 +1,7 @@
 import logging
 from datetime import timedelta
 
+from cloudinary import uploader as cloudinary_uploader
 from celery import shared_task
 from django.core.cache import cache
 from django.db import transaction
@@ -14,7 +15,7 @@ from apps.social_accounts.models import SocialPlatform
 from apps.activities.models import ActivityEventType, ActivitySource
 from apps.activities.services import create_activity_log
 
-from .models import Post, PostPlatform, PostStatus
+from .models import MediaUploadSession, MediaUploadStatus, Post, PostPlatform, PostStatus
 from .publishing.exceptions import MediaProcessingPending
 from .publishing.registry import get_publisher
 
@@ -461,3 +462,81 @@ def dispatch_due_posts_task():
                 post.status = PostStatus.PUBLISHING
                 post.save(update_fields=["status", "updated_at"])
         publish_post_task.delay(str(post.id), str(target.id))
+
+
+@shared_task
+def cleanup_expired_media_upload_sessions_task():
+    """Expire abandoned direct uploads and remove their Cloudinary assets."""
+    session_ids = list(MediaUploadSession.objects.filter(
+        is_deleted=False,
+        expires_at__lt=timezone.now(),
+        attached_post__isnull=True,
+        status__in=[
+            MediaUploadStatus.CREATED,
+            MediaUploadStatus.UPLOADING,
+            MediaUploadStatus.PROCESSING,
+            MediaUploadStatus.FAILED,
+            MediaUploadStatus.READY,
+            MediaUploadStatus.EXPIRED,
+        ],
+    ).values_list("id", flat=True)[:100])
+    cleaned = 0
+    for session_id in session_ids:
+        with transaction.atomic():
+            session = (
+                MediaUploadSession.objects.select_for_update()
+                .filter(
+                    id=session_id,
+                    is_deleted=False,
+                    organization__is_deleted=False,
+                    expires_at__lt=timezone.now(),
+                    attached_post__isnull=True,
+                    status__in=[
+                        MediaUploadStatus.CREATED,
+                        MediaUploadStatus.UPLOADING,
+                        MediaUploadStatus.PROCESSING,
+                        MediaUploadStatus.FAILED,
+                        MediaUploadStatus.READY,
+                        MediaUploadStatus.EXPIRED,
+                    ],
+                )
+                .first()
+            )
+            if not session:
+                continue
+
+            try:
+                result = cloudinary_uploader.destroy(
+                    session.cloudinary_public_id,
+                    invalidate=True,
+                    resource_type=session.cloudinary_resource_type,
+                    type="upload",
+                )
+            except Exception as exc:
+                logger.warning(
+                    "media_upload_cleanup_failed",
+                    extra={
+                        "session_id": str(session.id),
+                        "organization_id": session.organization_id,
+                        "error_type": type(exc).__name__,
+                    },
+                    exc_info=True,
+                )
+                continue
+
+            if result.get("result") not in {"ok", "not found"}:
+                logger.warning(
+                    "media_upload_cleanup_not_confirmed",
+                    extra={
+                        "session_id": str(session.id),
+                        "organization_id": session.organization_id,
+                        "cloudinary_result": result.get("result"),
+                    },
+                )
+                continue
+
+            session.status = MediaUploadStatus.EXPIRED
+            session.error_message = "The media upload session expired before finalization."
+            session.save(update_fields=["status", "error_message", "updated_at"])
+            cleaned += 1
+    return cleaned

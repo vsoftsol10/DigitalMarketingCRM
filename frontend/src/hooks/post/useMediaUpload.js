@@ -173,7 +173,7 @@
 //   };
 // }
 
-import { useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFormContext } from "react-hook-form";
 
@@ -184,6 +184,7 @@ import {
   validateFileSize,
   validateFileType,
 } from "../../utils/post/media.utils";
+import postMediaUploadService from "../../services/postMediaUpload.service";
 
 const IMAGE_TYPES = [
   "image/jpeg",
@@ -193,20 +194,124 @@ const IMAGE_TYPES = [
 
 const VIDEO_TYPES = [
   "video/mp4",
+  "video/quicktime",
 ];
+const EMPTY_MEDIA = [];
 
 export default function useMediaUpload({
   config,
+  organizationId,
 }) {
   const inputRef = useRef(null);
 
   const uploadModeRef = useRef("ALL");
 
-  const { watch, setValue } =
+  const { watch, setValue, getValues } =
     useFormContext();
 
-  const media =
-    watch("media") || [];
+  const [rejectedFiles, setRejectedFiles] = useState([]);
+  const uploadRequestsRef = useRef(new Map());
+  const abortControllersRef = useRef(new Map());
+
+  const watchedMedia = watch("media");
+  const media = Array.isArray(watchedMedia) ? watchedMedia : EMPTY_MEDIA;
+
+  const updateMediaItem = useCallback((id, patch) => {
+    const currentMedia = getValues("media") || [];
+    setValue(
+      "media",
+      currentMedia.map((item) => (
+        item.id === id ? { ...item, ...patch } : item
+      )),
+      { shouldDirty: true, shouldValidate: true },
+    );
+  }, [getValues, setValue]);
+
+  const startUpload = useCallback(async (mediaItem) => {
+    if (!organizationId || uploadRequestsRef.current.has(mediaItem.id)) {
+      return;
+    }
+
+    const controller = new AbortController();
+    uploadRequestsRef.current.set(mediaItem.id, true);
+    abortControllersRef.current.set(mediaItem.id, controller);
+
+    try {
+      updateMediaItem(mediaItem.id, {
+        status: "UPLOADING",
+        progress: 0,
+        uploadError: "",
+      });
+      const session = await postMediaUploadService.createSession(
+        organizationId,
+        mediaItem.file,
+      );
+      updateMediaItem(mediaItem.id, {
+        uploadSessionId: session.session_id,
+        status: "UPLOADING",
+      });
+
+      const uploadResponse = await postMediaUploadService.uploadToCloudinary(
+        session,
+        mediaItem.file,
+        {
+          signal: controller.signal,
+          refreshSession: () => postMediaUploadService.getSession(
+            organizationId,
+            session.session_id,
+          ),
+          onProgress: (uploaded, total) => {
+            updateMediaItem(mediaItem.id, {
+              status: "UPLOADING",
+              progress: total ? Math.round((uploaded / total) * 100) : 0,
+            });
+          },
+        },
+      );
+      const finalized = await postMediaUploadService.finalizeSession(
+        organizationId,
+        session.session_id,
+        uploadResponse,
+      );
+      updateMediaItem(mediaItem.id, {
+        uploadSessionId: finalized.media_asset_id || session.session_id,
+        status: "UPLOADED",
+        progress: 100,
+        uploadError: "",
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        // Return an interrupted item to LOCAL so a development StrictMode
+        // remount or an explicit retry can safely start a fresh session.
+        updateMediaItem(mediaItem.id, {
+          status: "LOCAL",
+          uploadError: "",
+          progress: 0,
+        });
+        return;
+      }
+      updateMediaItem(mediaItem.id, {
+        status: "FAILED",
+        uploadError: error?.message || "Media upload failed. Try again.",
+      });
+    } finally {
+      uploadRequestsRef.current.delete(mediaItem.id);
+      abortControllersRef.current.delete(mediaItem.id);
+    }
+  }, [organizationId, updateMediaItem]);
+
+  useEffect(() => {
+    if (!organizationId) {
+      return;
+    }
+    media
+      .filter((item) => item.status === "LOCAL")
+      .forEach((item) => startUpload(item));
+  }, [media, organizationId, startUpload]);
+
+  useEffect(() => () => {
+    abortControllersRef.current.forEach((controller) => controller.abort());
+  }, []);
 
   // ============================================================
   // BROWSE
@@ -380,10 +485,8 @@ export default function useMediaUpload({
       // --------------------------------------------------------
 
       if (
-        !validateFileSize(
-          file,
-          config.max_file_size_mb,
-        )
+        Number.isFinite(config.max_file_size_mb)
+        && !validateFileSize(file, config.max_file_size_mb)
       ) {
         rejectedFiles.push({
           file,
@@ -428,6 +531,8 @@ export default function useMediaUpload({
         },
       );
     }
+
+    setRejectedFiles(rejectedFiles);
 
     return rejectedFiles;
   }
@@ -501,6 +606,9 @@ export default function useMediaUpload({
       );
 
     if (target) {
+      abortControllersRef.current.get(id)?.abort();
+      abortControllersRef.current.delete(id);
+      uploadRequestsRef.current.delete(id);
       revokePreviewUrl(target);
     }
 
@@ -521,6 +629,9 @@ export default function useMediaUpload({
   // ============================================================
 
   function clearMedia() {
+    abortControllersRef.current.forEach((controller) => controller.abort());
+    abortControllersRef.current.clear();
+    uploadRequestsRef.current.clear();
     media.forEach(
       revokePreviewUrl,
     );
@@ -541,6 +652,7 @@ export default function useMediaUpload({
 
   return {
     media,
+    rejectedFiles,
 
     inputRef,
 
@@ -557,5 +669,11 @@ export default function useMediaUpload({
     clearMedia,
 
     appendFiles,
+    retryUpload: (id) => {
+      const target = (getValues("media") || []).find((item) => item.id === id);
+      if (!target) return;
+      updateMediaItem(id, { status: "LOCAL", uploadError: "", progress: 0 });
+      startUpload({ ...target, status: "LOCAL", uploadError: "", progress: 0 });
+    },
   };
 }

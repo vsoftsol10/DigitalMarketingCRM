@@ -2,6 +2,7 @@ import { Box, Button, Stack, Typography } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import { useNavigate } from "react-router-dom";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
@@ -9,6 +10,7 @@ import { TYPOGRAPHY } from "../../../theme/typography";
 export default function OverviewHeader({
   organization,
   onEdit,
+  onInvite,
   onDelete,
 }) {
   const navigate = useNavigate();
@@ -109,6 +111,29 @@ export default function OverviewHeader({
           }}
         >
           Edit
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<PersonAddAlt1RoundedIcon />}
+          onClick={onInvite}
+          sx={{
+            height: 48,
+            px: 2.4,
+            borderRadius: "17px",
+            textTransform: "none",
+            ...TYPOGRAPHY.formButton,
+            color: "#52698B",
+            borderColor: "rgba(146,168,201,.45)",
+            background: "linear-gradient(145deg, rgba(255,255,255,.92), rgba(232,241,255,.72))",
+            boxShadow: "0 5px 12px rgba(73,99,153,.08), inset 0 1px 0 #fff",
+            "&:hover": {
+              borderColor: "rgba(112,116,237,.55)",
+              background: "linear-gradient(145deg, #fff, rgba(232,241,255,.94))",
+            },
+          }}
+        >
+          Invite others to add
         </Button>
 
         <Button

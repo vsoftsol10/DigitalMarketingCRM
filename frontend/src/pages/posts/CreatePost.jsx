@@ -40,6 +40,7 @@ export default function CreatePost() {
   const plannerPrefill = location.state?.plannerPrefill;
   const hasAppliedPlannerBasePrefill = useRef(false);
   const hasAppliedPlannerAccountsPrefill = useRef(false);
+  const createIdempotencyKeyRef = useRef("");
   // ============================================================
   // FORM
   // ============================================================
@@ -269,6 +270,14 @@ export default function CreatePost() {
       return;
     }
 
+    const pendingMedia = (data.media || []).filter(
+      (item) => item?.status !== "UPLOADED",
+    );
+    if (pendingMedia.length) {
+      toast.error("Wait for all media uploads to finish before saving the post.");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -278,7 +287,14 @@ export default function CreatePost() {
 
       const payload = buildCreatePostPayload(data, socialAccounts);
 
-      const response = await postService.createPost(data.organization, payload);
+      if (!createIdempotencyKeyRef.current) {
+        createIdempotencyKeyRef.current = crypto.randomUUID();
+      }
+      const response = await postService.createPost(
+        data.organization,
+        payload,
+        { idempotencyKey: createIdempotencyKeyRef.current },
+      );
 
       if (!response?.success) {
         throw new Error(response?.message || "Unable to create the post.");
@@ -295,6 +311,7 @@ export default function CreatePost() {
       if (data.publish_type === "DRAFT") {
         toast.success(response.message || "Draft saved successfully.");
       }
+      createIdempotencyKeyRef.current = "";
     } catch (error) {
       console.error("Create post failed:", error);
 
@@ -458,7 +475,10 @@ export default function CreatePost() {
               ============================================== */}
 
               <Box ref={sectionRefs.media}>
-                <MediaUploadSection config={createPostData.media} />
+                <MediaUploadSection
+                  config={createPostData.media}
+                  organizationId={selectedOrganizationId}
+                />
               </Box>
 
               {/* ==============================================

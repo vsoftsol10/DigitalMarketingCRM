@@ -57,7 +57,7 @@ redis.call('SET', KEYS[1], following_ms, 'PX', ttl_ms)
 return slot_ms - now_ms
 """
 
-    def __init__(self):
+    def __init__(self, *, redirect_uri=None):
         # Diagnostic metadata only; response payloads remain unchanged.
         self.last_response_status_code = None
         self.last_response_usage_diagnostics = {}
@@ -82,6 +82,7 @@ return slot_ms - now_ms
             "INSTAGRAM_OAUTH_REDIRECT_URI",
             "",
         )
+        self.redirect_uri = redirect_uri or self.redirect_uri
 
         self.timeout = INSTAGRAM_HTTP_TIMEOUT_SECONDS
 
@@ -202,6 +203,7 @@ return slot_ms - now_ms
         self,
         *,
         code,
+        redirect_uri=None,
     ):
         if not code:
             raise InstagramAPIError(
@@ -214,7 +216,7 @@ return slot_ms - now_ms
                 "client_id": self.client_id,
                 "client_secret": self.client_secret,
                 "grant_type": "authorization_code",
-                "redirect_uri": self.redirect_uri,
+                "redirect_uri": redirect_uri or self.redirect_uri,
                 "code": code,
             },
             timeout=self.timeout,

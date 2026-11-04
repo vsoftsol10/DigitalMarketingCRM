@@ -1,10 +1,10 @@
-import { Box, IconButton, Typography } from "@mui/material";
+import { Box, Button, IconButton, LinearProgress, Typography } from "@mui/material";
 
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 
-export default function MediaPreviewItem({ media, index = 0, onRemove }) {
+export default function MediaPreviewItem({ media, index = 0, onRemove, onRetry }) {
   const isImage = media?.type === "IMAGE";
 
   const isVideo = media?.type === "VIDEO";
@@ -129,6 +129,53 @@ export default function MediaPreviewItem({ media, index = 0, onRemove }) {
           {index + 1}
         </Typography>
       </Box>
+
+      {media?.status && media.status !== "UPLOADED" && (
+        <Box
+          sx={{
+            position: "absolute",
+            left: 8,
+            right: 8,
+            bottom: 42,
+            px: 1,
+            py: 0.5,
+            borderRadius: 1,
+            bgcolor: "rgba(15, 23, 42, 0.78)",
+          }}
+        >
+          <Typography sx={{ color: "#fff", fontSize: 10, mb: 0.35 }}>
+            {media.status === "FAILED"
+              ? media.uploadError || "Upload failed"
+              : media.status === "UPLOADING"
+                ? `Uploading ${media.progress || 0}%`
+                : media.status === "PROCESSING"
+                  ? "Processing"
+                  : "Preparing upload"}
+          </Typography>
+          {media.status === "UPLOADING" && (
+            <LinearProgress
+              variant="determinate"
+              value={media.progress || 0}
+              sx={{ height: 3, borderRadius: 2 }}
+            />
+          )}
+          {media.status === "FAILED" && (
+            <Button
+              size="small"
+              onClick={() => onRetry?.(media.id)}
+              sx={{
+                minWidth: 0,
+                p: 0,
+                color: "#bfdbfe",
+                fontSize: 10,
+                textTransform: "none",
+              }}
+            >
+              Retry upload
+            </Button>
+          )}
+        </Box>
+      )}
 
       {/* =====================================================
           REMOVE

@@ -1,12 +1,16 @@
 import logging
+import json
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from threading import Barrier
 from unittest.mock import patch
 
 import requests
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.db import IntegrityError, close_old_connections, connection, transaction
+from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIRequestFactory, force_authenticate
 
@@ -17,11 +21,14 @@ from apps.integrations.meta.models import (
     MetaAccountCredential,
     MetaCredentialStatus,
     MetaCredentialType,
+    MetaOAuthSession,
     MetaTokenMaintenanceRun,
 )
 from apps.integrations.meta.selectors import get_meta_connection_credential
 from apps.integrations.meta.services import (
     MetaAccountDiscoveryService,
+    MetaAccountData,
+    MetaDiscoveryResult,
     MetaOAuthService,
     MetaSocialAccountService,
 )
@@ -29,6 +36,7 @@ from apps.integrations.meta.views import (
     MetaOAuthCallbackAPIView,
     MetaOAuthSelectionAPIView,
     MetaOAuthSelectionConfirmAPIView,
+    MetaOAuthSelectionFinishAPIView,
 )
 from apps.organizations.models import Organization
 from apps.social_accounts.models import (
@@ -36,6 +44,7 @@ from apps.social_accounts.models import (
     SocialAccountStatus,
     SocialConnection,
     SocialConnectionProvider,
+    SocialConnectionStatus,
     SocialPlatform,
 )
 from apps.social_accounts.status import SocialAccountLifecycleStatus
@@ -261,8 +270,7 @@ class MetaPagesResponseDiagnosticsTests(SimpleTestCase):
         service = self.make_service({"data": [], "paging": {}})
 
         with self.assertLogs("apps.integrations.meta.services", level="INFO") as logs:
-            with self.assertRaises(MetaAPIError):
-                service.discover_accounts(correlation_id="correlation-empty")
+            result = service.discover_accounts(correlation_id="correlation-empty")
 
         output = "\n".join(logs.output)
         self.assertIn("correlation_id=correlation-empty", output)
@@ -274,6 +282,7 @@ class MetaPagesResponseDiagnosticsTests(SimpleTestCase):
         self.assertIn("paging_present=True paging_next_present=False", output)
         self.assertIn("response_case=explicitly_empty_data", output)
         self.assertNotIn(ACCESS_TOKEN_CANARY, output)
+        self.assertEqual(result.accounts, [])
 
     def test_missing_data_key_is_distinguished_from_empty_data(self):
         service = self.make_service({"error": {"message": OAUTH_CODE_CANARY}})
@@ -303,24 +312,37 @@ class MetaPagesResponseDiagnosticsTests(SimpleTestCase):
             "https://graph.example/next?after=CURSOR_CANARY&access_token="
             f"{PAGE_TOKEN_CANARY}&code={OAUTH_CODE_CANARY}"
         )
-        service = self.make_service(
+        service = self.make_service()
+        responses = [
             {
                 "data": [
-                    {
-                        "id": "page-1",
-                        "name": "Page One",
-                        "access_token": PAGE_TOKEN_CANARY,
-                    }
+                    {"id": "page-1", "name": "Page One", "access_token": PAGE_TOKEN_CANARY}
                 ],
-                "paging": {"next": next_url},
-            }
-        )
+                "paging": {"next": next_url, "cursors": {"after": "cursor-1"}},
+            },
+            {
+                "data": [
+                    {"id": "page-2", "name": "Page Two", "access_token": "page-token-2"}
+                ],
+                "paging": {},
+            },
+        ]
+        page_calls = []
+
+        def get_page_response(path, *, access_token, params=None, return_http_status=False, response_metadata=None):
+            page_calls.append(params or {})
+            response = responses[len(page_calls) - 1]
+            return (response, 200) if return_http_status else response
+
+        service.client.get = get_page_response
 
         with self.assertLogs("apps.integrations.meta.services", level="INFO") as logs:
             result = service.discover_accounts(correlation_id="correlation-next")
 
         output = "\n".join(logs.output)
-        self.assertEqual(len(result.accounts), 1)
+        self.assertEqual(len(result.accounts), 2)
+        self.assertEqual(page_calls[0]["fields"], "id,name,access_token,instagram_business_account")
+        self.assertEqual(page_calls[1]["after"], "cursor-1")
         self.assertIn("response_case=response_contains_additional_pages", output)
         self.assertIn("paging_present=True paging_next_present=True", output)
         for sensitive_value in (
@@ -331,6 +353,88 @@ class MetaPagesResponseDiagnosticsTests(SimpleTestCase):
             ACCESS_TOKEN_CANARY,
         ):
             self.assertNotIn(sensitive_value, output)
+
+    def test_pagination_failure_does_not_return_partial_page_results(self):
+        client = MetaAPIClient()
+        page_calls = []
+
+        def get_page_response(path, *, access_token, params=None, return_http_status=False, response_metadata=None):
+            page_calls.append(params or {})
+            if len(page_calls) == 1:
+                return (
+                    {
+                        "data": [{"id": "page-1"}],
+                        "paging": {"next": "credential-bearing-url", "cursors": {"after": "cursor-1"}},
+                    },
+                    200,
+                )
+            raise MetaAPIError("Meta API request failed.", status_code=503)
+
+        client.get = get_page_response
+        metadata = {}
+        with self.assertRaises(MetaAPIError):
+            client.get_pages(access_token=ACCESS_TOKEN_CANARY, response_metadata=metadata)
+
+        self.assertEqual(len(page_calls), 2)
+        self.assertEqual(page_calls[1]["after"], "cursor-1")
+        self.assertEqual(metadata["response_case"], "api_request_failure")
+        self.assertNotIn("credential-bearing-url", str(metadata))
+
+    def test_pagination_without_cursor_fails_closed(self):
+        client = MetaAPIClient()
+        client.get = lambda *args, **kwargs: (
+            {"data": [{"id": "page-1"}], "paging": {"next": "provider-url"}},
+            200,
+        )
+        with self.assertRaises(MetaAPIError):
+            client.get_pages(access_token=ACCESS_TOKEN_CANARY)
+
+    def test_repeated_pagination_cursor_fails_closed(self):
+        client = MetaAPIClient()
+        page_calls = []
+
+        def get_page_response(path, *, access_token, params=None, return_http_status=False, response_metadata=None):
+            page_calls.append(params or {})
+            return (
+                {
+                    "data": [{"id": f"page-{len(page_calls)}"}],
+                    "paging": {
+                        "next": "provider-next-url",
+                        "cursors": {"after": "repeated-cursor"},
+                    },
+                },
+                200,
+            )
+
+        client.get = get_page_response
+        with self.assertRaises(MetaAPIError):
+            client.get_pages(access_token=ACCESS_TOKEN_CANARY)
+
+        self.assertEqual(len(page_calls), 2)
+        self.assertEqual(page_calls[1]["after"], "repeated-cursor")
+
+    def test_pagination_stops_at_the_configured_response_bound(self):
+        client = MetaAPIClient()
+        page_calls = []
+
+        def get_page_response(path, *, access_token, params=None, return_http_status=False, response_metadata=None):
+            page_calls.append(params or {})
+            return (
+                {
+                    "data": [],
+                    "paging": {
+                        "next": "provider-next-url",
+                        "cursors": {"after": f"cursor-{len(page_calls)}"},
+                    },
+                },
+                200,
+            )
+
+        client.get = get_page_response
+        with self.assertRaises(MetaAPIError):
+            client.get_pages(access_token=ACCESS_TOKEN_CANARY)
+
+        self.assertEqual(len(page_calls), 100)
 
     def test_graph_api_failure_logs_only_status_and_error_numbers(self):
         error = MetaAPIError(
@@ -379,7 +483,15 @@ class MetaOAuthDiagnosticsTests(SimpleTestCase):
     def make_discovery(self, pages):
         service = MetaAccountDiscoveryService(access_token=ACCESS_TOKEN_CANARY)
         service.client.get_current_user = lambda **kwargs: {"id": "meta-user-1"}
-        service.client.get_pages = lambda **kwargs: pages
+
+        def get_pages(*, response_metadata=None, **kwargs):
+            if response_metadata is not None:
+                response_metadata["response_case"] = (
+                    "explicitly_empty_data" if not pages else "pages_returned"
+                )
+            return pages
+
+        service.client.get_pages = get_pages
         return service
 
     def test_page_returned_with_access_token_is_kept_without_logging_token(self):
@@ -408,12 +520,12 @@ class MetaOAuthDiagnosticsTests(SimpleTestCase):
         )
 
         with self.assertLogs("apps.integrations.meta.services", level="WARNING") as logs:
-            with self.assertRaises(MetaAPIError):
-                service.discover_accounts(correlation_id="correlation-2")
+            result = service.discover_accounts(correlation_id="correlation-2")
 
         output = "\n".join(logs.output)
         self.assertIn("page_access_token_present=False", output)
         self.assertIn("outcome=skipped_missing_page_token", output)
+        self.assertEqual(result.accounts, [])
 
     def test_page_missing_id_is_skipped_and_only_token_presence_is_logged(self):
         service = self.make_discovery(
@@ -421,23 +533,23 @@ class MetaOAuthDiagnosticsTests(SimpleTestCase):
         )
 
         with self.assertLogs("apps.integrations.meta.services", level="WARNING") as logs:
-            with self.assertRaises(MetaAPIError):
-                service.discover_accounts(correlation_id="correlation-3")
+            result = service.discover_accounts(correlation_id="correlation-3")
 
         output = "\n".join(logs.output)
         self.assertIn("page_name=Unidentified Page", output)
         self.assertIn("page_access_token_present=True", output)
         self.assertIn("outcome=skipped_missing_id", output)
         self.assertNotIn(PAGE_TOKEN_CANARY, output)
+        self.assertEqual(result.accounts, [])
 
     def test_invalid_page_entry_is_skipped(self):
         service = self.make_discovery([None])
 
         with self.assertLogs("apps.integrations.meta.services", level="WARNING") as logs:
-            with self.assertRaises(MetaAPIError):
-                service.discover_accounts(correlation_id="correlation-4")
+            result = service.discover_accounts(correlation_id="correlation-4")
 
         self.assertIn("outcome=skipped_invalid_entry", "\n".join(logs.output))
+        self.assertEqual(result.accounts, [])
 
     def test_permissions_diagnostic_failure_is_non_fatal_and_redacted(self):
         service = MetaOAuthService()
@@ -678,6 +790,602 @@ def _raise_debug_token_error(**kwargs):
 
 def _raise(error):
     raise error
+
+
+class MetaOAuthMultiPageSelectionTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            email="meta-multi-page-owner@example.test",
+            password="unused-test-password",
+        )
+        self.other_user = get_user_model().objects.create_user(
+            email="meta-multi-page-other@example.test",
+            password="unused-test-password",
+        )
+        self.organization = Organization.objects.create(
+            organization_id="ORGMULTI001",
+            name="Meta Multi Page Test",
+            slug="meta-multi-page-test",
+            industry="Testing",
+            created_by=self.user,
+        )
+        self.other_organization = Organization.objects.create(
+            organization_id="ORGMULTI002",
+            name="Meta Other Organization",
+            slug="meta-other-organization",
+            industry="Testing",
+            created_by=self.other_user,
+        )
+        encrypt_patch = patch(
+            "apps.integrations.meta.services.encrypt_token",
+            side_effect=lambda value: f"encrypted::{value}",
+        )
+        decrypt_patch = patch(
+            "apps.integrations.meta.services.decrypt_token",
+            side_effect=lambda value: str(value).removeprefix("encrypted::"),
+        )
+        encrypt_patch.start()
+        decrypt_patch.start()
+        self.addCleanup(encrypt_patch.stop)
+        self.addCleanup(decrypt_patch.stop)
+
+    @staticmethod
+    def page(page_id, name=None, token=None):
+        return MetaAccountData(
+            platform=SocialPlatform.FACEBOOK,
+            platform_account_id=page_id,
+            account_name=name or page_id,
+            access_token=token or f"page-token-{page_id}",
+        )
+
+    def make_session(self, pages=None):
+        if pages is None:
+            pages = [self.page("page-a"), self.page("page-b")]
+        serialized_pages = json.dumps(MetaOAuthService._serialize_accounts(pages))
+        return MetaOAuthSession.objects.create(
+            organization=self.organization,
+            user=self.user,
+            provider_user_id="meta-user-multi",
+            encrypted_access_token="encrypted::meta-user-token",
+            encrypted_accounts=f"encrypted::{serialized_pages}",
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+    def make_existing_page(
+        self,
+        page_id,
+        *,
+        account_status=SocialAccountStatus.CONNECTED,
+        account_valid=True,
+        page_credential_status=MetaCredentialStatus.ACTIVE,
+        user_credential_status=MetaCredentialStatus.ACTIVE,
+        connection_status=SocialConnectionStatus.ACTIVE,
+        is_deleted=False,
+        with_page_credential=True,
+    ):
+        connection = SocialConnection.objects.create(
+            organization=self.organization,
+            provider=SocialConnectionProvider.META,
+            provider_user_id=f"meta-user-{page_id}",
+            status=connection_status,
+        )
+        MetaAccountCredential.objects.create(
+            social_connection=connection,
+            credential_type=MetaCredentialType.USER,
+            access_token="encrypted::meta-user-token",
+            status=user_credential_status,
+        )
+        account = SocialAccount.objects.create(
+            organization=self.organization,
+            connection=connection,
+            platform=SocialPlatform.FACEBOOK,
+            platform_account_id=page_id,
+            account_name=page_id,
+            status=account_status,
+            is_valid=account_valid,
+            is_deleted=is_deleted,
+            deleted_at=timezone.now() if is_deleted else None,
+        )
+        if with_page_credential:
+            MetaAccountCredential.objects.create(
+                social_account=account,
+                credential_type=MetaCredentialType.PAGE,
+                access_token="encrypted::page-token",
+                status=page_credential_status,
+            )
+        return account
+
+    @override_settings(
+        META_APP_ID="test-app-id",
+        META_APP_SECRET="test-app-secret",
+        META_OAUTH_REDIRECT_URI="https://example.test/meta/callback",
+    )
+    def test_one_eligible_page_still_creates_selection_session(self):
+        service = MetaOAuthService()
+        service.client.exchange_code_for_access_token = lambda **kwargs: {
+            "access_token": "meta-user-token"
+        }
+        service._log_token_diagnostics = lambda **kwargs: None
+        discovery = MetaDiscoveryResult(
+            provider_user_id="meta-user-one",
+            accounts=[self.page("only-page")],
+        )
+
+        with patch(
+            "apps.integrations.meta.services.MetaAccountDiscoveryService"
+        ) as discovery_service:
+            discovery_service.return_value.discover_accounts.return_value = discovery
+            with patch.object(service, "create_selection_session", return_value="session") as create_session:
+                result = service.prepare_oauth(
+                    code="oauth-code",
+                    organization=self.organization,
+                    user=self.user,
+                )
+
+        self.assertEqual(result["status"], "selection_required")
+        self.assertEqual(result["session"], "session")
+        create_session.assert_called_once()
+        self.assertFalse(SocialAccount.objects.filter(organization=self.organization).exists())
+
+    @override_settings(
+        META_APP_ID="test-app-id",
+        META_APP_SECRET="test-app-secret",
+        META_OAUTH_REDIRECT_URI="https://example.test/meta/callback",
+    )
+    def test_zero_eligible_pages_create_an_empty_selection_session(self):
+        service = MetaOAuthService()
+        service.client.exchange_code_for_access_token = lambda **kwargs: {
+            "access_token": "meta-user-token"
+        }
+        service._log_token_diagnostics = lambda **kwargs: None
+        discovery = MetaDiscoveryResult(provider_user_id="meta-user-empty", accounts=[])
+
+        with patch(
+            "apps.integrations.meta.services.MetaAccountDiscoveryService"
+        ) as discovery_service:
+            discovery_service.return_value.discover_accounts.return_value = discovery
+            result = service.prepare_oauth(
+                code="oauth-code",
+                organization=self.organization,
+                user=self.user,
+            )
+
+        self.assertEqual(result["status"], "selection_required")
+        self.assertEqual(result["session"].organization_id, self.organization.pk)
+        self.assertEqual(result["session"].user_id, self.user.id)
+        selection = service.get_selection_data(
+            session=result["session"],
+            organization=self.organization,
+            user=self.user,
+        )
+        self.assertEqual(selection["pages"], [])
+        with self.assertRaises(MetaAPIError):
+            service.confirm_selection(
+                session=result["session"],
+                organization=self.organization,
+                user=self.user,
+                page_id="unselected-page",
+            )
+        self.assertFalse(SocialAccount.objects.filter(organization=self.organization).exists())
+
+    def test_no_eligible_pages_return_empty_selection_data(self):
+        session = self.make_session([])
+
+        selection = MetaOAuthService().get_selection_data(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+        )
+
+        self.assertEqual(selection["pages"], [])
+
+    def test_selection_marks_only_healthy_connected_pages_as_connected(self):
+        self.make_existing_page("active-page")
+        self.make_existing_page(
+            "disconnected-page",
+            account_status=SocialAccountStatus.DISCONNECTED,
+            account_valid=False,
+            page_credential_status=MetaCredentialStatus.REVOKED,
+        )
+        self.make_existing_page(
+            "revoked-page",
+            page_credential_status=MetaCredentialStatus.REVOKED,
+        )
+        self.make_existing_page(
+            "invalid-page",
+            page_credential_status=MetaCredentialStatus.INVALID,
+        )
+        self.make_existing_page("deleted-page", is_deleted=True)
+        self.make_existing_page(
+            "parent-revoked-page",
+            user_credential_status=MetaCredentialStatus.REVOKED,
+        )
+        self.make_existing_page(
+            "connection-revoked-page",
+            connection_status=SocialConnectionStatus.REVOKED,
+        )
+        self.make_existing_page("missing-credential-page", with_page_credential=False)
+
+        page_ids = [
+            "active-page",
+            "disconnected-page",
+            "revoked-page",
+            "invalid-page",
+            "deleted-page",
+            "parent-revoked-page",
+            "connection-revoked-page",
+            "missing-credential-page",
+        ]
+        session = self.make_session([self.page(page_id) for page_id in page_ids])
+
+        selection = MetaOAuthService().get_selection_data(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+        )
+
+        connected = {page["id"] for page in selection["pages"] if page["connected"]}
+        self.assertEqual(connected, {"active-page"})
+
+    def test_disconnected_page_reconnect_reuses_existing_account(self):
+        account = self.make_existing_page(
+            "page-reconnect",
+            account_status=SocialAccountStatus.DISCONNECTED,
+            account_valid=False,
+            page_credential_status=MetaCredentialStatus.REVOKED,
+        )
+        session = self.make_session([self.page("page-reconnect")])
+        service = MetaOAuthService()
+
+        before = service.get_selection_data(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+        )
+        self.assertFalse(before["pages"][0]["connected"])
+
+        result = service.confirm_selection(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+            page_id="page-reconnect",
+        )
+
+        account.refresh_from_db()
+        self.assertFalse(result["already_connected"])
+        self.assertEqual(result["accounts"][0].id, account.id)
+        self.assertEqual(account.status, SocialAccountStatus.CONNECTED)
+        self.assertTrue(account.is_valid)
+        self.assertEqual(
+            account.meta_credential.status,
+            MetaCredentialStatus.ACTIVE,
+        )
+        self.assertEqual(
+            SocialAccount.objects.filter(
+                organization=self.organization,
+                platform=SocialPlatform.FACEBOOK,
+                platform_account_id="page-reconnect",
+            ).count(),
+            1,
+        )
+
+        repeated = service.confirm_selection(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+            page_id="page-reconnect",
+        )
+        self.assertTrue(repeated["already_connected"])
+        self.assertEqual(
+            SocialAccount.objects.filter(
+                organization=self.organization,
+                platform=SocialPlatform.FACEBOOK,
+                platform_account_id="page-reconnect",
+                is_deleted=False,
+            ).count(),
+            1,
+        )
+
+    def test_soft_deleted_page_is_not_connected_and_is_restored_on_add(self):
+        account = self.make_existing_page("page-restore", is_deleted=True)
+        session = self.make_session([self.page("page-restore")])
+        service = MetaOAuthService()
+
+        selection = service.get_selection_data(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+        )
+        self.assertFalse(selection["pages"][0]["connected"])
+
+        result = service.confirm_selection(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+            page_id="page-restore",
+        )
+
+        account.refresh_from_db()
+        self.assertFalse(result["already_connected"])
+        self.assertEqual(result["accounts"][0].id, account.id)
+        self.assertFalse(account.is_deleted)
+        self.assertEqual(
+            SocialAccount.objects.filter(
+                organization=self.organization,
+                platform=SocialPlatform.FACEBOOK,
+                platform_account_id="page-restore",
+            ).count(),
+            1,
+        )
+
+    def test_page_a_and_page_b_can_be_added_before_finishing(self):
+        session = self.make_session()
+        service = MetaOAuthService()
+
+        first = service.confirm_selection(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+            page_id="page-a",
+        )
+        session.refresh_from_db()
+        self.assertIsNone(session.consumed_at)
+
+        second = service.confirm_selection(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+            page_id="page-b",
+        )
+        self.assertFalse(first["already_connected"])
+        self.assertFalse(second["already_connected"])
+        self.assertEqual(
+            SocialAccount.objects.filter(
+                organization=self.organization,
+                platform=SocialPlatform.FACEBOOK,
+                is_deleted=False,
+            ).count(),
+            2,
+        )
+
+        selection = service.get_selection_data(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+        )
+        self.assertEqual([page["id"] for page in selection["pages"]], ["page-a", "page-b"])
+        self.assertTrue(all(page["connected"] for page in selection["pages"]))
+
+    def test_repeated_addition_returns_connected_without_duplicate(self):
+        session = self.make_session([self.page("page-a")])
+        service = MetaOAuthService()
+        service.confirm_selection(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+            page_id="page-a",
+        )
+
+        repeated = service.confirm_selection(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+            page_id="page-a",
+        )
+
+        self.assertTrue(repeated["already_connected"])
+        self.assertEqual(
+            SocialAccount.objects.filter(
+                organization=self.organization,
+                platform_account_id="page-a",
+                is_deleted=False,
+            ).count(),
+            1,
+        )
+
+    def test_finish_consumes_session_and_later_add_is_rejected(self):
+        session = self.make_session()
+        service = MetaOAuthService()
+        service.finish_selection(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+        )
+        session.refresh_from_db()
+        self.assertIsNotNone(session.consumed_at)
+
+        with self.assertRaises(MetaAPIError):
+            service.confirm_selection(
+                session=session,
+                organization=self.organization,
+                user=self.user,
+                page_id="page-a",
+            )
+
+    def test_finish_endpoint_consumes_session_for_authenticated_owner(self):
+        session = self.make_session()
+        request = APIRequestFactory().post(
+            "/meta/oauth/selection/finish/",
+            {
+                "selection_key": str(session.selection_key),
+                "organization_id": self.organization.organization_id,
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.user)
+
+        response = MetaOAuthSelectionFinishAPIView.as_view()(request)
+
+        self.assertEqual(response.status_code, 200)
+        session.refresh_from_db()
+        self.assertIsNotNone(session.consumed_at)
+
+    def test_finish_endpoint_reports_expired_or_consumed_sessions_as_gone(self):
+        expired = self.make_session()
+        expired.expires_at = timezone.now() - timedelta(seconds=1)
+        expired.save(update_fields=["expires_at"])
+
+        consumed = self.make_session()
+        consumed.consumed_at = timezone.now()
+        consumed.save(update_fields=["consumed_at"])
+
+        for session, expected_code in (
+            (expired, "selection_session_expired"),
+            (consumed, "selection_session_consumed"),
+        ):
+            request = APIRequestFactory().post(
+                "/meta/oauth/selection/finish/",
+                {
+                    "selection_key": str(session.selection_key),
+                    "organization_id": self.organization.organization_id,
+                },
+                format="json",
+            )
+            force_authenticate(request, user=self.user)
+
+            with self.subTest(code=expected_code):
+                response = MetaOAuthSelectionFinishAPIView.as_view()(request)
+
+            self.assertEqual(response.status_code, 410)
+            self.assertEqual(response.data["code"], expected_code)
+
+    def test_invalid_page_wrong_user_and_wrong_organization_are_rejected(self):
+        session = self.make_session()
+        service = MetaOAuthService()
+
+        for kwargs in (
+            {"organization": self.organization, "user": self.user, "page_id": "outside-page"},
+            {"organization": self.organization, "user": self.other_user, "page_id": "page-a"},
+            {"organization": self.other_organization, "user": self.user, "page_id": "page-a"},
+        ):
+            with self.subTest(kwargs=kwargs), self.assertRaises(MetaAPIError):
+                service.confirm_selection(session=session, **kwargs)
+
+        self.assertFalse(SocialAccount.objects.filter(organization=self.organization).exists())
+
+    def test_expired_and_consumed_sessions_are_rejected(self):
+        service = MetaOAuthService()
+        expired = self.make_session([self.page("page-expired")])
+        expired.expires_at = timezone.now() - timedelta(seconds=1)
+        expired.save(update_fields=["expires_at"])
+        with self.assertRaises(MetaAPIError):
+            service.confirm_selection(
+                session=expired,
+                organization=self.organization,
+                user=self.user,
+                page_id="page-expired",
+            )
+
+        consumed = self.make_session([self.page("page-consumed")])
+        consumed.consumed_at = timezone.now()
+        consumed.save(update_fields=["consumed_at"])
+        with self.assertRaises(MetaAPIError):
+            service.confirm_selection(
+                session=consumed,
+                organization=self.organization,
+                user=self.user,
+                page_id="page-consumed",
+            )
+
+    def test_failed_addition_leaves_page_unconnected_and_session_retryable(self):
+        session = self.make_session([self.page("page-retry")])
+        service = MetaOAuthService()
+
+        with patch.object(
+            MetaSocialAccountService,
+            "sync_connection_and_accounts",
+            side_effect=MetaAPIError("provider failure"),
+        ):
+            with self.assertRaises(MetaAPIError):
+                service.confirm_selection(
+                    session=session,
+                    organization=self.organization,
+                    user=self.user,
+                    page_id="page-retry",
+                )
+
+        session.refresh_from_db()
+        self.assertIsNone(session.consumed_at)
+        self.assertFalse(SocialAccount.objects.filter(organization=self.organization).exists())
+
+        result = service.confirm_selection(
+            session=session,
+            organization=self.organization,
+            user=self.user,
+            page_id="page-retry",
+        )
+        self.assertFalse(result["already_connected"])
+
+
+class MetaSocialConnectionConcurrentCreateTests(TransactionTestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            email="meta-connection-race@example.test",
+            password="unused-test-password",
+        )
+        self.organization = Organization.objects.create(
+            organization_id="ORGMETARACE001",
+            name="Meta Connection Race",
+            slug="meta-connection-race",
+            industry="Testing",
+            created_by=self.user,
+        )
+
+    def test_concurrent_same_provider_connection_reuses_unique_winner(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("This race test requires PostgreSQL unique-index behavior.")
+
+        barrier = Barrier(2)
+        original_create = SocialConnection.objects.create
+
+        def synchronized_create(**kwargs):
+            barrier.wait(timeout=10)
+            return original_create(**kwargs)
+
+        def get_or_create_connection():
+            close_old_connections()
+            try:
+                with transaction.atomic():
+                    service = MetaSocialAccountService(
+                        organization=self.organization,
+                        user=self.user,
+                    )
+                    return service._get_or_create_connection(
+                        provider_user_id="same-meta-user",
+                    ).pk
+            finally:
+                close_old_connections()
+
+        with patch.object(SocialConnection.objects, "create", side_effect=synchronized_create):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                connection_ids = list(executor.map(lambda _: get_or_create_connection(), range(2)))
+
+        self.assertEqual(connection_ids[0], connection_ids[1])
+        self.assertEqual(
+            SocialConnection.objects.filter(
+                organization=self.organization,
+                provider=SocialConnectionProvider.META,
+                provider_user_id="same-meta-user",
+                is_deleted=False,
+            ).count(),
+            1,
+        )
+
+    def test_unrelated_integrity_error_is_not_treated_as_a_connection_race(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("This test inspects PostgreSQL integrity-error handling.")
+
+        service = MetaSocialAccountService(
+            organization=self.organization,
+            user=self.user,
+        )
+        with patch.object(
+            SocialConnection.objects,
+            "create",
+            side_effect=IntegrityError("unrelated database constraint"),
+        ):
+            with transaction.atomic(), self.assertRaises(IntegrityError):
+                service._get_or_create_connection(provider_user_id="same-meta-user")
 
 
 class MetaPageSelectionErrorResponseTests(TestCase):

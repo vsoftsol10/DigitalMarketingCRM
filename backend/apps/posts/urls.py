@@ -4,6 +4,7 @@ from .views import (
     CalendarEventDetailAPIView,
     CalendarEventsAPIView,
     CalendarFiltersAPIView,
+    OrganizationMediaUploadSessionAPIView,
     OrganizationPostDetailAPIView,
     OrganizationPostListCreateAPIView,
     OrganizationPostMediaCreateAPIView,
@@ -27,6 +28,16 @@ urlpatterns = [
         "organizations/<str:organization_id>/",
         OrganizationPostListCreateAPIView.as_view(),
         name="organization-post-list-create",
+    ),
+    path(
+        "organizations/<str:organization_id>/media-upload-sessions/",
+        OrganizationMediaUploadSessionAPIView.as_view(),
+        name="organization-media-upload-session-create",
+    ),
+    path(
+        "organizations/<str:organization_id>/media-upload-sessions/<uuid:session_id>/",
+        OrganizationMediaUploadSessionAPIView.as_view(),
+        name="organization-media-upload-session-detail",
     ),
     path(
         "organizations/<str:organization_id>/<uuid:post_id>/",

@@ -118,6 +118,9 @@ export function createMediaObject({ file }) {
     // These will be populated after upload.
     media_id: null,
 
+    uploadSessionId: null,
+    uploadError: "",
+
     url: null,
   };
 }

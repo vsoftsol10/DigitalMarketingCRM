@@ -1332,6 +1332,7 @@ import organizationService from "../../services/organization/organization.servic
 import plansService from "../../services/plans.service";
 
 import ConnectSocialAccountDialog from "../../components/organization/social/ConnectSocialAccountDialog";
+import SocialAccountInvitationDialog from "../../components/organization/social/SocialAccountInvitationDialog";
 
 // ============================================================
 // ORGANIZATION OVERVIEW
@@ -1341,6 +1342,7 @@ export default function OrganizationOverview() {
   const navigate = useNavigate();
 
   const { organizationId } = useParams();
+  const [invitationDialogOpen, setInvitationDialogOpen] = useState(false);
 
   // ============================================================
   // ORGANIZATION STATE
@@ -1414,10 +1416,19 @@ export default function OrganizationOverview() {
   const [facebookSelectionLoading, setFacebookSelectionLoading] =
     useState(false);
 
-  const [facebookSelectionSubmitting, setFacebookSelectionSubmitting] =
+  const [facebookSelectionAddingPageId, setFacebookSelectionAddingPageId] =
+    useState("");
+
+  const [facebookSelectionFinishing, setFacebookSelectionFinishing] =
     useState(false);
 
+  const [facebookSelectionPageErrors, setFacebookSelectionPageErrors] =
+    useState({});
+
   const [facebookSelectionError, setFacebookSelectionError] = useState("");
+
+  const [facebookSelectionSessionInvalid, setFacebookSelectionSessionInvalid] =
+    useState(false);
 
   const [facebookSelectionPages, setFacebookSelectionPages] = useState([]);
 
@@ -1533,8 +1544,10 @@ export default function OrganizationOverview() {
       try {
         setFacebookSelectionLoading(true);
         setFacebookSelectionError("");
+        setFacebookSelectionSessionInvalid(false);
 
         setFacebookSelectionKey(selectionKey);
+        setFacebookSelectionPageErrors({});
 
         const response = await metaService.getOAuthSelection(
           organizationId,
@@ -1550,6 +1563,13 @@ export default function OrganizationOverview() {
         setFacebookSelectionOpen(true);
       } catch (error) {
         console.error("Failed to load Facebook Page selection:", error);
+
+        const sessionInvalid = Boolean(
+          error?.response?.status === 410 ||
+            error?.response?.data?.code === "selection_session_expired" ||
+            error?.response?.data?.code === "selection_session_consumed",
+        );
+        setFacebookSelectionSessionInvalid(sessionInvalid);
 
         setFacebookSelectionError(
           error?.response?.data?.message ||
@@ -1571,20 +1591,24 @@ export default function OrganizationOverview() {
   // HANDLE FACEBOOK PAGE SELECTION
   // ============================================================
 
-  const handleFacebookPageSelection = useCallback(
+  const handleFacebookPageAdd = useCallback(
     async (pageId) => {
       if (
         !organizationId ||
         !facebookSelectionKey ||
         !pageId ||
-        facebookSelectionSubmitting
+        facebookSelectionAddingPageId ||
+        facebookSelectionFinishing
       ) {
         return;
       }
 
       try {
-        setFacebookSelectionSubmitting(true);
-        setFacebookSelectionError("");
+        setFacebookSelectionAddingPageId(pageId);
+        setFacebookSelectionPageErrors((current) => ({
+          ...current,
+          [pageId]: "",
+        }));
 
         const response = await metaService.confirmOAuthSelection(
           organizationId,
@@ -1593,44 +1617,148 @@ export default function OrganizationOverview() {
         );
 
         const data = response?.data || {};
-
-        const count = Number(data.accounts_connected || 0);
-
-        setFacebookSelectionOpen(false);
-
-        setFacebookSelectionPages([]);
-
-        setFacebookSelectionKey("");
-
-        setConnectingPlatform(null);
-
+        setFacebookSelectionPages((current) =>
+          current.map((page) =>
+            String(page?.id || "") === pageId
+              ? { ...page, connected: true }
+              : page,
+          ),
+        );
         showSuccess(
-          count > 0
-            ? `${count} Facebook Page(s) connected successfully.`
+          data.already_connected
+            ? "Facebook Page is already connected."
             : "Facebook Page connected successfully.",
         );
 
         refreshSocialAccounts();
       } catch (error) {
-        console.error("Failed to confirm Facebook Page selection:", error);
+        console.error("Failed to add Facebook Page:", error);
 
-        setFacebookSelectionError(
-          error?.response?.data?.message ||
-            error?.message ||
-            "Unable to connect the selected Facebook Page.",
+        const sessionInvalid = Boolean(
+          error?.response?.status === 410 ||
+            error?.response?.data?.code === "selection_session_expired" ||
+            error?.response?.data?.code === "selection_session_consumed",
         );
+        if (sessionInvalid) {
+          setFacebookSelectionSessionInvalid(true);
+          setFacebookSelectionError(
+            error?.response?.data?.message ||
+              "This Facebook Page selection is no longer active. Connect Facebook again to retry.",
+          );
+          setFacebookSelectionPageErrors({});
+          return;
+        }
+
+        setFacebookSelectionPageErrors((current) => ({
+          ...current,
+          [pageId]:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Unable to connect this Facebook Page. Please try again.",
+        }));
       } finally {
-        setFacebookSelectionSubmitting(false);
+        setFacebookSelectionAddingPageId("");
       }
     },
     [
       organizationId,
       facebookSelectionKey,
-      facebookSelectionSubmitting,
+      facebookSelectionAddingPageId,
+      facebookSelectionFinishing,
       refreshSocialAccounts,
       showSuccess,
     ],
   );
+
+  const handleDismissFacebookSelection = useCallback(() => {
+    if (
+      facebookSelectionLoading ||
+      facebookSelectionAddingPageId ||
+      facebookSelectionFinishing
+    ) {
+      return;
+    }
+
+    setFacebookSelectionOpen(false);
+    setFacebookSelectionPages([]);
+    setFacebookSelectionKey("");
+    setFacebookSelectionPageErrors({});
+    setFacebookSelectionError("");
+    setFacebookSelectionSessionInvalid(false);
+    setConnectingPlatform(null);
+  }, [
+    facebookSelectionLoading,
+    facebookSelectionAddingPageId,
+    facebookSelectionFinishing,
+  ]);
+
+  const handleReconnectFacebookSelection = useCallback(() => {
+    if (
+      facebookSelectionLoading ||
+      facebookSelectionAddingPageId ||
+      facebookSelectionFinishing
+    ) {
+      return;
+    }
+
+    handleDismissFacebookSelection();
+    setSocialConnectError("");
+    setSocialConnectSuccess("");
+    setSocialConnectDialogPlatform("facebook");
+    setSocialConnectDialogOpen(true);
+  }, [
+    facebookSelectionLoading,
+    facebookSelectionAddingPageId,
+    facebookSelectionFinishing,
+    handleDismissFacebookSelection,
+    setSocialConnectError,
+    setSocialConnectSuccess,
+  ]);
+
+  const handleFinishFacebookSelection = useCallback(async () => {
+    if (facebookSelectionAddingPageId || facebookSelectionFinishing) {
+      return;
+    }
+
+    if (!organizationId || !facebookSelectionKey) {
+      handleDismissFacebookSelection();
+      return;
+    }
+
+    try {
+      setFacebookSelectionFinishing(true);
+      setFacebookSelectionError("");
+      await metaService.finishOAuthSelection(organizationId, facebookSelectionKey);
+      setFacebookSelectionOpen(false);
+      setFacebookSelectionPages([]);
+      setFacebookSelectionKey("");
+      setFacebookSelectionPageErrors({});
+      setFacebookSelectionSessionInvalid(false);
+      setConnectingPlatform(null);
+      refreshSocialAccounts();
+    } catch (error) {
+      const sessionInvalid = Boolean(
+        error?.response?.status === 410 ||
+          error?.response?.data?.code === "selection_session_expired" ||
+          error?.response?.data?.code === "selection_session_consumed",
+      );
+      setFacebookSelectionSessionInvalid(sessionInvalid);
+      setFacebookSelectionError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Unable to finish Facebook Page selection.",
+      );
+    } finally {
+      setFacebookSelectionFinishing(false);
+    }
+  }, [
+    organizationId,
+    facebookSelectionKey,
+    facebookSelectionAddingPageId,
+    facebookSelectionFinishing,
+    refreshSocialAccounts,
+    handleDismissFacebookSelection,
+  ]);
 
   // ============================================================
   // HANDLE SOCIAL OAUTH CALLBACK
@@ -2287,7 +2415,15 @@ export default function OrganizationOverview() {
       <OverviewHeader
         organization={organization}
         onEdit={() => navigate(`/organizations/${organizationId}/edit`)}
+        onInvite={() => setInvitationDialogOpen(true)}
         onDelete={() => setDeleteOpen(true)}
+      />
+
+      <SocialAccountInvitationDialog
+        open={invitationDialogOpen}
+        organization={organization}
+        organizationId={organizationId}
+        onClose={() => setInvitationDialogOpen(false)}
       />
 
       {/* ======================================================
@@ -2383,24 +2519,15 @@ export default function OrganizationOverview() {
         open={facebookSelectionOpen}
         pages={facebookSelectionPages}
         loading={facebookSelectionLoading}
-        submitting={facebookSelectionSubmitting}
+        addingPageId={facebookSelectionAddingPageId}
+        finishing={facebookSelectionFinishing}
+        pageErrors={facebookSelectionPageErrors}
         error={facebookSelectionError}
-        onClose={() => {
-          if (facebookSelectionSubmitting) {
-            return;
-          }
-
-          setFacebookSelectionOpen(false);
-
-          setFacebookSelectionPages([]);
-
-          setFacebookSelectionKey("");
-
-          setFacebookSelectionError("");
-
-          setConnectingPlatform(null);
-        }}
-        onConfirm={handleFacebookPageSelection}
+        sessionInvalid={facebookSelectionSessionInvalid}
+        onDismiss={handleDismissFacebookSelection}
+        onFinish={handleFinishFacebookSelection}
+        onReconnect={handleReconnectFacebookSelection}
+        onAdd={handleFacebookPageAdd}
       />
 
       <ConnectSocialAccountDialog

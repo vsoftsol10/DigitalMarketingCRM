@@ -351,10 +351,11 @@
 
 #         return credential
 
-from datetime import timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.social_accounts.models import (
@@ -379,6 +380,18 @@ from .oauth import (
 )
 
 
+@dataclass(frozen=True)
+class InstagramOAuthResult:
+    """Provider identity and credential held in memory before persistence."""
+
+    instagram_user_id: str
+    username: str
+    account_name: str
+    profile_image: str
+    access_token: str
+    token_expires_at: datetime
+
+
 class InstagramOAuthService:
     """
     Handles the server-side Instagram Login OAuth flow.
@@ -398,8 +411,19 @@ class InstagramOAuthService:
     InstagramTokenLifecycleService.
     """
 
-    def __init__(self):
-        self.client = InstagramAPIClient()
+    def __init__(self, *, client=None):
+        self.client = client or InstagramAPIClient()
+
+    def build_authorization_url_for_state(self, *, state, redirect_uri=None):
+        """Build an authorization URL with the existing scopes and app config."""
+        params = {
+            "client_id": self.client.client_id,
+            "redirect_uri": redirect_uri or self.client.redirect_uri,
+            "response_type": "code",
+            "scope": ",".join(INSTAGRAM_OAUTH_SCOPES),
+            "state": state,
+        }
+        return "https://www.instagram.com/oauth/authorize?" f"{urlencode(params)}"
 
     # ========================================================
     # AUTHORIZATION URL
@@ -424,15 +448,7 @@ class InstagramOAuthService:
             nonce=nonce,
         )
 
-        params = {
-            "client_id": self.client.client_id,
-            "redirect_uri": self.client.redirect_uri,
-            "response_type": "code",
-            "scope": ",".join(INSTAGRAM_OAUTH_SCOPES),
-            "state": state,
-        }
-
-        return "https://www.instagram.com/oauth/authorize?" f"{urlencode(params)}"
+        return self.build_authorization_url_for_state(state=state)
 
         # ========================================================
 
@@ -664,6 +680,164 @@ class InstagramOAuthService:
     # COMPLETE CALLBACK
     # ========================================================
 
+    def exchange_and_fetch_profile(self, *, code, redirect_uri=None):
+        """Exchange provider credentials and fetch profile without database writes."""
+        if redirect_uri:
+            short_token_data = self.client.exchange_code(
+                code=code,
+                redirect_uri=redirect_uri,
+            )
+        else:
+            short_token_data = self.client.exchange_code(code=code)
+
+        short_lived_token = short_token_data.get("access_token")
+        if not short_lived_token:
+            raise InstagramIntegrationError("Instagram did not return an access token.")
+
+        long_token_data = self.client.exchange_long_lived_token(
+            short_lived_token=short_lived_token,
+        )
+        long_lived_token = long_token_data.get("access_token")
+        if not long_lived_token:
+            raise InstagramIntegrationError(
+                "Instagram did not return a long-lived access token."
+            )
+
+        try:
+            expires_in = int(long_token_data.get("expires_in"))
+        except (TypeError, ValueError) as exc:
+            raise InstagramIntegrationError(
+                "Instagram did not return a valid token expiry."
+            ) from exc
+        if expires_in <= 0:
+            raise InstagramIntegrationError("Instagram returned an invalid token expiry.")
+
+        token_expires_at = timezone.now() + timedelta(seconds=expires_in)
+        profile = self.client.get_profile(access_token=long_lived_token)
+        instagram_user_id = str(
+            profile.get("id") or profile.get("user_id") or ""
+        ).strip()
+        if not instagram_user_id:
+            raise InstagramIntegrationError(
+                "Instagram profile did not contain a user ID."
+            )
+
+        username = str(profile.get("username") or "").strip()
+        account_name = str(
+            profile.get("name") or username or "Instagram Account"
+        ).strip()
+        profile_image = str(profile.get("profile_picture_url") or "").strip()
+        return InstagramOAuthResult(
+            instagram_user_id=instagram_user_id,
+            username=username,
+            account_name=account_name,
+            profile_image=profile_image,
+            access_token=long_lived_token,
+            token_expires_at=token_expires_at,
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def persist_authorized_profile(
+        *,
+        organization,
+        result,
+        recover_unique_race=False,
+        restore_deleted_credential=False,
+    ):
+        """Persist a resolved Instagram profile and encrypted credential."""
+        social_account = (
+            SocialAccount.objects.select_for_update()
+            .filter(
+                organization=organization,
+                platform=SocialPlatform.INSTAGRAM,
+                platform_account_id=result.instagram_user_id,
+                is_deleted=False,
+            )
+            .first()
+        )
+        now = timezone.now()
+        if social_account is None:
+            if recover_unique_race:
+                try:
+                    with transaction.atomic():
+                        social_account = SocialAccount.objects.create(
+                            organization=organization,
+                            platform=SocialPlatform.INSTAGRAM,
+                            platform_account_id=result.instagram_user_id,
+                            account_name=result.account_name,
+                            username=result.username,
+                            profile_image=result.profile_image,
+                            status=SocialAccountStatus.CONNECTED,
+                            is_valid=True,
+                            last_synced_at=now,
+                        )
+                except IntegrityError:
+                    # Recover only the same-organization unique-key race.
+                    social_account = (
+                        SocialAccount.objects.select_for_update()
+                        .filter(
+                            organization=organization,
+                            platform=SocialPlatform.INSTAGRAM,
+                            platform_account_id=result.instagram_user_id,
+                            is_deleted=False,
+                        )
+                        .first()
+                    )
+                    if social_account is None:
+                        raise
+            else:
+                social_account = SocialAccount.objects.create(
+                    organization=organization,
+                    platform=SocialPlatform.INSTAGRAM,
+                    platform_account_id=result.instagram_user_id,
+                    account_name=result.account_name,
+                    username=result.username,
+                    profile_image=result.profile_image,
+                    status=SocialAccountStatus.CONNECTED,
+                    is_valid=True,
+                    last_synced_at=now,
+                )
+
+        social_account.account_name = result.account_name
+        social_account.username = result.username
+        social_account.profile_image = result.profile_image
+        social_account.status = SocialAccountStatus.CONNECTED
+        social_account.is_valid = True
+        social_account.last_synced_at = now
+        social_account.save(update_fields=[
+            "account_name", "username", "profile_image", "status",
+            "is_valid", "last_synced_at", "updated_at",
+        ])
+
+        encrypted_token = encrypt_token(result.access_token)
+        credentials = InstagramAccountCredential.objects.select_for_update().filter(
+            social_account=social_account,
+        )
+        if not restore_deleted_credential:
+            credentials = credentials.filter(is_deleted=False)
+        credential = credentials.order_by("-created_at").first()
+        if credential:
+            credential.encrypted_access_token = encrypted_token
+            credential.token_expires_at = result.token_expires_at
+            credential.status = InstagramCredentialStatus.ACTIVE
+            credential.last_verified_at = now
+            credential.is_deleted = False
+            credential.deleted_at = None
+            credential.save(update_fields=[
+                "encrypted_access_token", "token_expires_at", "status",
+                "last_verified_at", "is_deleted", "deleted_at", "updated_at",
+            ])
+        else:
+            InstagramAccountCredential.objects.create(
+                social_account=social_account,
+                encrypted_access_token=encrypted_token,
+                token_expires_at=result.token_expires_at,
+                status=InstagramCredentialStatus.ACTIVE,
+                last_verified_at=now,
+            )
+        return social_account
+
     @transaction.atomic
     def handle_callback(
         self,
@@ -672,213 +846,16 @@ class InstagramOAuthService:
         organization,
         user,
     ):
-        """
-        Complete Instagram OAuth and persist the resulting
-        long-lived credential.
-
-        The provider's expires_in value is treated as the
-        authoritative token lifetime.
-
-        We intentionally do NOT invent a fallback expiry when
-        Instagram does not return a valid expires_in value.
-        """
-
+        """Preserve the direct OAuth contract while reusing provider exchange."""
         if organization.created_by_id != user.id:
             raise InstagramIntegrationError(
                 "You do not have access to this organization."
             )
-
-        # ----------------------------------------------------
-        # STEP 1
-        # Authorization code -> short-lived token
-        # ----------------------------------------------------
-
-        short_token_data = self.client.exchange_code(
-            code=code,
+        result = self.exchange_and_fetch_profile(code=code)
+        return self.persist_authorized_profile(
+            organization=organization,
+            result=result,
         )
-
-        short_lived_token = short_token_data.get(
-            "access_token",
-        )
-
-        if not short_lived_token:
-            raise InstagramIntegrationError("Instagram did not return an access token.")
-
-        # ----------------------------------------------------
-        # STEP 2
-        # Short-lived token -> long-lived token
-        # ----------------------------------------------------
-
-        long_token_data = self.client.exchange_long_lived_token(
-            short_lived_token=short_lived_token,
-        )
-
-        long_lived_token = long_token_data.get(
-            "access_token",
-        )
-
-        if not long_lived_token:
-            raise InstagramIntegrationError(
-                "Instagram did not return a long-lived access token."
-            )
-
-        # ----------------------------------------------------
-        # Provider expiry is mandatory for our lifecycle.
-        #
-        # Do NOT silently assume 60 days if the provider does
-        # not return expires_in.
-        # ----------------------------------------------------
-
-        expires_in = long_token_data.get(
-            "expires_in",
-        )
-
-        try:
-            expires_in = int(expires_in)
-        except (
-            TypeError,
-            ValueError,
-        ) as exc:
-            raise InstagramIntegrationError(
-                "Instagram did not return a valid token expiry."
-            ) from exc
-
-        if expires_in <= 0:
-            raise InstagramIntegrationError(
-                "Instagram returned an invalid token expiry."
-            )
-
-        token_expires_at = timezone.now() + timedelta(
-            seconds=expires_in,
-        )
-
-        # ----------------------------------------------------
-        # STEP 3
-        # Fetch Instagram profile
-        # ----------------------------------------------------
-
-        profile = self.client.get_profile(
-            access_token=long_lived_token,
-        )
-
-        instagram_user_id = str(
-            profile.get("id") or profile.get("user_id") or ""
-        ).strip()
-
-        if not instagram_user_id:
-            raise InstagramIntegrationError(
-                "Instagram profile did not contain a user ID."
-            )
-
-        username = str(profile.get("username") or "").strip()
-
-        account_name = str(
-            profile.get("name") or username or "Instagram Account"
-        ).strip()
-
-        profile_image = str(profile.get("profile_picture_url") or "").strip()
-
-        # ----------------------------------------------------
-        # STEP 4
-        # Find existing SocialAccount
-        # ----------------------------------------------------
-
-        social_account = (
-            SocialAccount.objects.select_for_update()
-            .filter(
-                organization=organization,
-                platform=SocialPlatform.INSTAGRAM,
-                platform_account_id=instagram_user_id,
-                is_deleted=False,
-            )
-            .first()
-        )
-
-        # ----------------------------------------------------
-        # CREATE
-        # ----------------------------------------------------
-
-        if not social_account:
-            social_account = SocialAccount.objects.create(
-                organization=organization,
-                platform=SocialPlatform.INSTAGRAM,
-                platform_account_id=instagram_user_id,
-                account_name=account_name,
-                username=username,
-                profile_image=profile_image,
-                status=SocialAccountStatus.CONNECTED,
-                is_valid=True,
-                last_synced_at=timezone.now(),
-            )
-
-        # ----------------------------------------------------
-        # UPDATE
-        # ----------------------------------------------------
-
-        else:
-            social_account.account_name = account_name
-            social_account.username = username
-            social_account.profile_image = profile_image
-            social_account.status = SocialAccountStatus.CONNECTED
-            social_account.is_valid = True
-            social_account.last_synced_at = timezone.now()
-
-            social_account.save(
-                update_fields=[
-                    "account_name",
-                    "username",
-                    "profile_image",
-                    "status",
-                    "is_valid",
-                    "last_synced_at",
-                    "updated_at",
-                ],
-            )
-
-        # ----------------------------------------------------
-        # STEP 5
-        # Encrypt and persist credential
-        # ----------------------------------------------------
-
-        encrypted_token = encrypt_token(
-            long_lived_token,
-        )
-
-        credential = (
-            InstagramAccountCredential.objects.select_for_update()
-            .filter(
-                social_account=social_account,
-                is_deleted=False,
-            )
-            .first()
-        )
-
-        if credential:
-            credential.encrypted_access_token = encrypted_token
-            credential.token_expires_at = token_expires_at
-            credential.status = InstagramCredentialStatus.ACTIVE
-            credential.last_verified_at = timezone.now()
-
-            credential.save(
-                update_fields=[
-                    "encrypted_access_token",
-                    "token_expires_at",
-                    "status",
-                    "last_verified_at",
-                    "updated_at",
-                ],
-            )
-
-        else:
-            InstagramAccountCredential.objects.create(
-                social_account=social_account,
-                encrypted_access_token=encrypted_token,
-                token_expires_at=token_expires_at,
-                status=InstagramCredentialStatus.ACTIVE,
-                last_verified_at=timezone.now(),
-            )
-
-        return social_account
 
 
 class InstagramCredentialService:

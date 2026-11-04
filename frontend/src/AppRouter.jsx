@@ -31,11 +31,15 @@ import EditContentIdea from "./pages/planner/EditContentIdea";
 import CreatePlan from "./pages/plans/CreatePlan";
 import PlanDetails from "./pages/plans/PlanDetails";
 import EditPlan from "./pages/plans/EditPlan";
+import AcceptInvitation from "./pages/social-invitations/AcceptInvitation";
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Invitation acceptance is public and also remains available to signed-in users. */}
+        <Route path="/social-invitations/accept" element={<AcceptInvitation />} />
+
         {/* Public Routes */}
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />

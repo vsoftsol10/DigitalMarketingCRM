@@ -213,6 +213,29 @@ const metaService = {
 
     return response.data;
   },
+
+  async finishOAuthSelection(organizationId, selectionKey) {
+    if (!organizationId) {
+      throw new Error("Organization ID is required.");
+    }
+
+    if (!selectionKey) {
+      throw new Error("Facebook selection key is required.");
+    }
+
+    const response = await api.post("/integrations/meta/oauth/selection/finish/", {
+      organization_id: organizationId,
+      selection_key: selectionKey,
+    });
+
+    if (!response?.data?.success) {
+      throw new Error(
+        response?.data?.message || "Unable to finish Facebook Page selection.",
+      );
+    }
+
+    return response.data;
+  },
 };
 
 export default metaService;

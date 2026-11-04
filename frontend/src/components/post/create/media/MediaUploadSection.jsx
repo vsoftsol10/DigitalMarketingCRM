@@ -11,7 +11,7 @@ import useMediaUpload from "../../../../hooks/post/useMediaUpload";
 
 import { TYPOGRAPHY } from "../../../../theme/typography";
 
-export default function MediaUploadSection({ config }) {
+export default function MediaUploadSection({ config, organizationId }) {
   const {
     formState: { errors },
   } = useFormContext();
@@ -32,8 +32,11 @@ export default function MediaUploadSection({ config }) {
     removeMedia,
 
     clearMedia,
+    rejectedFiles,
+    retryUpload,
   } = useMediaUpload({
     config,
+    organizationId,
   });
 
   const hasMedia = media.length > 0;
@@ -80,11 +83,38 @@ export default function MediaUploadSection({ config }) {
           </Typography>
         )}
 
+        {rejectedFiles.length > 0 && (
+          <Typography
+            sx={{
+              ...TYPOGRAPHY.helperText,
+              color: "error.main",
+              mt: -0.5,
+            }}
+          >
+            {rejectedFiles.map(({ file, reason }) => (
+              `${file?.name || "File"}: ${reason === "FILE_TOO_LARGE"
+                ? "This file exceeds the configured upload limit."
+                : reason === "INVALID_TYPE"
+                  ? "This file format is not supported."
+                  : reason === "MAX_FILES"
+                    ? "The maximum number of files has been reached."
+                    : "This file was already selected."
+              }`
+            )).join(" ")}
+          </Typography>
+        )}
+
         {/* =====================================================
             UPLOADED MEDIA
         ===================================================== */}
 
-        {hasMedia && <MediaPreviewGrid media={media} onRemove={removeMedia} />}
+        {hasMedia && (
+          <MediaPreviewGrid
+            media={media}
+            onRemove={removeMedia}
+            onRetry={retryUpload}
+          />
+        )}
 
         {/* =====================================================
             ACTIONS AFTER UPLOAD

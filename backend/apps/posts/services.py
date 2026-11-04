@@ -14,6 +14,8 @@ from apps.activities.models import ActivityEventType, ActivitySource
 from apps.activities.services import create_activity_log
 
 from .models import (
+    MediaUploadSession,
+    MediaUploadStatus,
     Post,
     PostMedia,
     PostPlatform,
@@ -38,6 +40,7 @@ def create_post(
     organization,
     created_by,
     validated_data,
+    idempotency_key=None,
 ):
     """
     Create a post together with its exact social-account targets
@@ -49,6 +52,15 @@ def create_post(
     / integration layer.
     """
 
+    if idempotency_key:
+        existing_post = Post.objects.filter(
+            organization=organization,
+            request_idempotency_key=idempotency_key,
+            is_deleted=False,
+        ).first()
+        if existing_post:
+            return existing_post
+
     targets = validated_data.pop(
         "targets",
         [],
@@ -56,6 +68,11 @@ def create_post(
 
     media_items = validated_data.pop(
         "media",
+        [],
+    )
+
+    media_asset_ids = validated_data.pop(
+        "media_asset_ids",
         [],
     )
 
@@ -85,6 +102,14 @@ def create_post(
         require_publishable=publish_type != PostPublishType.DRAFT,
     )
 
+    if media_asset_ids:
+        validate_media_assets_for_targets(
+            organization=organization,
+            created_by=created_by,
+            media_asset_ids=media_asset_ids,
+            targets=targets,
+        )
+
     scheduled_at = build_scheduled_at(
         publish_type=publish_type,
         publish_date=publish_date,
@@ -99,6 +124,7 @@ def create_post(
     post = Post.objects.create(
         organization=organization,
         created_by=created_by,
+        request_idempotency_key=idempotency_key,
         scheduled_at=scheduled_at,
         status=status,
         **validated_data,
@@ -122,10 +148,18 @@ def create_post(
             scheduled_timezone=timezone_name,
         )
 
-    create_post_media(
-        post=post,
-        media_items=media_items,
-    )
+    if media_asset_ids:
+        create_post_media_from_uploads(
+            post=post,
+            organization=organization,
+            created_by=created_by,
+            media_asset_ids=media_asset_ids,
+        )
+    else:
+        create_post_media(
+            post=post,
+            media_items=media_items,
+        )
 
     create_activity_log(
         organization=organization,
@@ -412,35 +446,146 @@ def create_post_media(
         )
 
         post_media_items.append(
-            PostMedia(
-                post=post,
-                media_type=media_type,
-                file=uploaded_file,
-                original_filename=getattr(
+            {
+                "post": post,
+                "media_type": media_type,
+                "file": uploaded_file,
+                "original_filename": getattr(
                     uploaded_file,
                     "name",
                     "",
                 ),
-                mime_type=getattr(
+                "mime_type": getattr(
                     uploaded_file,
                     "content_type",
                     "",
                 ),
-                file_size=getattr(
+                "file_size": getattr(
                     uploaded_file,
                     "size",
                     None,
                 ),
+                "sort_order": index,
+            }
+        )
+
+    for media_item in post_media_items:
+        PostMedia.objects.create(**media_item)
+
+    return list(PostMedia.objects.filter(post=post, is_deleted=False).order_by("sort_order"))
+
+
+def create_post_media_from_uploads(
+    *,
+    post,
+    organization,
+    created_by,
+    media_asset_ids,
+):
+    """Attach verified, organization-owned Cloudinary assets to a post."""
+
+    sessions = list(
+        MediaUploadSession.objects.select_for_update().filter(
+            id__in=media_asset_ids,
+            organization=organization,
+            created_by=created_by,
+            status=MediaUploadStatus.READY,
+            attached_post__isnull=True,
+            expires_at__gt=timezone.now(),
+            is_deleted=False,
+        )
+    )
+    requested_ids = [str(item) for item in media_asset_ids]
+    if len(requested_ids) != len(set(requested_ids)):
+        raise ValueError("The same media upload cannot be attached more than once.")
+    session_map = {str(session.id): session for session in sessions}
+    if len(session_map) != len(requested_ids):
+        raise ValueError("One or more media uploads are unavailable or not ready.")
+    if any(session.expires_at <= timezone.now() for session in sessions):
+        raise ValueError("One or more media uploads have expired.")
+
+    post_media_items = []
+    for index, asset_id in enumerate(requested_ids):
+        session = session_map[str(asset_id)]
+        post_media_items.append(
+            PostMedia(
+                post=post,
+                media_type=session.media_type,
+                file=session.storage_name,
+                original_filename=session.original_filename,
+                mime_type=session.content_type,
+                file_size=session.expected_size,
                 sort_order=index,
             )
         )
 
-    if post_media_items:
-        PostMedia.objects.bulk_create(
-            post_media_items,
-        )
-
+    PostMedia.objects.bulk_create(post_media_items)
+    MediaUploadSession.objects.filter(id__in=requested_ids).update(
+        attached_post=post,
+        updated_at=timezone.now(),
+    )
     return post_media_items
+
+
+def validate_media_assets_for_targets(
+    *,
+    organization,
+    created_by,
+    media_asset_ids,
+    targets,
+):
+    """Apply destination-specific preflight checks before post persistence."""
+
+    sessions = MediaUploadSession.objects.filter(
+        id__in=media_asset_ids,
+        organization=organization,
+        created_by=created_by,
+        status=MediaUploadStatus.READY,
+        attached_post__isnull=True,
+        expires_at__gt=timezone.now(),
+        is_deleted=False,
+    )
+    session_map = {str(session.id): session for session in sessions}
+    for asset_id in media_asset_ids:
+        session = session_map.get(str(asset_id))
+        if not session:
+            raise ValueError("One or more media uploads are unavailable or not ready.")
+
+    account_ids = [item["social_account"] for item in targets]
+    accounts = SocialAccount.objects.filter(
+        id__in=account_ids,
+        organization=organization,
+        is_deleted=False,
+    )
+    platform_by_account = {account.id: account.platform for account in accounts}
+
+    for target in targets:
+        platform = platform_by_account.get(target["social_account"])
+        content_type = str(target.get("content_type") or "POST").upper()
+        for asset_id in media_asset_ids:
+            session = session_map[str(asset_id)]
+            if session.media_type != PostMediaType.VIDEO:
+                continue
+            metadata = session.metadata or {}
+            duration = float(metadata.get("duration") or 0)
+            width = int(metadata.get("width") or 0)
+            height = int(metadata.get("height") or 0)
+            frame_rate = float(metadata.get("frame_rate") or 0)
+            if not duration or not width or not height:
+                raise ValueError("Video metadata could not be verified.")
+
+            if platform == SocialPlatform.INSTAGRAM and content_type == "REEL":
+                if not 3 <= duration <= 900:
+                    raise ValueError("Instagram Reels must be between 3 seconds and 15 minutes.")
+                if width > 1920 or not 23 <= frame_rate <= 60:
+                    raise ValueError("This video does not meet Instagram Reel dimensions or frame-rate requirements.")
+            elif platform == SocialPlatform.FACEBOOK and content_type == "REEL":
+                if not 4 <= duration <= 60:
+                    raise ValueError("Facebook Reels must be between 4 and 60 seconds.")
+                if width < 540 or height < 960 or not 23 <= frame_rate <= 60:
+                    raise ValueError("This video does not meet Facebook Reel dimensions or frame-rate requirements.")
+            elif content_type == "STORY" and duration > 60:
+                raise ValueError("Story videos must not exceed 60 seconds.")
 
 
 # ============================================================

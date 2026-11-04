@@ -194,13 +194,28 @@ export const CREATE_POST = {
   // ==========================================
 
   media: {
-    accepted_types: ["image/jpeg", "image/png", "image/webp", "video/mp4"],
+    accepted_types: [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "video/mp4",
+      "video/quicktime",
+    ],
 
-    accepted_extensions: [".jpg", ".jpeg", ".png", ".webp", ".mp4"],
+    accepted_extensions: [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+      ".mp4",
+      ".mov",
+    ],
 
     max_files: 10,
 
-    max_file_size_mb: 50,
+    // The authoritative size limit is returned by the upload-session API.
+    // Keeping this unset prevents an arbitrary small browser-only ceiling.
+    max_file_size_mb: null,
 
     allow_multiple: true,
   },

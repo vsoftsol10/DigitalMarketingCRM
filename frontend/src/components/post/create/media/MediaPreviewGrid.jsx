@@ -2,7 +2,7 @@ import { Box, Typography } from "@mui/material";
 
 import MediaPreviewItem from "./MediaPreviewItem";
 
-export default function MediaPreviewGrid({ media = [], onRemove }) {
+export default function MediaPreviewGrid({ media = [], onRemove, onRetry }) {
   if (!media.length) {
     return null;
   }
@@ -65,6 +65,7 @@ export default function MediaPreviewGrid({ media = [], onRemove }) {
             media={item}
             index={index}
             onRemove={onRemove}
+            onRetry={onRetry}
           />
         ))}
       </Box>

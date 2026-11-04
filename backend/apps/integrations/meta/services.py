@@ -1487,8 +1487,8 @@ from typing import List
 from uuid import uuid4
 
 from django.conf import settings
-from django.db import transaction
-from django.db.models import Case, IntegerField, Value, When
+from django.db import IntegrityError, transaction
+from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
 from django.utils import timezone
 
 from apps.social_accounts.models import (
@@ -1726,8 +1726,13 @@ class MetaAccountDiscoveryService:
                 raw_page_count,
                 usable_page_count,
             )
-            raise MetaAPIError(
-                "Meta did not return any Facebook Pages for " "this authorization.",
+            if page_response_metadata.get("response_case") != "explicitly_empty_data":
+                raise MetaAPIError(
+                    "Meta returned an invalid Facebook Pages response.",
+                )
+            return MetaDiscoveryResult(
+                provider_user_id=provider_user_id,
+                accounts=[],
             )
 
         accounts: List[MetaAccountData] = []
@@ -1837,11 +1842,6 @@ class MetaAccountDiscoveryService:
             raw_page_count,
             usable_page_count,
         )
-
-        if not accounts:
-            raise MetaAPIError(
-                "Meta returned no usable Facebook Pages.",
-            )
 
         return MetaDiscoveryResult(
             provider_user_id=provider_user_id,
@@ -1986,7 +1986,7 @@ class MetaSocialAccountService:
                 provider_user_id=provider_user_id,
             )
             .order_by(
-                "-is_deleted",
+                "is_deleted",
                 "-created_at",
             )
             .first()
@@ -2032,13 +2032,39 @@ class MetaSocialAccountService:
         # NEW CONNECTION
         # ----------------------------------------------------
 
-        return SocialConnection.objects.create(
-            organization=self.organization,
-            provider=SocialConnectionProvider.META,
-            provider_user_id=provider_user_id,
-            status=SocialConnectionStatus.ACTIVE,
-            last_synced_at=now,
-        )
+        try:
+            # Isolate the insert so the outer account transaction remains
+            # usable if a concurrent OAuth session wins the unique index.
+            with transaction.atomic():
+                return SocialConnection.objects.create(
+                    organization=self.organization,
+                    provider=SocialConnectionProvider.META,
+                    provider_user_id=provider_user_id,
+                    status=SocialConnectionStatus.ACTIVE,
+                    last_synced_at=now,
+                )
+        except IntegrityError as exc:
+            cause = getattr(exc, "__cause__", None)
+            constraint_name = getattr(getattr(cause, "diag", None), "constraint_name", None)
+            if constraint_name != "unique_org_provider_user_connection":
+                raise
+
+            # Query only after the savepoint has rolled back, and only treat
+            # the matching live-key constraint as a race we can recover.
+            connection = (
+                SocialConnection.objects.select_for_update()
+                .filter(
+                    organization=self.organization,
+                    provider=SocialConnectionProvider.META,
+                    provider_user_id=provider_user_id,
+                    is_deleted=False,
+                )
+                .order_by("-created_at")
+                .first()
+            )
+            if not connection:
+                raise
+            return connection
 
     # ========================================================
     # USER CREDENTIAL
@@ -2223,18 +2249,49 @@ class MetaSocialAccountService:
         # CREATE ACCOUNT
         # ----------------------------------------------------
 
-        return SocialAccount.objects.create(
-            organization=self.organization,
-            connection=connection,
-            platform=SocialPlatform.FACEBOOK,
-            platform_account_id=platform_account_id,
-            account_name=(account_data.account_name or platform_account_id),
-            username=account_data.username or "",
-            profile_image=account_data.profile_image or "",
-            status=SocialAccountStatus.CONNECTED,
-            is_valid=True,
-            last_synced_at=now,
-        )
+        try:
+            # Use a savepoint so a concurrent connect that wins the unique
+            # constraint does not poison the surrounding account transaction.
+            with transaction.atomic():
+                return SocialAccount.objects.create(
+                    organization=self.organization,
+                    connection=connection,
+                    platform=SocialPlatform.FACEBOOK,
+                    platform_account_id=platform_account_id,
+                    account_name=(account_data.account_name or platform_account_id),
+                    username=account_data.username or "",
+                    profile_image=account_data.profile_image or "",
+                    status=SocialAccountStatus.CONNECTED,
+                    is_valid=True,
+                    last_synced_at=now,
+                )
+        except IntegrityError:
+            # Another request may have inserted the same Page since the
+            # initial lookup. Reuse that row and continue credential sync.
+            social_account = (
+                SocialAccount.objects.select_for_update()
+                .filter(
+                    organization=self.organization,
+                    platform=SocialPlatform.FACEBOOK,
+                    platform_account_id=platform_account_id,
+                )
+                .order_by("-is_deleted", "-created_at")
+                .first()
+            )
+            if not social_account:
+                raise
+
+            social_account.connection = connection
+            social_account.account_name = account_data.account_name or platform_account_id
+            social_account.username = account_data.username or ""
+            social_account.profile_image = account_data.profile_image or ""
+            social_account.status = SocialAccountStatus.CONNECTED
+            social_account.is_valid = True
+            social_account.last_synced_at = now
+            social_account.is_deleted = False
+            social_account.deleted_at = None
+            social_account.save()
+            return social_account
 
     # ========================================================
     # PAGE CREDENTIAL
@@ -2828,21 +2885,11 @@ class MetaOAuthService:
         No Instagram account is stored in the new session.
         """
 
-        if not accounts:
-            raise MetaAPIError(
-                "Meta did not return any Facebook Pages.",
-            )
-
         facebook_accounts = [
             account
             for account in accounts
             if account.platform == SocialPlatform.FACEBOOK
         ]
-
-        if not facebook_accounts:
-            raise MetaAPIError(
-                "Meta did not return any usable Facebook Pages.",
-            )
 
         expires_at = timezone.now() + timedelta(
             seconds=self.SESSION_TTL_SECONDS,
@@ -3080,8 +3127,7 @@ class MetaOAuthService:
                 ↓
             Discover Facebook Pages
                 ↓
-            One Page → Direct connect
-            Multiple Pages → Selection session
+            Page selection session
 
         RECONNECT:
             OAuth
@@ -3219,16 +3265,16 @@ class MetaOAuthService:
             if account.platform == SocialPlatform.FACEBOOK
         ]
 
-        if not facebook_accounts:
-            raise MetaAPIError(
-                "Meta did not return any usable Facebook Pages.",
-            )
-
         # ====================================================
         # RECONNECT EXISTING FACEBOOK ACCOUNT
         # ====================================================
 
         if action == OAUTH_ACTION_RECONNECT:
+            if not facebook_accounts:
+                raise MetaAPIError(
+                    "Meta did not return any usable Facebook Pages.",
+                )
+
             return self.reconnect_existing_account(
                 organization=organization,
                 user=user,
@@ -3242,42 +3288,8 @@ class MetaOAuthService:
         # NORMAL CONNECT FLOW
         # ====================================================
 
-        # ----------------------------------------------------
-        # ONE FACEBOOK PAGE → DIRECT CONNECT
-        # ----------------------------------------------------
-
-        if len(facebook_accounts) == 1:
-
-            selected_page_id = facebook_accounts[0].platform_account_id
-
-            selected_accounts = [
-                account
-                for account in facebook_accounts
-                if account.platform_account_id == selected_page_id
-            ]
-
-            social_service = MetaSocialAccountService(
-                organization=organization,
-                user=user,
-            )
-
-            connection, accounts = social_service.sync_connection_and_accounts(
-                provider_user_id=discovery.provider_user_id,
-                user_access_token=access_token,
-                accounts=selected_accounts,
-                token_expires_at=token_expires_at,
-            )
-
-            return {
-                "status": "connected",
-                "connection": connection,
-                "accounts": accounts,
-                "provider_user_id": discovery.provider_user_id,
-            }
-
-        # ----------------------------------------------------
-        # MULTIPLE FACEBOOK PAGES → SELECTION SESSION
-        # ----------------------------------------------------
+        # Every connect flow uses explicit Page selection, including
+        # authorizations that return only one eligible Page.
 
         session = self.create_selection_session(
             organization=organization,
@@ -3298,6 +3310,61 @@ class MetaOAuthService:
     # ========================================================
     # GET SELECTION DATA
     # ========================================================
+
+    @staticmethod
+    def _get_connected_page_ids(*, organization, page_ids):
+        """Return Page IDs with a currently usable CRM connection."""
+        page_ids = {str(page_id) for page_id in page_ids if page_id}
+        if not page_ids:
+            return set()
+
+        now = timezone.now()
+        active_page_credential = MetaAccountCredential.objects.filter(
+            social_account_id=OuterRef("pk"),
+            credential_type=MetaCredentialType.PAGE,
+            status=MetaCredentialStatus.ACTIVE,
+            access_token__gt="",
+            is_deleted=False,
+        ).filter(
+            Q(token_expires_at__isnull=True) | Q(token_expires_at__gt=now)
+        )
+        active_user_credential = MetaAccountCredential.objects.filter(
+            social_connection_id=OuterRef("connection_id"),
+            credential_type=MetaCredentialType.USER,
+            status=MetaCredentialStatus.ACTIVE,
+            access_token__gt="",
+            is_deleted=False,
+        ).filter(
+            Q(token_expires_at__isnull=True) | Q(token_expires_at__gt=now),
+            Q(provider_is_valid__isnull=True) | Q(provider_is_valid=True),
+            Q(provider_expires_at__isnull=True) | Q(provider_expires_at__gt=now),
+            Q(data_access_expires_at__isnull=True)
+            | Q(data_access_expires_at__gt=now),
+        )
+
+        return set(
+            SocialAccount.objects.filter(
+                organization=organization,
+                platform=SocialPlatform.FACEBOOK,
+                platform_account_id__in=page_ids,
+                is_deleted=False,
+                status=SocialAccountStatus.CONNECTED,
+                is_valid=True,
+                connection__isnull=False,
+                connection__provider=SocialConnectionProvider.META,
+                connection__status=SocialConnectionStatus.ACTIVE,
+                connection__is_deleted=False,
+            )
+            .annotate(
+                has_active_page_credential=Exists(active_page_credential),
+                has_active_user_credential=Exists(active_user_credential),
+            )
+            .filter(
+                has_active_page_credential=True,
+                has_active_user_credential=True,
+            )
+            .values_list("platform_account_id", flat=True)
+        )
 
     def get_selection_data(
         self,
@@ -3345,12 +3412,14 @@ class MetaOAuthService:
         if session.is_consumed:
             raise MetaAPIError(
                 "This Meta authorization session has already been used.",
+                code="selection_session_consumed",
             )
 
         if session.is_expired:
             raise MetaAPIError(
                 "The Meta authorization session has expired. "
                 "Please connect Facebook again.",
+                code="selection_session_expired",
             )
 
         # ----------------------------------------------------
@@ -3361,20 +3430,25 @@ class MetaOAuthService:
             session.encrypted_accounts,
         )
 
+        connected_page_ids = self._get_connected_page_ids(
+            organization=organization,
+            page_ids=[
+                account.platform_account_id
+                for account in accounts
+                if account.platform == SocialPlatform.FACEBOOK
+            ],
+        )
+
         pages = [
             {
                 "id": account.platform_account_id,
                 "name": account.account_name,
                 "profile_image": account.profile_image,
+                "connected": account.platform_account_id in connected_page_ids,
             }
             for account in accounts
             if account.platform == SocialPlatform.FACEBOOK
         ]
-
-        if not pages:
-            raise MetaAPIError(
-                "No Facebook Pages are available in this " "authorization session.",
-            )
 
         return {
             "selection_key": str(
@@ -3388,6 +3462,7 @@ class MetaOAuthService:
     # CONFIRM SELECTION
     # ========================================================
 
+    @transaction.atomic
     def confirm_selection(
         self,
         *,
@@ -3410,6 +3485,12 @@ class MetaOAuthService:
             raise MetaAPIError(
                 "Meta authorization session was not found.",
             )
+
+        # Serialize additions and finish requests using the session row.
+        try:
+            session = MetaOAuthSession.objects.select_for_update().get(pk=session.pk)
+        except MetaOAuthSession.DoesNotExist as exc:
+            raise MetaAPIError("Meta authorization session was not found.") from exc
 
         # ----------------------------------------------------
         # ORGANIZATION OWNERSHIP
@@ -3437,12 +3518,14 @@ class MetaOAuthService:
         if session.is_consumed:
             raise MetaAPIError(
                 "This Meta authorization session has already been used.",
+                code="selection_session_consumed",
             )
 
         if session.is_expired:
             raise MetaAPIError(
                 "The Meta authorization session has expired. "
                 "Please connect Facebook again.",
+                code="selection_session_expired",
             )
 
         # ----------------------------------------------------
@@ -3537,6 +3620,11 @@ class MetaOAuthService:
             user=user,
         )
 
+        already_connected = page_id in self._get_connected_page_ids(
+            organization=organization,
+            page_ids=[page_id],
+        )
+
         connection, synced_accounts = social_service.sync_connection_and_accounts(
             provider_user_id=session.provider_user_id,
             user_access_token=user_access_token,
@@ -3544,24 +3632,50 @@ class MetaOAuthService:
             token_expires_at=session.token_expires_at,
         )
 
-        # ----------------------------------------------------
-        # CONSUME SESSION
-        # ----------------------------------------------------
-
-        session.consumed_at = timezone.now()
-
-        session.save(
-            update_fields=[
-                "consumed_at",
-                "updated_at",
-            ]
-        )
-
         return {
             "connection": connection,
             "accounts": synced_accounts,
             "provider_user_id": session.provider_user_id,
+            "already_connected": already_connected,
         }
+
+    @transaction.atomic
+    def finish_selection(
+        self,
+        *,
+        session,
+        organization,
+        user,
+    ):
+        """Consume an active Page selection session when the user finishes."""
+        if not session:
+            raise MetaAPIError("Meta authorization session was not found.")
+
+        try:
+            session = MetaOAuthSession.objects.select_for_update().get(pk=session.pk)
+        except MetaOAuthSession.DoesNotExist as exc:
+            raise MetaAPIError("Meta authorization session was not found.") from exc
+
+        if session.organization_id != organization.pk:
+            raise MetaAPIError(
+                "This Meta authorization session does not belong to the selected organization."
+            )
+        if session.user_id != user.id:
+            raise MetaAPIError("This Meta authorization session belongs to another user.")
+        if session.is_consumed:
+            raise MetaAPIError(
+                "This Meta authorization session has already been used.",
+                code="selection_session_consumed",
+            )
+        if session.is_expired:
+            raise MetaAPIError(
+                "The Meta authorization session has expired.",
+                code="selection_session_expired",
+            )
+
+        session.consumed_at = timezone.now()
+        session.save(update_fields=["consumed_at", "updated_at"])
+        return session
 
 
 class MetaCredentialService:

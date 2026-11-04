@@ -23,13 +23,121 @@ import {
 // PLATFORM CONFIGURATION
 // ============================================================
 
+// const PLATFORM_CONFIG = {
+//   facebook: {
+//     connect: {
+//       title: "Connect Facebook",
+//       continueLabel: "Continue with Facebook",
+//       loadingLabel: "Connecting...",
+//       message: "Your Facebook login will open in the next step.",
+
+//       requirements: [
+//         {
+//           title: "Facebook account",
+//           description:
+//             "Make sure you can sign in to the Facebook account you want to use.",
+//         },
+//         {
+//           title: "Facebook Page",
+//           description:
+//             "Make sure the Facebook Page you want to connect is already connected to a Business Portfolio.",
+//         },
+//         {
+//           title: "Page access",
+//           description:
+//             "Make sure you have the required access to manage the Facebook Page.",
+//         },
+//       ],
+//     },
+
+//     reconnect: {
+//       title: "Reconnect Facebook",
+//       continueLabel: "Continue with Facebook",
+//       loadingLabel: "Reconnecting...",
+//       message:
+//         "Your Facebook login will open in the next step. Make sure you are using the same Meta Business Portfolio that was previously used to connect this Page.",
+
+//       requirements: [
+//         {
+//           title: "Same Meta Business Portfolio",
+//           description:
+//             "Make sure you are logged in to the same Meta Business Portfolio that was previously used to connect this Facebook Page.",
+//         },
+//         {
+//           title: "Facebook Page",
+//           description:
+//             "Make sure the Facebook Page you want to reconnect is available in that Business Portfolio.",
+//         },
+//         {
+//           title: "Page access",
+//           description:
+//             "Make sure you have the required access to manage the Facebook Page.",
+//         },
+//       ],
+//     },
+//   },
+
+//   instagram: {
+//     connect: {
+//       title: "Connect Instagram",
+//       continueLabel: "Continue with Instagram",
+//       loadingLabel: "Connecting...",
+//       message: "Your Instagram login will open in the next step.",
+
+//       requirements: [
+//         {
+//           title: "Professional Instagram account",
+//           description:
+//             "Make sure the Instagram account you want to connect is a Professional account.",
+//         },
+//         {
+//           title: "Instagram access",
+//           description:
+//             "Make sure you can sign in to the Instagram account you want to connect.",
+//         },
+//         {
+//           title: "Authorization",
+//           description:
+//             "You'll need to authorize access to connect your Instagram account.",
+//         },
+//       ],
+//     },
+
+//     reconnect: {
+//       title: "Reconnect Instagram",
+//       continueLabel: "Continue with Instagram",
+//       loadingLabel: "Reconnecting...",
+//       message:
+//         "Your Instagram login will open in the next step. Make sure you are logged in to the same Instagram account that was previously connected.",
+
+//       requirements: [
+//         {
+//           title: "Same Instagram account",
+//           description:
+//             "Make sure you are logged in to the same Instagram account that was previously connected.",
+//         },
+//         {
+//           title: "Professional Instagram account",
+//           description:
+//             "Make sure the Instagram account is still a Professional account.",
+//         },
+//         {
+//           title: "Authorization",
+//           description:
+//             "You'll need to authorize access again to reconnect your Instagram account.",
+//         },
+//       ],
+//     },
+//   },
+// };
 const PLATFORM_CONFIG = {
   facebook: {
     connect: {
       title: "Connect Facebook",
       continueLabel: "Continue with Facebook",
       loadingLabel: "Connecting...",
-      message: "Your Facebook login will open in the next step.",
+      message:
+        "Your Facebook login will open in the next step. You can then select the Pages you want to connect.",
 
       requirements: [
         {
@@ -38,14 +146,14 @@ const PLATFORM_CONFIG = {
             "Make sure you can sign in to the Facebook account you want to use.",
         },
         {
-          title: "Facebook Page",
+          title: "Select Facebook Pages",
           description:
-            "Make sure the Facebook Page you want to connect is already connected to a Business Portfolio.",
+            "After signing in, select the Facebook Pages you want to connect to your organization.",
         },
         {
-          title: "Page access",
+          title: "Page permissions",
           description:
-            "Make sure you have the required access to manage the Facebook Page.",
+            "Make sure you authorize the required permissions to manage and publish content to your selected Pages.",
         },
       ],
     },
@@ -55,23 +163,23 @@ const PLATFORM_CONFIG = {
       continueLabel: "Continue with Facebook",
       loadingLabel: "Reconnecting...",
       message:
-        "Your Facebook login will open in the next step. Make sure you are using the same Meta Business Portfolio that was previously used to connect this Page.",
+        "Your Facebook login will open in the next step. Make sure you use the same Facebook account that was previously connected.",
 
       requirements: [
         {
-          title: "Same Meta Business Portfolio",
+          title: "Same Facebook account",
           description:
-            "Make sure you are logged in to the same Meta Business Portfolio that was previously used to connect this Facebook Page.",
+            "Make sure you sign in to the same Facebook account that was previously used to connect this Page.",
         },
         {
-          title: "Facebook Page",
+          title: "Facebook Page access",
           description:
-            "Make sure the Facebook Page you want to reconnect is available in that Business Portfolio.",
+            "Make sure the previously connected Facebook Page is available to your account.",
         },
         {
-          title: "Page access",
+          title: "Authorization",
           description:
-            "Make sure you have the required access to manage the Facebook Page.",
+            "Authorize the required permissions again to reconnect your Facebook Page.",
         },
       ],
     },
@@ -98,7 +206,7 @@ const PLATFORM_CONFIG = {
         {
           title: "Authorization",
           description:
-            "You'll need to authorize access to connect your Instagram account.",
+            "Authorize access to connect your Instagram account.",
         },
       ],
     },
@@ -108,13 +216,13 @@ const PLATFORM_CONFIG = {
       continueLabel: "Continue with Instagram",
       loadingLabel: "Reconnecting...",
       message:
-        "Your Instagram login will open in the next step. Make sure you are logged in to the same Instagram account that was previously connected.",
+        "Your Instagram login will open in the next step. Make sure you use the same Instagram account that was previously connected.",
 
       requirements: [
         {
           title: "Same Instagram account",
           description:
-            "Make sure you are logged in to the same Instagram account that was previously connected.",
+            "Make sure you sign in to the same Instagram account that was previously connected.",
         },
         {
           title: "Professional Instagram account",
@@ -124,12 +232,14 @@ const PLATFORM_CONFIG = {
         {
           title: "Authorization",
           description:
-            "You'll need to authorize access again to reconnect your Instagram account.",
+            "Authorize the required permissions again to reconnect your Instagram account.",
         },
       ],
     },
   },
 };
+
+
 
 // ============================================================
 // COMPONENT

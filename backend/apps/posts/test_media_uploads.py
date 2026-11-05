@@ -1,7 +1,9 @@
-from unittest.mock import patch
 from datetime import timedelta
+from io import BytesIO
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
@@ -11,8 +13,104 @@ from apps.organizations.models import Organization
 from apps.social_accounts.models import SocialAccount, SocialPlatform
 
 from .models import MediaUploadSession, MediaUploadStatus, Post
+from .publishing.meta import MetaPublisher
 from .tasks import cleanup_expired_media_upload_sessions_task
 from .services import create_post
+from .storage import PostMediaCloudinaryStorage
+
+
+class CloudinaryStreamingStorageTests(SimpleTestCase):
+    @patch("apps.posts.storage.requests.get")
+    def test_open_streams_cloudinary_response_without_buffering(self, get):
+        raw = SimpleNamespace(
+            decode_content=False,
+            read=BytesIO(b"streamed-video").read,
+            close=Mock(),
+        )
+        response = Mock(
+            status_code=200,
+            headers={"Content-Length": "14"},
+            raw=raw,
+        )
+        get.return_value = response
+        storage = PostMediaCloudinaryStorage()
+        storage._get_url = lambda name: "https://media.example/video.mp4"
+
+        media_file = storage._open("video.mp4")
+
+        self.assertEqual(media_file.size, 14)
+        self.assertEqual(media_file.read(8), b"streamed")
+        self.assertEqual(media_file.tell(), 8)
+        get.assert_called_once_with(
+            "https://media.example/video.mp4",
+            stream=True,
+            timeout=(10, 120),
+        )
+
+        media_file.close()
+        response.close.assert_called_once_with()
+
+    @patch("apps.posts.storage.requests.head")
+    def test_size_uses_bounded_cloudinary_request(self, head):
+        head.return_value = Mock(
+            status_code=200,
+            headers={"content-length": "42"},
+        )
+        storage = PostMediaCloudinaryStorage()
+        storage._get_url = lambda name: "https://media.example/video.mp4"
+
+        self.assertEqual(storage.size("video.mp4"), 42)
+        head.assert_called_once_with(
+            "https://media.example/video.mp4",
+            timeout=(10, 120),
+        )
+
+
+class FacebookStoryPublisherTests(SimpleTestCase):
+    @patch("apps.posts.publishing.meta.MetaCredentialService.get_access_token")
+    @patch("apps.posts.publishing.meta.MetaAPIClient")
+    @patch.object(MetaPublisher, "_media")
+    def test_video_story_upload_uses_underlying_stream(self, media, client_class, get_token):
+        underlying_stream = Mock()
+        file_proxy = SimpleNamespace(
+            url="https://media.example/video.mp4",
+            file=underlying_stream,
+            open=Mock(),
+            close=Mock(),
+        )
+        story_media = SimpleNamespace(
+            media_type="VIDEO",
+            file=file_proxy,
+            file_size=14,
+            duration=5,
+        )
+        target = SimpleNamespace(
+            id="target-1",
+            content_type="STORY",
+            social_account=SimpleNamespace(
+                platform="facebook",
+                platform_account_id="page-1",
+            ),
+            post=SimpleNamespace(caption=""),
+        )
+        media.return_value = [story_media]
+        get_token.return_value = "token"
+        client_class.return_value.post.side_effect = [
+            {
+                "video_id": "video-1",
+                "upload_url": "https://upload.example/video-1",
+            },
+            {"id": "story-1"},
+        ]
+
+        result = MetaPublisher().publish_facebook(post_platform=target)
+
+        self.assertEqual(result["external_post_id"], "story-1")
+        upload_call = client_class.return_value.upload_reel_video.call_args
+        self.assertIs(upload_call.kwargs["video_file"], underlying_stream)
+        self.assertEqual(upload_call.kwargs["file_size"], 14)
+        file_proxy.open.assert_called_once_with("rb")
+        file_proxy.close.assert_called_once_with()
 
 
 class DirectMediaUploadTests(TestCase):

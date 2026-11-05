@@ -163,11 +163,17 @@ class MetaPublisher(BasePublisher):
             reel_video_id = str(video_id)
             reel_media.file.open("rb")
             try:
+                reel_file = getattr(reel_media.file, "file", reel_media.file)
+                reel_file_size = reel_media.file_size
+                if not reel_file_size:
+                    reel_file_size = getattr(reel_file, "size", None)
+                if not reel_file_size:
+                    reel_file_size = reel_media.file.size
                 api.upload_reel_video(
                     upload_url,
                     access_token=token,
-                    video_file=reel_media.file,
-                    file_size=reel_media.file_size or reel_media.file.size,
+                    video_file=reel_file,
+                    file_size=reel_file_size,
                 )
             finally:
                 reel_media.file.close()
@@ -188,56 +194,224 @@ class MetaPublisher(BasePublisher):
                 )
             if media[0].media_type == "VIDEO":
                 story_media = media[0]
-                started = api.post(
-                    f"/{account.platform_account_id}/video_stories",
-                    access_token=token,
-                    data={"upload_phase": "START"},
-                )
-                video_id = started.get("video_id")
-                upload_url = started.get("upload_url")
-                if not video_id or not upload_url:
-                    raise ProviderPublishingError(
-                        "Facebook did not return a Story video upload session."
-                    )
-                story_media.file.open("rb")
+                operation = "start_request"
+                file_size = story_media.file_size
+                duration = getattr(story_media, "duration", None) or "unknown"
                 try:
-                    api.upload_reel_video(
-                        upload_url,
-                        access_token=token,
-                        video_file=story_media.file,
-                        file_size=story_media.file_size or story_media.file.size,
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s event=start_begin",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
                     )
-                finally:
-                    story_media.file.close()
-                result = api.post(
-                    f"/{account.platform_account_id}/video_stories",
-                    access_token=token,
-                    data={
-                        "upload_phase": "FINISH",
-                        "video_id": str(video_id),
-                        "video_state": "PUBLISHED",
-                    },
-                )
+                    started = api.post(
+                        f"/{account.platform_account_id}/video_stories",
+                        access_token=token,
+                        data={"upload_phase": "START"},
+                    )
+                    video_id = started.get("video_id")
+                    upload_url = started.get("upload_url")
+                    if not video_id or not upload_url:
+                        raise ProviderPublishingError(
+                            "Facebook did not return a Story video upload session."
+                        )
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s "
+                        "event=start_complete http_status=%s",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                        getattr(api, "last_response_status_code", None),
+                    )
+
+                    operation = "media_file_open"
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s event=begin",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                    )
+                    story_media.file.open("rb")
+                    video_file = getattr(story_media.file, "file", story_media.file)
+                    if not file_size:
+                        file_size = getattr(video_file, "size", None)
+                    if not file_size:
+                        file_size = story_media.file.size
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s event=complete",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                    )
+                    try:
+                        operation = "binary_upload"
+                        logger.info(
+                            "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                            "media_type=%s duration=%s file_size=%s operation=%s event=begin",
+                            getattr(post_platform, "id", None),
+                            story_media.media_type,
+                            duration,
+                            file_size,
+                            operation,
+                        )
+                        api.upload_reel_video(
+                            upload_url,
+                            access_token=token,
+                            video_file=video_file,
+                            file_size=file_size,
+                        )
+                        logger.info(
+                            "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                            "media_type=%s duration=%s file_size=%s operation=%s "
+                            "event=complete http_status=%s",
+                            getattr(post_platform, "id", None),
+                            story_media.media_type,
+                            duration,
+                            file_size,
+                            operation,
+                            getattr(api, "last_response_status_code", None),
+                        )
+                    finally:
+                        story_media.file.close()
+
+                    operation = "finish_request"
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s event=begin",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                    )
+                    result = api.post(
+                        f"/{account.platform_account_id}/video_stories",
+                        access_token=token,
+                        data={
+                            "upload_phase": "FINISH",
+                            "video_id": str(video_id),
+                            "video_state": "PUBLISHED",
+                        },
+                    )
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s "
+                        "event=complete http_status=%s",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                        getattr(api, "last_response_status_code", None),
+                    )
+                except Exception as exc:
+                    logger.exception(
+                        "FACEBOOK_STORY_STAGE_FAILURE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s "
+                        "exception_class=%s http_status=%s",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                        type(exc).__name__,
+                        getattr(exc, "status_code", None)
+                        or getattr(api, "last_response_status_code", None),
+                    )
+                    raise
             elif media[0].media_type != "IMAGE":
                 raise PublishingValidationError(
                     "Facebook Stories require an image or video media file."
                 )
             else:
-                uploaded = api.post(
-                    f"/{account.platform_account_id}/photos",
-                    access_token=token,
-                    data={"url": media[0].file.url, "published": "false"},
-                )
-                photo_id = uploaded.get("id")
-                if not photo_id:
-                    raise ProviderPublishingError(
-                        "Facebook did not return a Story photo ID."
+                story_media = media[0]
+                operation = "photo_upload"
+                file_size = story_media.file_size
+                duration = getattr(story_media, "duration", None) or "n/a"
+                try:
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s event=begin",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
                     )
-                result = api.post(
-                    f"/{account.platform_account_id}/photo_stories",
-                    access_token=token,
-                    data={"photo_id": str(photo_id)},
-                )
+                    uploaded = api.post(
+                        f"/{account.platform_account_id}/photos",
+                        access_token=token,
+                        data={"url": story_media.file.url, "published": "false"},
+                    )
+                    photo_id = uploaded.get("id")
+                    if not photo_id:
+                        raise ProviderPublishingError(
+                            "Facebook did not return a Story photo ID."
+                        )
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s "
+                        "event=complete http_status=%s",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                        getattr(api, "last_response_status_code", None),
+                    )
+                    operation = "story_publish"
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s event=begin",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                    )
+                    result = api.post(
+                        f"/{account.platform_account_id}/photo_stories",
+                        access_token=token,
+                        data={"photo_id": str(photo_id)},
+                    )
+                    logger.info(
+                        "FACEBOOK_STORY_STAGE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s "
+                        "event=complete http_status=%s",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                        getattr(api, "last_response_status_code", None),
+                    )
+                except Exception as exc:
+                    logger.exception(
+                        "FACEBOOK_STORY_STAGE_FAILURE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=%s "
+                        "exception_class=%s http_status=%s",
+                        getattr(post_platform, "id", None),
+                        story_media.media_type,
+                        duration,
+                        file_size,
+                        operation,
+                        type(exc).__name__,
+                        getattr(exc, "status_code", None)
+                        or getattr(api, "last_response_status_code", None),
+                    )
+                    raise
         elif len(media) == 1 and media[0].media_type == "IMAGE":
             result = api.post(f"/{account.platform_account_id}/photos", access_token=token,
                               data={"url": media[0].file.url, "caption": caption})

@@ -238,6 +238,45 @@ def publish_post_task(self, post_id, target_id=None):
                 target.id,
                 target.platform,
             )
+            facebook_story_media_type = "unknown"
+            facebook_story_file_size = "unknown"
+            facebook_story_duration = "unknown"
+            is_facebook_story = (
+                target.platform == SocialPlatform.FACEBOOK
+                and target.content_type == "STORY"
+            )
+            if is_facebook_story:
+                try:
+                    story_media = target.post.media.filter(
+                        is_deleted=False,
+                    ).first()
+                    if story_media:
+                        facebook_story_media_type = story_media.media_type
+                        facebook_story_file_size = story_media.file_size or "unknown"
+                    metadata = (
+                        MediaUploadSession.objects.filter(
+                            attached_post_id=post.id,
+                            media_type="VIDEO",
+                            is_deleted=False,
+                        )
+                        .values_list("metadata", flat=True)
+                        .first()
+                        or {}
+                    )
+                    facebook_story_duration = metadata.get("duration") or "unknown"
+                except Exception:
+                    logger.debug(
+                        "Facebook Story DB diagnostic fields unavailable. target_id=%s",
+                        target.id,
+                    )
+                logger.info(
+                    "FACEBOOK_STORY_DB_UPDATE target_id=%s platform=facebook "
+                    "media_type=%s duration=%s file_size=%s operation=db_update event=begin",
+                    target.id,
+                    facebook_story_media_type,
+                    facebook_story_duration,
+                    facebook_story_file_size,
+                )
             with transaction.atomic():
                 target = PostPlatform.objects.select_for_update().get(id=target.id)
                 target.status = PostStatus.PUBLISHED
@@ -253,6 +292,15 @@ def publish_post_task(self, post_id, target_id=None):
                     target.id,
                     target.platform,
                 )
+                if is_facebook_story:
+                    logger.info(
+                        "FACEBOOK_STORY_DB_UPDATE target_id=%s platform=facebook "
+                        "media_type=%s duration=%s file_size=%s operation=db_update event=complete",
+                        target.id,
+                        facebook_story_media_type,
+                        facebook_story_duration,
+                        facebook_story_file_size,
+                    )
                 create_activity_log(
                     organization=target.post.organization,
                     post=target.post,

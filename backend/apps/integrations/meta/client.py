@@ -41,6 +41,7 @@ class MetaAPIClient:
             "META_HTTP_TIMEOUT_SECONDS",
             META_HTTP_TIMEOUT_SECONDS,
         )
+        self.last_response_status_code = None
 
     # ========================================================
     # URL
@@ -206,10 +207,23 @@ class MetaAPIClient:
         payload = dict(data or {})
         payload["access_token"] = access_token
         url = self._build_url(path)
+        self.last_response_status_code = None
 
         try:
             response = requests.post(url, data=payload, timeout=self.timeout)
-        except requests.RequestException:
+            self.last_response_status_code = response.status_code
+        except requests.Timeout as exc:
+            logger.warning(
+                "Meta POST request timed out. exception_type=%s",
+                type(exc).__name__,
+            )
+            logger.error("Meta POST request failed.")
+            raise MetaAPIError("Meta API request failed.") from None
+        except requests.RequestException as exc:
+            logger.warning(
+                "Meta POST request raised a transport error. exception_type=%s",
+                type(exc).__name__,
+            )
             logger.error("Meta POST request failed.")
             raise MetaAPIError("Meta API request failed.") from None
 
@@ -229,6 +243,7 @@ class MetaAPIClient:
         if not access_token:
             raise MetaAPIError("Meta access token is required.")
 
+        self.last_response_status_code = None
         try:
             response = requests.post(
                 upload_url,
@@ -237,11 +252,24 @@ class MetaAPIClient:
                     "Authorization": f"OAuth {access_token}",
                     "offset": "0",
                     "file_size": str(file_size),
+                    "Content-Length": str(file_size),
                     "Content-Type": "application/octet-stream",
                 },
                 timeout=self.timeout,
             )
-        except requests.RequestException:
+            self.last_response_status_code = response.status_code
+        except requests.Timeout as exc:
+            logger.warning(
+                "Meta video upload timed out. exception_type=%s",
+                type(exc).__name__,
+            )
+            logger.error("Meta Reel video upload failed.")
+            raise MetaAPIError("Meta Reel video upload failed.") from None
+        except requests.RequestException as exc:
+            logger.warning(
+                "Meta video upload raised a transport error. exception_type=%s",
+                type(exc).__name__,
+            )
             logger.error("Meta Reel video upload failed.")
             raise MetaAPIError("Meta Reel video upload failed.") from None
 

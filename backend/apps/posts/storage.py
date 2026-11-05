@@ -1,9 +1,55 @@
 import os
+from io import UnsupportedOperation
 from pathlib import Path
 
+import requests
 from cloudinary import uploader
 from cloudinary_storage.storage import MediaCloudinaryStorage, RESOURCE_TYPES
+from django.core.files.base import File
 from django.core.files.uploadedfile import UploadedFile
+
+
+CLOUDINARY_MEDIA_DOWNLOAD_TIMEOUT = (10, 120)
+
+
+class CloudinaryStreamingFile(File):
+    """Read a Cloudinary asset without buffering its full response in memory."""
+
+    def __init__(self, response, name, mode="rb"):
+        super().__init__(response.raw, name=name)
+        self._response = response
+        self._position = 0
+        self.mode = mode
+        try:
+            self._content_length = int(response.headers.get("Content-Length", "0"))
+        except (TypeError, ValueError):
+            self._content_length = 0
+        if not self._content_length:
+            raw_length = getattr(response.raw, "length_remaining", None)
+            if isinstance(raw_length, int) and raw_length > 0:
+                self._content_length = raw_length
+        response.raw.decode_content = True
+
+    @property
+    def size(self):
+        return self._content_length
+
+    def read(self, size=-1):
+        data = self.file.read(size)
+        self._position += len(data)
+        return data
+
+    def tell(self):
+        return self._position
+
+    def seek(self, *args, **kwargs):
+        raise UnsupportedOperation("Cloudinary media streams are not seekable.")
+
+    def close(self):
+        try:
+            super().close()
+        finally:
+            self._response.close()
 
 
 class PostMediaCloudinaryStorage(MediaCloudinaryStorage):
@@ -113,6 +159,36 @@ class PostMediaCloudinaryStorage(MediaCloudinaryStorage):
             options["folder"] = folder
 
         return uploader.upload(content, **options)
+
+    def _open(self, name, mode="rb"):
+        response = requests.get(
+            self._get_url(name),
+            stream=True,
+            timeout=CLOUDINARY_MEDIA_DOWNLOAD_TIMEOUT,
+        )
+        try:
+            if response.status_code == 404:
+                raise IOError
+            response.raise_for_status()
+            return CloudinaryStreamingFile(response, name=name, mode=mode)
+        except Exception:
+            response.close()
+            raise
+
+    def size(self, name):
+        response = requests.head(
+            self._get_url(name),
+            timeout=CLOUDINARY_MEDIA_DOWNLOAD_TIMEOUT,
+        )
+        try:
+            if response.status_code == 200:
+                return int(response.headers["content-length"])
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            return None
+        finally:
+            response.close()
 
     def _get_url(self, name):
         from cloudinary import CloudinaryResource

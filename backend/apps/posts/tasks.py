@@ -133,8 +133,21 @@ def _update_post_status(post_id):
 @shared_task(bind=True, autoretry_for=(), max_retries=20)
 def publish_post_task(self, post_id, target_id=None):
     """Publish a stored post once per destination; never logs provider secrets."""
+    logger.info(
+        "PUBLISH_TASK_START task_id=%s post_id=%s target_id=%s retry_count=%s",
+        self.request.id,
+        post_id,
+        target_id,
+        self.request.retries,
+    )
     post = Post.objects.filter(id=post_id, is_deleted=False).first()
     if not post:
+        logger.warning(
+            "PUBLISH_TASK_POST_NOT_FOUND task_id=%s post_id=%s target_id=%s",
+            self.request.id,
+            post_id,
+            target_id,
+        )
         return
     # Target-specific Calendar dispatches must not be blocked by aggregate
     # parent state (for example, PARTIALLY_PUBLISHED after a sibling succeeds).
@@ -147,9 +160,21 @@ def publish_post_task(self, post_id, target_id=None):
     if target_id:
         targets = targets.filter(id=target_id)
     targets = targets.select_related("social_account", "social_account__connection")
+    logger.info(
+        "PUBLISH_TASK_TARGETS task_id=%s post_id=%s target_count=%s",
+        self.request.id,
+        post.id,
+        targets.count(),
+    )
     for target in targets:
         lock_key = f"posts:publish:{target.idempotency_key}"
         if not cache.add(lock_key, "1", timeout=30 * 60):
+            logger.warning(
+                "PUBLISH_TASK_LOCKED task_id=%s post_id=%s target_id=%s",
+                self.request.id,
+                post.id,
+                target.id,
+            )
             continue
         try:
             with transaction.atomic():
@@ -184,13 +209,35 @@ def publish_post_task(self, post_id, target_id=None):
                 target.publish_started_at = timezone.now()
                 target.attempt_count += 1
                 target.save(update_fields=["status", "publish_started_at", "attempt_count", "updated_at"])
+                logger.info(
+                    "PUBLISH_TARGET_STARTED task_id=%s post_id=%s target_id=%s platform=%s attempt_count=%s",
+                    self.request.id,
+                    post.id,
+                    target.id,
+                    target.platform,
+                    target.attempt_count,
+                )
             provider = (
                 target.social_account.connection.provider
                 if target.social_account.connection_id
                 else "meta"
             )
             publisher = get_publisher(provider=provider)
+            logger.info(
+                "PUBLISH_PROVIDER_CALL_START task_id=%s post_id=%s target_id=%s platform=%s",
+                self.request.id,
+                post.id,
+                target.id,
+                target.platform,
+            )
             result = publisher.publish(post_platform=target)
+            logger.info(
+                "PUBLISH_PROVIDER_CALL_SUCCESS task_id=%s post_id=%s target_id=%s platform=%s",
+                self.request.id,
+                post.id,
+                target.id,
+                target.platform,
+            )
             with transaction.atomic():
                 target = PostPlatform.objects.select_for_update().get(id=target.id)
                 target.status = PostStatus.PUBLISHED
@@ -199,6 +246,13 @@ def publish_post_task(self, post_id, target_id=None):
                 target.published_at = timezone.now()
                 target.error_message = ""
                 target.save(update_fields=["status", "external_post_id", "provider_container_id", "published_at", "error_message", "updated_at"])
+                logger.info(
+                    "PUBLISH_TARGET_DB_SUCCESS task_id=%s post_id=%s target_id=%s platform=%s",
+                    self.request.id,
+                    post.id,
+                    target.id,
+                    target.platform,
+                )
                 create_activity_log(
                     organization=target.post.organization,
                     post=target.post,
@@ -228,6 +282,14 @@ def publish_post_task(self, post_id, target_id=None):
                 countdown=_pending_retry_countdown(exc, self.request.retries),
             )
         except Exception as exc:
+            logger.exception(
+                "PUBLISH_TASK_EXCEPTION task_id=%s post_id=%s target_id=%s platform=%s exception_type=%s",
+                self.request.id,
+                post.id,
+                target.id,
+                target.platform,
+                type(exc).__name__,
+            )
             error_message = _format_publish_error(exc)
             if getattr(exc, "ambiguous_media_publish", False):
                 logger.warning(

@@ -54,6 +54,7 @@ from .models import (
     PostPlatform,
 )
 from .services import (
+    MediaUploadValidationError,
     create_post,
     delete_post,
     delete_post_target,
@@ -268,6 +269,16 @@ class OrganizationMediaUploadSessionAPIView(APIView):
                 raise BadRequestException(session.error_message)
 
             actual_bytes = int(resource.get("bytes") or 0)
+            max_bytes = (
+                settings.MEDIA_UPLOAD_MAX_IMAGE_BYTES
+                if session.media_type == PostMediaType.IMAGE
+                else settings.MEDIA_UPLOAD_MAX_VIDEO_BYTES
+            )
+            if actual_bytes > max_bytes:
+                session.status = MediaUploadStatus.FAILED
+                session.error_message = "The uploaded asset exceeds the current media upload limit."
+                session.save(update_fields=["status", "error_message", "updated_at"])
+                raise BadRequestException(session.error_message)
             if actual_bytes != session.expected_size:
                 session.status = MediaUploadStatus.FAILED
                 session.error_message = "The uploaded asset size does not match the selected file."
@@ -393,6 +404,21 @@ class OrganizationMediaUploadSessionAPIView(APIView):
         return success_response(
             data=data,
             message="Media upload session fetched.",
+        )
+
+
+class MediaUploadPolicyAPIView(APIView):
+    """Expose only the authenticated media upload byte limits."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return success_response(
+            data={
+                "image_max_size_bytes": settings.MEDIA_UPLOAD_MAX_IMAGE_BYTES,
+                "video_max_size_bytes": settings.MEDIA_UPLOAD_MAX_VIDEO_BYTES,
+            },
+            message="Media upload policy fetched.",
         )
 
 # ============================================================
@@ -589,6 +615,8 @@ class OrganizationPostListCreateAPIView(APIView):
             ).first()
             if not post:
                 raise
+        except MediaUploadValidationError as exc:
+            raise BadRequestException(str(exc)) from exc
         except CloudinaryBadRequest as exc:
             raise BadRequestException(
                 "Media upload failed. Please upload a valid supported media file."

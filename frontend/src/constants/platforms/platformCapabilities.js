@@ -1,5 +1,3 @@
-import { MEDIA_TYPE } from "../../utils/post/media.utils";
-
 export const PLATFORM_IDS = {
   INSTAGRAM: "INSTAGRAM",
   FACEBOOK: "FACEBOOK",
@@ -50,8 +48,8 @@ export const PLATFORM_CAPABILITIES = {
 
           video: {
             min: 1,
-            max: 1,
-            multiple: false,
+            max: 10,
+            multiple: true,
           },
 
           mixed: {
@@ -112,12 +110,6 @@ export const PLATFORM_CAPABILITIES = {
             min: 1,
             max: 1,
             multiple: false,
-          },
-
-          mixed: {
-            min: 2,
-            max: 10,
-            multiple: true,
           },
         },
       },

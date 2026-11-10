@@ -6,12 +6,13 @@ import toast from "react-hot-toast";
 
 import { Box, Grid } from "@mui/material";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import { useQuery } from "@tanstack/react-query";
 
 import postService from "../../services/post.service";
+import postMediaUploadService from "../../services/postMediaUpload.service";
 import organizationService from "../../services/organization/organization.service";
 import socialAccountService from "../../services/social/socialAccount.service";
 
@@ -41,6 +42,7 @@ export default function CreatePost() {
   const hasAppliedPlannerBasePrefill = useRef(false);
   const hasAppliedPlannerAccountsPrefill = useRef(false);
   const createIdempotencyKeyRef = useRef("");
+  const clearMediaRef = useRef(null);
   // ============================================================
   // FORM
   // ============================================================
@@ -59,11 +61,16 @@ export default function CreatePost() {
 
   const {
     handleSubmit,
+    reset,
 
     setValue,
 
     formState: { isSubmitting: formIsSubmitting },
   } = methods;
+
+  const registerClearMedia = useCallback((clearMedia) => {
+    clearMediaRef.current = clearMedia;
+  }, []);
 
   // ============================================================
   // PAGE DATA
@@ -97,6 +104,15 @@ export default function CreatePost() {
         signal,
       }),
     enabled: Boolean(selectedOrganizationId),
+  });
+
+  const {
+    data: mediaUploadPolicy,
+    isLoading: isLoadingMediaUploadPolicy,
+    error: mediaUploadPolicyError,
+  } = useQuery({
+    queryKey: ["media-upload-policy"],
+    queryFn: () => postMediaUploadService.getUploadPolicy(),
   });
 
   const createPostData = CREATE_POST;
@@ -311,6 +327,12 @@ export default function CreatePost() {
       if (data.publish_type === "DRAFT") {
         toast.success(response.message || "Draft saved successfully.");
       }
+
+      clearMediaRef.current?.();
+      reset({
+        ...createPostDefaultValues,
+        organization: data.organization,
+      });
       createIdempotencyKeyRef.current = "";
     } catch (error) {
       console.error("Create post failed:", error);
@@ -410,7 +432,7 @@ export default function CreatePost() {
   // LOADING
   // ============================================================
 
-  if (isLoadingOrganizations) {
+  if (isLoadingOrganizations || isLoadingMediaUploadPolicy) {
     return <LoadingState page="Create Post" />;
   }
 
@@ -418,7 +440,7 @@ export default function CreatePost() {
   // LOAD ERROR
   // ============================================================
 
-  if (organizationsError || !organizationsResponse?.success) {
+  if (organizationsError || !organizationsResponse?.success || mediaUploadPolicyError || !mediaUploadPolicy) {
     return (
       <Box
         sx={{
@@ -426,7 +448,7 @@ export default function CreatePost() {
           color: "error.main",
         }}
       >
-        {organizationsError?.message || "Unable to load Create Post."}
+        {organizationsError?.message || mediaUploadPolicyError?.message || "Unable to load Create Post."}
       </Box>
     );
   }
@@ -478,6 +500,8 @@ export default function CreatePost() {
                 <MediaUploadSection
                   config={createPostData.media}
                   organizationId={selectedOrganizationId}
+                  uploadPolicy={mediaUploadPolicy}
+                  onClearMediaReady={registerClearMedia}
                 />
               </Box>
 

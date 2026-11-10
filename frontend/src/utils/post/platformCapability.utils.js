@@ -1,11 +1,55 @@
-import {
-  CONTENT_TYPES,
-  PLATFORM_CAPABILITIES,
-} from "../../constants/platforms/platformCapabilities";
+import { PLATFORM_CAPABILITIES } from "../../constants/platforms/platformCapabilities.js";
 
 import {
   MEDIA_TYPE,
-} from "./media.utils";
+} from "./media.utils.js";
+
+const INSTAGRAM_IMAGE_MIN_ASPECT_RATIO = 0.75;
+const INSTAGRAM_IMAGE_MAX_ASPECT_RATIO = 1.91;
+// Accommodate integer pixel dimensions that represent a 3:4 image as 0.7498.
+const INSTAGRAM_IMAGE_MIN_RATIO_TOLERANCE = 0.0002;
+
+function getInstagramImageIssue(item, index) {
+  if (item?.type !== MEDIA_TYPE.IMAGE) {
+    return null;
+  }
+
+  if (item.dimensionsPending) {
+    return null;
+  }
+
+  const label = `Instagram image ${index + 1} (${item.name || "unnamed"})`;
+  if (item.dimensionsError) {
+    return `${label} dimensions could not be read.`;
+  }
+
+  const imageMimeType = item.mime_type?.toLowerCase();
+  if (imageMimeType && !["image/jpeg", "image/png"].includes(imageMimeType)) {
+    return `${label} uses ${item.mime_type}; Instagram image publishing supports JPEG or PNG media.`;
+  }
+
+  const width = Number(item.width);
+  const height = Number(item.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return `${label} dimensions are unavailable.`;
+  }
+
+  const aspectRatio = width / height;
+  if (
+    aspectRatio + INSTAGRAM_IMAGE_MIN_RATIO_TOLERANCE < INSTAGRAM_IMAGE_MIN_ASPECT_RATIO
+    || aspectRatio > INSTAGRAM_IMAGE_MAX_ASPECT_RATIO
+  ) {
+    return `${label} is ${width}x${height} (ratio ${aspectRatio.toFixed(2)}); use a ratio between 0.75 and 1.91.`;
+  }
+
+  return null;
+}
+
+export function getInstagramImageIssues(media = []) {
+  return (Array.isArray(media) ? media : [])
+    .map((item, index) => getInstagramImageIssue(item, index))
+    .filter(Boolean);
+}
 
 // ============================================================
 // MEDIA ANALYSIS
@@ -101,6 +145,20 @@ export function evaluateContentType({
   }
 
   const analysis = analyzeMedia(media);
+
+  if (
+    platform === "INSTAGRAM"
+    && ["POST", "CAROUSEL"].includes(String(contentType).toUpperCase())
+    && analysis.hasImages
+  ) {
+    const imageIssues = getInstagramImageIssues(media);
+    if (imageIssues.length) {
+      return {
+        available: false,
+        reason: imageIssues[0],
+      };
+    }
+  }
 
   /*
    * Empty media:
@@ -200,8 +258,9 @@ export function evaluateContentType({
     if (!rule) {
       return {
         available: false,
-        reason:
-          "This content type does not support mixed image and video media.",
+        reason: platform === "FACEBOOK"
+          ? "Facebook posts do not support mixed image and video media."
+          : "This content type does not support mixed image and video media.",
       };
     }
 
@@ -316,7 +375,7 @@ export function evaluatePlatform({
   if (!availableContentTypes.length) {
     return {
       available: false,
-      reason:
+      reason: contentTypes.find((item) => item.reason)?.reason ||
         "The selected media combination is not supported on this platform.",
       contentTypes,
     };
@@ -362,6 +421,25 @@ export function getPlatformStates({
         evaluation.contentTypes,
     };
   });
+}
+
+export function retainSelectedAccountIds({
+  selectedAccountIds = [],
+  accounts = [],
+  capabilityMap = new Map(),
+}) {
+  const selectableAccountIds = new Set(
+    accounts
+      .filter((account) => (
+        (capabilityMap.get(account?.platform)?.available || account?.platform === "INSTAGRAM")
+        && account?.connected !== false
+        && account?.valid !== false
+      ))
+      .map((account) => account?.id)
+      .filter(Boolean),
+  );
+
+  return selectedAccountIds.filter((accountId) => selectableAccountIds.has(accountId));
 }
 
 // ============================================================

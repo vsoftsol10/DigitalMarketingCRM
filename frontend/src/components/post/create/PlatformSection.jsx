@@ -11,7 +11,10 @@ import SocialAccountCard from "./SocialAccountCard";
 
 import { PLATFORM_IDS } from "../../../constants/platforms/platformCapabilities";
 
-import { getPlatformStates } from "../../../utils/post/platformCapability.utils";
+import {
+  getPlatformStates,
+  retainSelectedAccountIds,
+} from "../../../utils/post/platformCapability.utils";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
 
@@ -177,28 +180,14 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
   // ==========================================================
 
   useEffect(() => {
-    const validAccountIds = new Set(
-      organizationAccounts
-        .filter((account) => {
-          const capability = capabilityMap.get(account?.platform);
-
-          return (
-            capability?.available &&
-            account?.connected !== false &&
-            account?.valid !== false
-          );
-        })
-        .map((account) => account?.id)
-        .filter(Boolean),
-    );
-
     const currentAccountIds = Array.isArray(selectedAccountIds)
       ? selectedAccountIds
       : [];
-
-    const cleanedAccountIds = currentAccountIds.filter((accountId) =>
-      validAccountIds.has(accountId),
-    );
+    const cleanedAccountIds = retainSelectedAccountIds({
+      selectedAccountIds: currentAccountIds,
+      accounts: organizationAccounts,
+      capabilityMap,
+    });
 
     const accountIdsChanged =
       cleanedAccountIds.length !== currentAccountIds.length ||
@@ -291,7 +280,9 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
     // MEDIA REQUIRED
     // ----------------------------------------------------------
 
-    if (!media.length) {
+    const isSelected = selectedAccountIds.includes(account.id);
+
+    if (!media.length && !isSelected) {
       return;
     }
 
@@ -299,7 +290,7 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
     // PLATFORM MUST SUPPORT MEDIA
     // ----------------------------------------------------------
 
-    if (!capability?.available) {
+    if (!capability?.available && !isSelected) {
       return;
     }
 
@@ -310,8 +301,6 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
     if (account?.connected === false || account?.valid === false) {
       return;
     }
-
-    const isSelected = selectedAccountIds.includes(account.id);
 
     const nextAccountIds = isSelected
       ? selectedAccountIds.filter((id) => id !== account.id)
@@ -436,6 +425,12 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
         )
       : [];
 
+  const unsupportedPlatformMessages = unsupportedPlatforms.map((platformId) => {
+    const label = PLATFORM_LABELS[platformId] || platformId;
+    const reason = capabilityMap.get(platformId)?.reason;
+    return reason ? `${label}: ${reason}` : label;
+  });
+
   // ==========================================================
   // RENDER
   // ==========================================================
@@ -478,11 +473,13 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
               py: 0.5,
             }}
           >
-            Selected media isn't supported on{" "}
-            {unsupportedPlatforms
-              .map((platformId) => PLATFORM_LABELS[platformId] || platformId)
-              .join(", ")}
-            .
+            Selected media can't be published to{" "}
+            {unsupportedPlatformMessages.join("; ")}.
+            {unsupportedPlatforms.includes(PLATFORM_IDS.INSTAGRAM) && (
+              <> Instagram Post/Carousel requires every image to meet the existing
+                0.75–1.91 aspect-ratio range, and Instagram Stories require exactly
+                one media item. Remove incompatible media or use one Story image.</>
+            )}
           </Alert>
         )}
 
@@ -554,8 +551,8 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
                   const selected = selectedAccountIds.includes(account.id);
 
                   const disabled =
-                    !media.length ||
-                    !isAvailable ||
+                    (!media.length && !selected) ||
+                    (!isAvailable && !(platformId === PLATFORM_IDS.INSTAGRAM && selected)) ||
                     account?.connected === false ||
                     account?.valid === false;
 

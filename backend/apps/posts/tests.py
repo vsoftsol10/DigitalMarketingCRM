@@ -1536,6 +1536,164 @@ class PostCreationTests(TestCase):
     @patch("apps.posts.publishing.meta.InstagramAPIClient")
     @patch("apps.posts.publishing.meta.decrypt_instagram_token")
     @patch("apps.posts.publishing.meta.get_active_instagram_credential")
+    def test_instagram_mixed_carousel_uses_video_child_type_and_waits_for_processing(
+        self,
+        get_credential,
+        decrypt_token,
+        client_class,
+    ):
+        account = SocialAccount.objects.create(
+            organization=self.organization,
+            platform=SocialPlatform.INSTAGRAM,
+            platform_account_id="instagram-user-mixed-carousel",
+            account_name="Instagram",
+        )
+        post = Post.objects.create(
+            organization=self.organization,
+            created_by=self.user,
+            publish_type=PostPublishType.NOW,
+            status=PostStatus.PUBLISHING,
+        )
+        target = PostPlatform.objects.create(
+            post=post,
+            platform=SocialPlatform.INSTAGRAM,
+            social_account=account,
+            content_type="POST",
+        )
+        get_credential.return_value = SimpleNamespace(
+            encrypted_access_token="encrypted-token",
+        )
+        decrypt_token.return_value = "access-token"
+        client = client_class.return_value
+        client.graph_post.side_effect = [
+            {"id": "child-image"},
+            {"id": "child-video"},
+        ]
+
+        with patch.object(
+            MetaPublisher,
+            "_media",
+            return_value=[
+                SimpleNamespace(
+                    media_type="IMAGE",
+                    mime_type="image/jpeg",
+                    file=SimpleNamespace(
+                        url="https://res.cloudinary.com/example/image/upload/posts/2026/one"
+                    ),
+                ),
+                SimpleNamespace(
+                    media_type="VIDEO",
+                    mime_type="video/mp4",
+                    file=SimpleNamespace(
+                        url="https://res.cloudinary.com/example/video/upload/posts/2026/two"
+                    ),
+                ),
+            ],
+        ):
+            with self.assertRaises(MediaProcessingPending):
+                MetaPublisher().publish_instagram(post_platform=target)
+
+        child_calls = client.graph_post.call_args_list
+        self.assertEqual(
+            child_calls[0].kwargs["data"],
+            {
+                "image_url": "https://res.cloudinary.com/example/image/upload/posts/2026/one.jpg",
+                "is_carousel_item": "true",
+            },
+        )
+        self.assertEqual(
+            child_calls[1].kwargs["data"],
+            {
+                "video_url": "https://res.cloudinary.com/example/video/upload/posts/2026/two",
+                "media_type": "VIDEO",
+                "is_carousel_item": "true",
+            },
+        )
+        self.assertEqual(target.provider_state["carousel_children"], [
+            "child-image",
+            "child-video",
+        ])
+
+        client.graph_post.reset_mock()
+        client.graph_post.side_effect = None
+        client.graph_post.return_value = {"id": "carousel-parent"}
+        client.graph_get.side_effect = [
+            {"status_code": "FINISHED"},
+            {"status_code": "FINISHED"},
+        ]
+        with self.assertRaises(MediaProcessingPending):
+            MetaPublisher().publish_instagram(post_platform=target)
+
+        self.assertEqual(
+            client.graph_post.call_args.kwargs["data"],
+            {
+                "media_type": "CAROUSEL",
+                "children": "child-image,child-video",
+                "caption": "",
+            },
+        )
+        self.assertEqual(target.provider_container_id, "carousel-parent")
+
+        client.graph_get.reset_mock()
+        client.graph_get.return_value = {"status_code": "FINISHED"}
+        client.graph_post.reset_mock()
+        client.graph_post.side_effect = None
+        client.graph_post.return_value = {"id": "published-carousel"}
+        result = MetaPublisher().publish_instagram(post_platform=target)
+
+        self.assertEqual(result["external_post_id"], "published-carousel")
+        client.graph_post.assert_called_once_with(
+            "instagram-user-mixed-carousel/media_publish",
+            access_token="access-token",
+            data={"creation_id": "carousel-parent"},
+        )
+
+    @patch("apps.posts.publishing.meta.MetaAPIClient")
+    @patch("apps.posts.publishing.meta.MetaCredentialService.get_access_token")
+    def test_facebook_mixed_media_is_rejected_before_provider_request(
+        self,
+        get_token,
+        client_class,
+    ):
+        post = Post.objects.create(
+            organization=self.organization,
+            created_by=self.user,
+            publish_type=PostPublishType.NOW,
+            status=PostStatus.PUBLISHING,
+        )
+        target = PostPlatform.objects.create(
+            post=post,
+            platform=SocialPlatform.FACEBOOK,
+            social_account=self.account,
+            content_type="POST",
+        )
+        get_token.return_value = "access-token"
+
+        with patch.object(
+            MetaPublisher,
+            "_media",
+            return_value=[
+                SimpleNamespace(
+                    media_type="IMAGE",
+                    file=SimpleNamespace(url="https://media.example/image.jpg"),
+                ),
+                SimpleNamespace(
+                    media_type="VIDEO",
+                    file=SimpleNamespace(url="https://media.example/video.mp4"),
+                ),
+            ],
+        ):
+            with self.assertRaisesMessage(
+                PublishingValidationError,
+                "Facebook mixed-media publishing is not supported.",
+            ):
+                MetaPublisher().publish_facebook(post_platform=target)
+
+        client_class.return_value.post.assert_not_called()
+
+    @patch("apps.posts.publishing.meta.InstagramAPIClient")
+    @patch("apps.posts.publishing.meta.decrypt_instagram_token")
+    @patch("apps.posts.publishing.meta.get_active_instagram_credential")
     def test_instagram_carousel_retries_transient_image_delivery_rejection(
         self,
         get_credential,

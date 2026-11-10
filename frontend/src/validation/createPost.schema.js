@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { PLATFORM_IDS } from "../constants/platforms/platformCapabilities";
+import { PLATFORM_IDS } from "../constants/platforms/platformCapabilities.js";
 
-import { getPlatformStates } from "../utils/post/platformCapability.utils";
+import { getPlatformStates } from "../utils/post/platformCapability.utils.js";
 
 // ============================================================
 // SUPPORTED PLATFORMS
@@ -204,6 +204,15 @@ export const createPostSchema = z
       // ----------------------------------------------------
 
       if (!platformState?.available) {
+        if (platformId === PLATFORM_IDS.INSTAGRAM) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["social_account_ids"],
+            message: `Instagram can't publish this media selection. ${
+              platformState?.reason || "Choose media supported by an Instagram content type."
+            }`,
+          });
+        }
         return;
       }
 

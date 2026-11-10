@@ -11,7 +11,12 @@ import useMediaUpload from "../../../../hooks/post/useMediaUpload";
 
 import { TYPOGRAPHY } from "../../../../theme/typography";
 
-export default function MediaUploadSection({ config, organizationId }) {
+export default function MediaUploadSection({
+  config,
+  organizationId,
+  uploadPolicy,
+  onClearMediaReady,
+}) {
   const {
     formState: { errors },
   } = useFormContext();
@@ -37,6 +42,8 @@ export default function MediaUploadSection({ config, organizationId }) {
   } = useMediaUpload({
     config,
     organizationId,
+    uploadPolicy,
+    onClearMediaReady,
   });
 
   const hasMedia = media.length > 0;
@@ -98,7 +105,9 @@ export default function MediaUploadSection({ config, organizationId }) {
                   ? "This file format is not supported."
                   : reason === "MAX_FILES"
                     ? "The maximum number of files has been reached."
-                    : "This file was already selected."
+                    : reason === "POLICY_UNAVAILABLE"
+                      ? "Upload limits could not be loaded. Reload the page before uploading."
+                      : "This file was already selected."
               }`
             )).join(" ")}
           </Typography>
@@ -111,6 +120,7 @@ export default function MediaUploadSection({ config, organizationId }) {
         {hasMedia && (
           <MediaPreviewGrid
             media={media}
+            organizationId={organizationId}
             onRemove={removeMedia}
             onRetry={retryUpload}
           />

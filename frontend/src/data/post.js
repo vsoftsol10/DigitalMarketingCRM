@@ -213,10 +213,6 @@ export const CREATE_POST = {
 
     max_files: 10,
 
-    // The authoritative size limit is returned by the upload-session API.
-    // Keeping this unset prevents an arbitrary small browser-only ceiling.
-    max_file_size_mb: null,
-
     allow_multiple: true,
   },
 

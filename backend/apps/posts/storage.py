@@ -5,11 +5,13 @@ from pathlib import Path
 import requests
 from cloudinary import uploader
 from cloudinary_storage.storage import MediaCloudinaryStorage, RESOURCE_TYPES
+from django.conf import settings
 from django.core.files.base import File
 from django.core.files.uploadedfile import UploadedFile
 
 
 CLOUDINARY_MEDIA_DOWNLOAD_TIMEOUT = (10, 120)
+CLOUDINARY_MIN_CHUNK_SIZE = 6 * 1024 * 1024
 
 
 class CloudinaryStreamingFile(File):
@@ -157,6 +159,17 @@ class PostMediaCloudinaryStorage(MediaCloudinaryStorage):
         folder = os.path.dirname(name)
         if folder:
             options["folder"] = folder
+
+        if is_video:
+            chunk_size = max(
+                int(getattr(settings, "MEDIA_UPLOAD_CHUNK_SIZE_BYTES", 20 * 1024 * 1024)),
+                CLOUDINARY_MIN_CHUNK_SIZE,
+            )
+            return uploader.upload_large(
+                content,
+                chunk_size=chunk_size,
+                **options,
+            )
 
         return uploader.upload(content, **options)
 

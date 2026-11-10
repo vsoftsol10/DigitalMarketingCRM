@@ -29,6 +29,115 @@ from django.db import transaction
 
 from .models import PostMedia, PostMediaType
 
+
+class MediaUploadValidationError(ValueError):
+    """Expected validation failure for a media upload reference."""
+
+
+INSTAGRAM_IMAGE_MIN_ASPECT_RATIO = 0.75
+INSTAGRAM_IMAGE_MAX_ASPECT_RATIO = 1.91
+# Allow the small rounding difference between a 3:4 source and integer pixel
+# dimensions such as 1085x1447 (0.7498 when represented as a decimal ratio).
+INSTAGRAM_IMAGE_MIN_RATIO_TOLERANCE = 0.0002
+INSTAGRAM_IMAGE_FORMATS = {"jpg", "jpeg", "png"}
+
+
+def _validate_instagram_image_metadata(*, metadata, filename, media_index):
+    """Validate one image against Instagram's image container contract."""
+
+    metadata = metadata or {}
+    try:
+        width = int(metadata.get("width") or 0)
+        height = int(metadata.get("height") or 0)
+    except (TypeError, ValueError):
+        width = 0
+        height = 0
+    image_format = str(metadata.get("format") or "").lower()
+    label = f'Instagram image {media_index + 1} ({filename or "unnamed"})'
+
+    if not width or not height:
+        raise MediaUploadValidationError(
+            f"{label} dimensions could not be verified for Instagram."
+        )
+
+    aspect_ratio = width / height
+    if not (
+        aspect_ratio + INSTAGRAM_IMAGE_MIN_RATIO_TOLERANCE
+        >= INSTAGRAM_IMAGE_MIN_ASPECT_RATIO
+        and aspect_ratio
+        <= INSTAGRAM_IMAGE_MAX_ASPECT_RATIO
+    ):
+        raise MediaUploadValidationError(
+            f"{label} is {width}x{height} with aspect ratio "
+            f"{aspect_ratio:.2f}; Instagram requires an aspect ratio "
+            "between 0.75 (3:4) and 1.91:1."
+        )
+
+    if not image_format:
+        raise MediaUploadValidationError(
+            f"{label} format could not be verified for Instagram."
+        )
+
+    if image_format not in INSTAGRAM_IMAGE_FORMATS:
+        raise MediaUploadValidationError(
+            f"{label} uses {image_format.upper()} format; Instagram image "
+            "publishing supports JPEG or PNG media."
+        )
+
+
+def validate_multipart_media_for_targets(*, media_items, targets, organization):
+    """Validate legacy multipart images only for Instagram destinations."""
+
+    account_ids = [item["social_account"] for item in targets]
+    accounts = SocialAccount.objects.filter(
+        id__in=account_ids,
+        organization=organization,
+        platform=SocialPlatform.INSTAGRAM,
+        is_deleted=False,
+    )
+    instagram_account_ids = {str(account.id) for account in accounts}
+    if not instagram_account_ids:
+        return
+
+    instagram_post_selected = any(
+        str(target.get("content_type") or "POST").upper() in {"POST", "CAROUSEL"}
+        and str(target["social_account"]) in instagram_account_ids
+        for target in targets
+    )
+    if not instagram_post_selected:
+        return
+
+    for media_index, media in enumerate(media_items):
+        if media.get("media_type") != PostMediaType.IMAGE:
+            continue
+        uploaded_file = media.get("file")
+        try:
+            uploaded_file.seek(0)
+            image = Image.open(uploaded_file)
+            metadata = {
+                "width": image.width,
+                "height": image.height,
+                "format": image.format,
+            }
+        except Exception as exc:
+            raise MediaUploadValidationError(
+                f"Instagram image {media_index + 1} "
+                f'({getattr(uploaded_file, "name", "unnamed")}) '
+                "dimensions could not be verified."
+            ) from exc
+        finally:
+            try:
+                uploaded_file.seek(0)
+            except (AttributeError, OSError, ValueError):
+                pass
+
+        _validate_instagram_image_metadata(
+            metadata=metadata,
+            filename=getattr(uploaded_file, "name", ""),
+            media_index=media_index,
+        )
+
+
 # ============================================================
 # CREATE POST
 # ============================================================
@@ -96,17 +205,35 @@ def create_post(
         PostPublishType.DRAFT,
     )
 
-    validate_target_accounts(
+    account_map = validate_target_accounts(
         organization=organization,
         targets=targets,
         require_publishable=publish_type != PostPublishType.DRAFT,
     )
+
+    media_count = len(media_asset_ids or media_items)
+    for target in targets:
+        account = account_map[str(target["social_account"])]
+        if (
+            account.platform == SocialPlatform.INSTAGRAM
+            and str(target.get("content_type") or "POST").upper() == "STORY"
+            and media_count != 1
+        ):
+            raise MediaUploadValidationError(
+                "Instagram Stories require exactly one media item."
+            )
 
     if media_asset_ids:
         validate_media_assets_for_targets(
             organization=organization,
             created_by=created_by,
             media_asset_ids=media_asset_ids,
+            targets=targets,
+        )
+    elif media_items:
+        validate_multipart_media_for_targets(
+            organization=organization,
+            media_items=media_items,
             targets=targets,
         )
 
@@ -497,12 +624,16 @@ def create_post_media_from_uploads(
     )
     requested_ids = [str(item) for item in media_asset_ids]
     if len(requested_ids) != len(set(requested_ids)):
-        raise ValueError("The same media upload cannot be attached more than once.")
+        raise MediaUploadValidationError(
+            "The same media upload cannot be attached more than once."
+        )
     session_map = {str(session.id): session for session in sessions}
     if len(session_map) != len(requested_ids):
-        raise ValueError("One or more media uploads are unavailable or not ready.")
+        raise MediaUploadValidationError(
+            "One or more media uploads are unavailable or not ready."
+        )
     if any(session.expires_at <= timezone.now() for session in sessions):
-        raise ValueError("One or more media uploads have expired.")
+        raise MediaUploadValidationError("One or more media uploads have expired.")
 
     post_media_items = []
     for index, asset_id in enumerate(requested_ids):
@@ -549,7 +680,9 @@ def validate_media_assets_for_targets(
     for asset_id in media_asset_ids:
         session = session_map.get(str(asset_id))
         if not session:
-            raise ValueError("One or more media uploads are unavailable or not ready.")
+            raise MediaUploadValidationError(
+                "One or more media uploads are unavailable or not ready."
+            )
 
     account_ids = [item["social_account"] for item in targets]
     accounts = SocialAccount.objects.filter(
@@ -562,8 +695,18 @@ def validate_media_assets_for_targets(
     for target in targets:
         platform = platform_by_account.get(target["social_account"])
         content_type = str(target.get("content_type") or "POST").upper()
-        for asset_id in media_asset_ids:
+        for media_index, asset_id in enumerate(media_asset_ids):
             session = session_map[str(asset_id)]
+            if (
+                platform == SocialPlatform.INSTAGRAM
+                and content_type in {"POST", "CAROUSEL"}
+                and session.media_type == PostMediaType.IMAGE
+            ):
+                _validate_instagram_image_metadata(
+                    metadata=session.metadata,
+                    filename=session.original_filename,
+                    media_index=media_index,
+                )
             if session.media_type != PostMediaType.VIDEO:
                 continue
             metadata = session.metadata or {}

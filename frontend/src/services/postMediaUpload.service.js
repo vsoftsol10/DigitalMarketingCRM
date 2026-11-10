@@ -1,6 +1,8 @@
 import api from "../api/axios";
-
-const CLOUDINARY_MIN_CHUNK_SIZE = 6 * 1024 * 1024;
+import {
+  getUploadChunkSize,
+  shouldChunkUpload,
+} from "../utils/post/uploadChunking.js";
 const MEDIA_UPLOAD_FINALIZE_TIMEOUT = 120000;
 
 const requireData = (response, fallbackMessage) => {
@@ -87,7 +89,10 @@ function uploadRequest({
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
-        onProgress?.(start + event.loaded, file.size);
+        onProgress?.(
+          Math.min(end, start + event.loaded),
+          file.size,
+        );
       }
     };
 
@@ -118,6 +123,11 @@ function uploadRequest({
 }
 
 const postMediaUploadService = {
+  async getUploadPolicy() {
+    const response = await api.get("/posts/media-upload-policy/");
+    return requireData(response, "Unable to load media upload limits.");
+  },
+
   async createSession(organizationId, file) {
     const response = await api.post(
       `/posts/organizations/${organizationId}/media-upload-sessions/`,
@@ -135,20 +145,21 @@ const postMediaUploadService = {
     file,
     { onProgress, signal, refreshSession } = {},
   ) {
-    const shouldChunk = file.size >= session.chunk_threshold;
+    const shouldChunk = shouldChunkUpload(file.size, session.chunk_threshold);
     // Cloudinary requires every non-final chunk to be larger than 5 MB.
     // Keep deployments with a too-small/missing setting from producing an
     // invalid chunk sequence.
-    const chunkSize = Math.max(
-      Number(session.chunk_size) || 0,
-      CLOUDINARY_MIN_CHUNK_SIZE,
-    );
+    const chunkSize = getUploadChunkSize(session.chunk_size);
     const uploadId = crypto.randomUUID();
     const maxAttempts = 3;
     let reportedBytes = 0;
     let activeSession = session;
     const reportProgress = (uploaded, total) => {
-      reportedBytes = Math.max(reportedBytes, uploaded);
+      const boundedUploaded = Math.min(
+        total,
+        Math.max(0, uploaded),
+      );
+      reportedBytes = Math.max(reportedBytes, boundedUploaded);
       onProgress?.(reportedBytes, total);
     };
     const refreshSignedSession = async () => {

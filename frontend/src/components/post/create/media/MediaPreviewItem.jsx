@@ -4,10 +4,20 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 
-export default function MediaPreviewItem({ media, index = 0, onRemove, onRetry }) {
+export default function MediaPreviewItem({
+  media,
+  index = 0,
+  organizationId,
+  onRemove,
+  onRetry,
+}) {
   const isImage = media?.type === "IMAGE";
 
   const isVideo = media?.type === "VIDEO";
+  const progress = Math.min(
+    100,
+    Math.max(0, Number(media?.progress) || 0),
+  );
 
   return (
     <Box
@@ -147,15 +157,17 @@ export default function MediaPreviewItem({ media, index = 0, onRemove, onRetry }
             {media.status === "FAILED"
               ? media.uploadError || "Upload failed"
               : media.status === "UPLOADING"
-                ? `Uploading ${media.progress || 0}%`
+                ? `Uploading ${progress}%`
                 : media.status === "PROCESSING"
                   ? "Processing"
+                  : media.status === "LOCAL" && !organizationId
+                    ? "Select an organization to upload"
                   : "Preparing upload"}
           </Typography>
           {media.status === "UPLOADING" && (
             <LinearProgress
               variant="determinate"
-              value={media.progress || 0}
+              value={progress}
               sx={{ height: 3, borderRadius: 2 }}
             />
           )}

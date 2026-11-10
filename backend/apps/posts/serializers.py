@@ -24,6 +24,19 @@ from rest_framework import serializers
 
 from .models import PostMediaType
 
+
+def validate_media_size(*, media_type, size):
+    """Enforce the configured byte ceiling for a declared media type."""
+    max_size = (
+        settings.MEDIA_UPLOAD_MAX_IMAGE_BYTES
+        if media_type == PostMediaType.IMAGE
+        else settings.MEDIA_UPLOAD_MAX_VIDEO_BYTES
+    )
+    if size > max_size:
+        raise serializers.ValidationError(
+            {"file": "Media exceeds the configured upload limit."}
+        )
+
 # ============================================================
 # POST TARGET INPUT
 # ============================================================
@@ -84,12 +97,10 @@ class PostMediaInputSerializer(serializers.Serializer):
         return attrs
 
     def validate_image(self, uploaded_file):
-        max_size = settings.MEDIA_UPLOAD_MAX_IMAGE_BYTES
-
-        if uploaded_file.size > max_size:
-            raise serializers.ValidationError(
-                {"file": "Image exceeds the configured upload limit."}
-            )
+        validate_media_size(
+            media_type=PostMediaType.IMAGE,
+            size=uploaded_file.size,
+        )
 
         try:
             uploaded_file.seek(0)
@@ -128,19 +139,12 @@ class PostMediaInputSerializer(serializers.Serializer):
             )
 
     def validate_video(self, uploaded_file):
-        max_size = settings.MEDIA_UPLOAD_MAX_VIDEO_BYTES
         allowed_types = set(settings.MEDIA_UPLOAD_ALLOWED_VIDEO_TYPES)
         content_type = (getattr(uploaded_file, "content_type", "") or "").lower()
-
-        if uploaded_file.size > max_size:
-            raise serializers.ValidationError(
-                {
-                    "file": (
-                        "Video exceeds the configured upload limit. "
-                        f"Maximum size is {max_size // (1024 * 1024)} MB."
-                    )
-                }
-            )
+        validate_media_size(
+            media_type=PostMediaType.VIDEO,
+            size=uploaded_file.size,
+        )
 
         if content_type not in allowed_types:
             raise serializers.ValidationError(

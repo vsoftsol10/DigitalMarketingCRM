@@ -4,6 +4,7 @@ from .views import (
     CalendarEventDetailAPIView,
     CalendarEventsAPIView,
     CalendarFiltersAPIView,
+    MediaUploadPolicyAPIView,
     OrganizationMediaUploadSessionAPIView,
     OrganizationPostDetailAPIView,
     OrganizationPostListCreateAPIView,
@@ -17,6 +18,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path("media-upload-policy/", MediaUploadPolicyAPIView.as_view(), name="media-upload-policy"),
     path("calendar/events/", CalendarEventsAPIView.as_view(), name="calendar-events"),
     path(
         "calendar/events/<uuid:target_id>/",

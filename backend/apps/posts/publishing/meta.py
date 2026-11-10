@@ -520,18 +520,63 @@ class MetaPublisher(BasePublisher):
 
             child_ids = post_platform.provider_state.get("carousel_children", [])
             if len(child_ids) < len(media):
-                for item in media[len(child_ids) :]:
+                for child_index, item in enumerate(
+                    media[len(child_ids) :],
+                    start=len(child_ids),
+                ):
                     source = "image_url" if item.media_type == "IMAGE" else "video_url"
                     try:
+                        child_payload = {
+                            source: self._instagram_media_url(item),
+                            "is_carousel_item": "true",
+                        }
+                        if item.media_type == "VIDEO":
+                            child_payload["media_type"] = "VIDEO"
+                        logger.info(
+                            "INSTAGRAM_CAROUSEL_CHILD_CREATE_START target_id=%s "
+                            "child_index=%s media_type=%s stage=child_create "
+                            "http_status=%s error_code=%s error_subcode=%s fbtrace_id=%s",
+                            getattr(post_platform, "id", None),
+                            child_index,
+                            item.media_type,
+                            None,
+                            None,
+                            None,
+                            None,
+                        )
                         child = api.graph_post(
                             f"{account.platform_account_id}/media",
                             access_token=token,
-                            data={
-                                source: self._instagram_media_url(item),
-                                "is_carousel_item": "true",
-                            },
+                            data=child_payload,
+                        )
+                        logger.info(
+                            "INSTAGRAM_CAROUSEL_CHILD_CREATE_SUCCESS target_id=%s "
+                            "child_index=%s media_type=%s stage=child_create "
+                            "http_status=%s error_code=%s error_subcode=%s fbtrace_id=%s",
+                            getattr(post_platform, "id", None),
+                            child_index,
+                            item.media_type,
+                            getattr(api, "last_response_status_code", None),
+                            None,
+                            None,
+                            None,
                         )
                     except InstagramAPIError as exc:
+                        diagnostics = self._instagram_diagnostic_fields(
+                            getattr(exc, "error_payload", None),
+                        )
+                        logger.warning(
+                            "INSTAGRAM_CAROUSEL_CHILD_CREATE_FAILURE target_id=%s "
+                            "child_index=%s media_type=%s stage=child_create "
+                            "http_status=%s error_code=%s error_subcode=%s fbtrace_id=%s",
+                            getattr(post_platform, "id", None),
+                            child_index,
+                            item.media_type,
+                            getattr(exc, "status_code", None),
+                            diagnostics["code"],
+                            diagnostics["error_subcode"],
+                            diagnostics["fbtrace_id"],
+                        )
                         if item.media_type == "IMAGE":
                             self._retry_unavailable_instagram_image(exc)
                         raise

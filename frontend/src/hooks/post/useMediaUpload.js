@@ -179,10 +179,9 @@ import { useFormContext } from "react-hook-form";
 
 import {
   createMediaObject,
-  getFileKey,
+  readImageDimensions,
   revokePreviewUrl,
-  validateFileSize,
-  validateFileType,
+  validateMediaFiles,
 } from "../../utils/post/media.utils";
 import postMediaUploadService from "../../services/postMediaUpload.service";
 
@@ -201,6 +200,8 @@ const EMPTY_MEDIA = [];
 export default function useMediaUpload({
   config,
   organizationId,
+  uploadPolicy,
+  onClearMediaReady,
 }) {
   const inputRef = useRef(null);
 
@@ -226,6 +227,28 @@ export default function useMediaUpload({
       { shouldDirty: true, shouldValidate: true },
     );
   }, [getValues, setValue]);
+
+  const loadImageDimensions = useCallback((mediaItem) => {
+    if (mediaItem.type !== "IMAGE") {
+      return;
+    }
+
+    readImageDimensions(mediaItem.file)
+      .then(({ width, height }) => {
+        updateMediaItem(mediaItem.id, {
+          width,
+          height,
+          dimensionsPending: false,
+          dimensionsError: null,
+        });
+      })
+      .catch((error) => {
+        updateMediaItem(mediaItem.id, {
+          dimensionsPending: false,
+          dimensionsError: error?.message || "Unable to read image dimensions.",
+        });
+      });
+  }, [updateMediaItem]);
 
   const startUpload = useCallback(async (mediaItem) => {
     if (!organizationId || uploadRequestsRef.current.has(mediaItem.id)) {
@@ -261,9 +284,12 @@ export default function useMediaUpload({
             session.session_id,
           ),
           onProgress: (uploaded, total) => {
+            const progress = total > 0
+              ? Math.min(100, Math.max(0, Math.round((uploaded / total) * 100)))
+              : 0;
             updateMediaItem(mediaItem.id, {
               status: "UPLOADING",
-              progress: total ? Math.round((uploaded / total) * 100) : 0,
+              progress,
             });
           },
         },
@@ -408,111 +434,18 @@ export default function useMediaUpload({
 
     // CAROUSEL + ALL already use config.accepted_types.
 
-    // ==========================================================
-    // DUPLICATE LOOKUP
-    // ==========================================================
-
-    const existingKeys =
-      new Set(
-        media.map((item) =>
-          getFileKey(item.file),
-        ),
-      );
-
-    const newMedia = [];
-    const rejectedFiles = [];
-
-    // ==========================================================
-    // PROCESS FILES
-    // ==========================================================
-
-    for (const file of selectedFiles) {
-      const fileKey =
-        getFileKey(file);
-
-      // --------------------------------------------------------
-      // DUPLICATE
-      // --------------------------------------------------------
-
-      if (
-        existingKeys.has(fileKey)
-      ) {
-        rejectedFiles.push({
-          file,
-          reason: "DUPLICATE",
-        });
-
-        continue;
-      }
-
-      // --------------------------------------------------------
-      // MAX FILE COUNT
-      // --------------------------------------------------------
-
-      if (
-        media.length +
-          newMedia.length >=
-        config.max_files
-      ) {
-        rejectedFiles.push({
-          file,
-          reason: "MAX_FILES",
-        });
-
-        continue;
-      }
-
-      // --------------------------------------------------------
-      // FILE TYPE
-      // --------------------------------------------------------
-
-      if (
-        !validateFileType(
-          file,
-          allowedTypes,
-        )
-      ) {
-        rejectedFiles.push({
-          file,
-          reason: "INVALID_TYPE",
-        });
-
-        continue;
-      }
-
-      // --------------------------------------------------------
-      // FILE SIZE
-      // --------------------------------------------------------
-
-      if (
-        Number.isFinite(config.max_file_size_mb)
-        && !validateFileSize(file, config.max_file_size_mb)
-      ) {
-        rejectedFiles.push({
-          file,
-          reason: "FILE_TOO_LARGE",
-        });
-
-        continue;
-      }
-
-      // --------------------------------------------------------
-      // CREATE MEDIA OBJECT
-      // --------------------------------------------------------
-
-      const mediaObject =
-        createMediaObject({
-          file,
-        });
-
-      newMedia.push(
-        mediaObject,
-      );
-
-      existingKeys.add(
-        fileKey,
-      );
-    }
+    const { accepted, rejected: rejectedFiles } = validateMediaFiles({
+      files: selectedFiles,
+      existingMedia: media,
+      maxFiles: config.max_files,
+      acceptedTypes: allowedTypes,
+      uploadPolicy,
+    });
+    const newMedia = accepted.map((file) => {
+      const mediaObject = createMediaObject({ file });
+      loadImageDimensions(mediaObject);
+      return mediaObject;
+    });
 
     // ==========================================================
     // UPDATE FORM
@@ -628,7 +561,7 @@ export default function useMediaUpload({
   // CLEAR ALL
   // ============================================================
 
-  function clearMedia() {
+  const clearMedia = useCallback(() => {
     abortControllersRef.current.forEach((controller) => controller.abort());
     abortControllersRef.current.clear();
     uploadRequestsRef.current.clear();
@@ -644,7 +577,15 @@ export default function useMediaUpload({
         shouldValidate: true,
       },
     );
-  }
+  }, [media, setValue]);
+
+  useEffect(() => {
+    onClearMediaReady?.(clearMedia);
+
+    return () => {
+      onClearMediaReady?.(null);
+    };
+  }, [clearMedia, onClearMediaReady]);
 
   // ============================================================
   // RETURN

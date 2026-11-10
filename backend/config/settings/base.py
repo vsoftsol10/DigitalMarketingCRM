@@ -75,12 +75,12 @@ CLOUDINARY_STORAGE = {
 # asset.
 MEDIA_UPLOAD_MAX_IMAGE_BYTES = config(
     "MEDIA_UPLOAD_MAX_IMAGE_BYTES",
-    default=10 * 1024 * 1024,
+    default=10_000_000,
     cast=int,
 )
 MEDIA_UPLOAD_MAX_VIDEO_BYTES = config(
     "MEDIA_UPLOAD_MAX_VIDEO_BYTES",
-    default=1024 * 1024 * 1024,
+    default=100_000_000,
     cast=int,
 )
 MEDIA_UPLOAD_SESSION_TTL_SECONDS = config(

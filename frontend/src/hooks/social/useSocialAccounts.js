@@ -175,6 +175,7 @@ export default function useSocialAccounts(
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [accountsOrganizationId, setAccountsOrganizationId] = useState(null);
   const requestRef = useRef({ id: 0, controller: null });
 
   // ============================================================
@@ -189,6 +190,7 @@ export default function useSocialAccounts(
         controller: null,
       };
       setAccounts([]);
+      setAccountsOrganizationId(null);
       setLoading(false);
       return;
     }
@@ -200,7 +202,6 @@ export default function useSocialAccounts(
 
     try {
       setLoading(true);
-      setError(null);
 
       const response =
         await socialAccountService.getOrganizationSocialAccounts(
@@ -212,13 +213,17 @@ export default function useSocialAccounts(
         return;
       }
 
-      if (!response?.success) {
+      if (response?.success !== true) {
         throw new Error(response?.message || "Unable to load social accounts.");
       }
 
-      const accountsData = Array.isArray(response.data) ? response.data : [];
+      if (!Array.isArray(response.data)) {
+        throw new Error("Social account data was not returned in the expected format.");
+      }
 
-      setAccounts(accountsData);
+      setAccounts(response.data);
+      setAccountsOrganizationId(organizationId);
+      setError(null);
     } catch (error) {
       if (controller.signal.aborted || requestRef.current.id !== requestId) {
         return;
@@ -226,13 +231,7 @@ export default function useSocialAccounts(
 
       console.error("Failed to load social accounts:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to load social accounts.",
-      );
-
-      setAccounts([]);
+      setError(error);
     } finally {
       if (requestRef.current.id === requestId) {
         requestRef.current = { id: requestId, controller: null };
@@ -410,8 +409,13 @@ export default function useSocialAccounts(
   // ============================================================
 
   return {
-    accounts,
-    loading,
+    accounts: accountsOrganizationId === organizationId ? accounts : [],
+    loading: loading || Boolean(
+      enabled
+      && organizationId
+      && accountsOrganizationId !== organizationId
+      && !error,
+    ),
     error,
     refresh,
     updateAccount,

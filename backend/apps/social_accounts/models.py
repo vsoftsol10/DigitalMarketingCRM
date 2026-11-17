@@ -127,10 +127,6 @@ class SocialConnection(BaseModel):
         blank=True,
     )
 
-    refresh_token = models.TextField(
-        blank=True,
-    )
-
     token_expires_at = models.DateTimeField(
         null=True,
         blank=True,

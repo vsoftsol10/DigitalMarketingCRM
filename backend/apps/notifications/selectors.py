@@ -25,6 +25,8 @@ def _user_notification_queryset(*, user):
             post_platform__post__is_deleted=False,
             post_platform__status=PostStatus.FAILED,
         )
+        | Q(event_type=UserNotificationType.META_USER_DATA_ACCESS_EXPIRING)
+        | Q(event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED)
         | Q(
             event_type=UserNotificationType.SUBSCRIPTION_EXPIRED,
             subscription__isnull=False,

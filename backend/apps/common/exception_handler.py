@@ -30,8 +30,23 @@ def custom_exception_handler(exc, context):
         "Validation Error",
     )
 
-    return error_response(
+    wrapped_response = error_response(
         message=str(message),
         errors=response.data,
         status_code=response.status_code,
     )
+
+    # Preserve headers that carry API behavior while retaining the project
+    # envelope. Avoid copying representation headers such as Content-Length,
+    # which may no longer describe the wrapped response body.
+    for header in (
+        "Retry-After",
+        "WWW-Authenticate",
+        "Proxy-Authenticate",
+        "Allow",
+        "Vary",
+    ):
+        if header in response:
+            wrapped_response[header] = response[header]
+
+    return wrapped_response

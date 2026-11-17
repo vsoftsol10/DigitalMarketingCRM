@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
@@ -6,73 +6,75 @@ import DashboardStats from "../../components/dashboard/DashboardStats";
 
 import dashboardService from "../../services/dashboard.service";
 import DashboardScheduleCard from "../../components/dashboard/DashboardScheduleCard";
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import DashboardNotificationsCard from "../../components/dashboard/DashboardNotificationsCard";
 import DashboardRecentActivityCard from "../../components/dashboard/DashboardRecentActivityCard";
 import QuickActions from "../../components/dashboard/QuickActions";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 export default function Dashboard() {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const isMounted = useRef(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadDashboard = useCallback(async () => {
+    if (!isMounted.current) return;
+    setIsLoading(true);
+    setError("");
 
-    async function loadDashboard() {
-      try {
-        const response = await dashboardService.getDashboard();
+    try {
+      const response = await dashboardService.getDashboard();
 
-        if (isMounted) {
-          setDashboard(response);
-        }
-      } catch {
-        if (isMounted) {
-          setError("Unable to load the dashboard. Please try again.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+      if (!response || typeof response !== "object") {
+        throw new Error("Dashboard data was not returned.");
       }
+
+      if (isMounted.current) setDashboard(response);
+    } catch (error) {
+      console.error("Failed to load dashboard:", error);
+      if (isMounted.current) {
+        setError(formatApiErrorMessage(error, {
+          fallback: "Unable to load the dashboard. Please try again.",
+        }));
+      }
+    } finally {
+      if (isMounted.current) setIsLoading(false);
     }
-
-    loadDashboard();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
-  if (isLoading) {
+  useEffect(() => {
+    let active = true;
+    isMounted.current = true;
+    Promise.resolve().then(() => {
+      if (active) loadDashboard();
+    });
+
+    return () => {
+      active = false;
+      isMounted.current = false;
+    };
+  }, [loadDashboard]);
+
+  if (isLoading && !dashboard) {
     return <LoadingState page="Dashboard" />;
   }
 
-  if (error) {
-    return (
-      <Box
-        role="alert"
-        sx={{
-          minHeight: 320,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#DC2626",
-        }}
-      >
-        <Typography>{error}</Typography>
-      </Box>
-    );
+  if (error && !dashboard) {
+    return <ErrorState message={error} onRetry={loadDashboard} variant="page" />;
   }
 
   if (!dashboard) {
-    return null;
+    return <ErrorState message="Dashboard data is unavailable." onRetry={loadDashboard} variant="page" />;
   }
 
   return (
     <>
+      {isLoading && <LoadingState label="UPDATING DASHBOARD..." variant="inline" />}
+      {error && <ErrorState message={error} onRetry={loadDashboard} variant="inline" />}
       <DashboardHeader
         title="Dashboard"
         description="Monitor your marketing activities and today's tasks."

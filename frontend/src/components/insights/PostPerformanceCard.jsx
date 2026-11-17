@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardContent,
+  Alert,
   FormControl,
   MenuItem,
   Select,
@@ -24,6 +25,7 @@ import {
 
 import insightsService from "../../services/insights.service";
 import formatCompactNumber from "../../utils/formatters/formatCompactNumber";
+import formatApiErrorMessage from "../../utils/apiErrorMessage";
 import { insightsGlassControlSx, insightsGlassSurfaceSx } from "./insightsGlassSx";
 
 const PAGE_FETCH_CONCURRENCY = 3;
@@ -364,17 +366,31 @@ export default function PostPerformanceCard({
           </FormControl>
         </Box>
 
+        {contentQuery.isError && contentQuery.data && (
+          <Alert
+            severity="error"
+            action={(
+              <Button size="small" color="inherit" onClick={() => contentQuery.refetch()}>
+                Retry
+              </Button>
+            )}
+            sx={{ mb: 1.5 }}
+          >
+            Could not refresh post performance. Previously loaded chart data remains visible. {formatApiErrorMessage(contentQuery.error, { fallback: "Please try again." })}
+          </Alert>
+        )}
+
         {contentQuery.isLoading ? (
           <Box sx={{ height: { xs: 260, sm: 320 } }}>
             <Skeleton variant="rounded" width="100%" height="100%" sx={{ borderRadius: 3 }} />
           </Box>
-        ) : contentQuery.isError ? (
+        ) : contentQuery.isError && !contentQuery.data ? (
           <ChartMessage action={(
             <Button size="small" onClick={() => contentQuery.refetch()} sx={{ mt: 1, textTransform: "none" }}>
               Retry chart data
             </Button>
           )}>
-            Could not load all post performance data for this period.
+            {formatApiErrorMessage(contentQuery.error, { fallback: "Could not load all post performance data for this period." })}
           </ChartMessage>
         ) : !selected ? (
           <ChartMessage>Select an account to view post performance.</ChartMessage>

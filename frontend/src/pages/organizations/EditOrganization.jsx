@@ -1,4 +1,4 @@
-import { Alert, Box, Divider, Paper } from "@mui/material";
+import { Alert, Divider, Paper } from "@mui/material";
 
 import { FormProvider, useForm } from "react-hook-form";
 
@@ -16,6 +16,7 @@ import EditHeader from "../../components/organization/edit/EditHeader";
 
 import UpdateOrganizationFooter from "../../components/organization/edit/UpdateOrganizationFooter";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
 
 import OrganizationDetailsForm from "../../components/organization/create/OrganizationDetailsForm";
 
@@ -35,6 +36,7 @@ import { organizationDefaultValues } from "../../constants/forms/organizationDef
 // ============================================================
 
 import organizationService from "../../services/organization/organization.service";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 // ============================================================
 // COMPONENT
@@ -52,6 +54,7 @@ export default function EditOrganization() {
   const [loadingOrganization, setLoadingOrganization] = useState(true);
 
   const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   // ==========================================================
   // FORM
@@ -180,11 +183,9 @@ export default function EditOrganization() {
         console.error("Failed to load organization:", error);
 
         if (isMounted) {
-          setLoadError(
-            error?.response?.data?.message ||
-              error?.message ||
-              "Unable to load organization.",
-          );
+          setLoadError(formatApiErrorMessage(error, {
+            fallback: "Unable to load organization.",
+          }));
         }
       } finally {
         if (isMounted) {
@@ -198,7 +199,7 @@ export default function EditOrganization() {
     return () => {
       isMounted = false;
     };
-  }, [organizationId, reset]);
+  }, [organizationId, reset, loadAttempt]);
 
   // ==========================================================
   // INVALID SUBMIT
@@ -338,17 +339,12 @@ export default function EditOrganization() {
 
   if (loadError) {
     return (
-      <Box
-        sx={{
-          maxWidth: "980px",
-
-          mx: "auto",
-
-          p: 3,
-        }}
-      >
-        <Alert severity="error">{loadError}</Alert>
-      </Box>
+      <ErrorState
+        message={loadError}
+        onRetry={organizationId ? () => setLoadAttempt((attempt) => attempt + 1) : undefined}
+        variant="page"
+        sx={{ maxWidth: 980, mx: "auto" }}
+      />
     );
   }
 

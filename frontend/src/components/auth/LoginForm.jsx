@@ -24,6 +24,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "../../validation/auth.schema";
 import { useLogin } from "../../hooks/useAuth";
 import { tokens } from "../../layouts/AuthLayout";
+import formatApiErrorMessage from "../../utils/apiErrorMessage";
 
 export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -47,6 +48,11 @@ export default function LoginForm() {
   };
 
   const isSubmitting = loginMutation.isPending;
+  const loginErrorMessage = loginMutation.error?.response?.status === 401
+    ? "Invalid email or password. Please check your credentials and try again."
+    : formatApiErrorMessage(loginMutation.error, {
+      fallback: "Unable to sign in. Please try again.",
+    });
 
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -59,8 +65,7 @@ export default function LoginForm() {
             fontSize: "0.875rem",
           }}
         >
-          {loginMutation.error?.response?.data?.message ||
-            "Couldn't sign you in. Check your email and password and try again."}
+          {loginErrorMessage}
         </Alert>
       )}
 

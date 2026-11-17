@@ -1,4 +1,4 @@
-import { Box, Paper, Stack } from "@mui/material";
+import { Alert, Box, Paper, Stack } from "@mui/material";
 
 import { FormProvider, useForm } from "react-hook-form";
 
@@ -19,6 +19,7 @@ import { planDefaultValues } from "../../constants/forms/planDefaultValues";
 
 import plansService from "../../services/plans.service";
 import { planSectionSx } from "../../components/plans/plansGlassSx";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 export default function CreatePlan() {
   const navigate = useNavigate();
@@ -43,7 +44,11 @@ export default function CreatePlan() {
     mode: "onSubmit",
   });
 
-  const { setError, formState: { isSubmitting } } = methods;
+  const {
+    clearErrors,
+    setError,
+    formState: { errors, isSubmitting },
+  } = methods;
 
   async function onSubmit(data) {
     try {
@@ -82,12 +87,16 @@ export default function CreatePlan() {
 
       setError("root.server", {
         type: "server",
-        message:
-          responseData?.message ||
-          error?.message ||
-          "Unable to create plan. Please try again.",
+        message: formatApiErrorMessage(error, {
+          fallback: "Unable to create plan. Please try again.",
+        }),
       });
     }
+  }
+
+  function handleFormSubmit(event) {
+    clearErrors("root.server");
+    return methods.handleSubmit(onSubmit)(event);
   }
 
   return (
@@ -113,12 +122,25 @@ export default function CreatePlan() {
       <FormProvider {...methods}>
         <Box
           component="form"
-          onSubmit={methods.handleSubmit(onSubmit)}
+          onSubmit={handleFormSubmit}
+          onChange={() => {
+            if (errors.root?.server) {
+              clearErrors("root.server");
+            }
+          }}
           sx={{
             width: "100%",
             minWidth: 0,
           }}
         >
+          {errors.root?.server && (
+            <Alert severity="error" role="alert" sx={{ mb: 3, borderRadius: "12px" }}>
+              {formatApiErrorMessage(errors.root.server, {
+                fallback: "Unable to create plan. Please try again.",
+              })}
+            </Alert>
+          )}
+
           <Box
             sx={{
               width: "100%",

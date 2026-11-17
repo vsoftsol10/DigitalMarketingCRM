@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Checkbox,
-  CircularProgress,
   Card,
   CardContent,
   Chip,
@@ -33,6 +32,10 @@ import YouTubeIcon from "@mui/icons-material/YouTube";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import LoadingState from "../../ui/LoadingState";
+import ErrorState from "../../ui/ErrorState";
+import EmptyState from "../../ui/EmptyState";
+import LoadingSpinner from "../../ui/LoadingSpinner";
 import socialAccountInvitationService from "../../../services/organization/socialAccountInvitation.service";
 
 const platformOptions = [
@@ -108,7 +111,9 @@ export default function SocialAccountInvitationDialog({
   const [platforms, setPlatforms] = useState(["facebook"]);
   const [email, setEmail] = useState("");
   const [invitations, setInvitations] = useState([]);
+  const [invitationsOrganizationId, setInvitationsOrganizationId] = useState(null);
   const [loadingList, setLoadingList] = useState(true);
+  const [listError, setListError] = useState(null);
   const [action, setAction] = useState("");
   const [busyInvitationId, setBusyInvitationId] = useState("");
   const [error, setError] = useState("");
@@ -120,9 +125,15 @@ export default function SocialAccountInvitationDialog({
     if (!organizationId) return;
     if (showLoading) setLoadingList(true);
     try {
-      setInvitations(await socialAccountInvitationService.list(organizationId));
+      const rows = await socialAccountInvitationService.list(organizationId);
+      if (!Array.isArray(rows)) {
+        throw new Error("Invitation data was not returned in the expected format.");
+      }
+      setInvitations(rows);
+      setInvitationsOrganizationId(organizationId);
+      setListError(null);
     } catch (loadError) {
-      setError(getError(loadError));
+      setListError(loadError);
     } finally {
       setLoadingList(false);
     }
@@ -133,10 +144,17 @@ export default function SocialAccountInvitationDialog({
     let active = true;
     socialAccountInvitationService.list(organizationId)
       .then((rows) => {
-        if (active) setInvitations(rows);
+        if (!Array.isArray(rows)) {
+          throw new Error("Invitation data was not returned in the expected format.");
+        }
+        if (active) {
+          setInvitations(rows);
+          setInvitationsOrganizationId(organizationId);
+          setListError(null);
+        }
       })
       .catch((loadError) => {
-        if (active) setError(getError(loadError));
+        if (active) setListError(loadError);
       })
       .finally(() => {
         if (active) setLoadingList(false);
@@ -285,6 +303,13 @@ export default function SocialAccountInvitationDialog({
   };
 
   const busy = Boolean(action || busyInvitationId);
+  const hasLoadedInvitations = Boolean(
+    organizationId && invitationsOrganizationId === organizationId,
+  );
+  const visibleInvitations = hasLoadedInvitations ? invitations : [];
+  const listLoading = loadingList || Boolean(
+    open && organizationId && !hasLoadedInvitations && !listError,
+  );
   const allPlatformsSelected = selectablePlatformIds.every((platform) => platforms.includes(platform));
   const somePlatformsSelected = platforms.length > 0 && !allPlatformsSelected;
 
@@ -411,20 +436,43 @@ export default function SocialAccountInvitationDialog({
             <Box sx={{ minHeight: { xs: 190, sm: 230 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.75 }}>
                 <Typography variant="subtitle1" sx={{ fontSize: { xs: 18, sm: 20 }, fontWeight: 700, lineHeight: 1.3, color: "#101b38" }}>Recent Invitations</Typography>
-                {loadingList && <CircularProgress size={18} />}
               </Stack>
               <Box>
-                {loadingList && (
-                  <Box sx={{ height: "100%", display: "grid", placeItems: "center", bgcolor: "#fff", border: "1px dashed #d5dbe3", borderRadius: 1 }}>
-                    <Typography variant="body2" color="text.secondary">Loading invitations…</Typography>
-                  </Box>
+                {listLoading && visibleInvitations.length === 0 && (
+                  <LoadingState
+                    label="LOADING INVITATIONS..."
+                    variant="container"
+                    minHeight={190}
+                  />
                 )}
-                {!loadingList && invitations.length === 0 && (
-                  <Box sx={{ px: 1.25, py: 1, bgcolor: "#fff", border: "1px dashed #d5dbe3", borderRadius: 1 }}>
-                    <Typography variant="body2" color="text.secondary">No invitations yet.</Typography>
-                  </Box>
+                {listError && visibleInvitations.length === 0 && (
+                  <ErrorState
+                    title={hasLoadedInvitations ? "Unable to refresh invitations" : "Unable to load invitations"}
+                    message={listError}
+                    onRetry={listLoading ? undefined : () => refresh()}
+                    variant="container"
+                    sx={{ minHeight: 190 }}
+                  />
                 )}
-                {!loadingList && invitations.length > 0 && (
+                {listError && visibleInvitations.length > 0 && (
+                  <ErrorState
+                    title="Unable to refresh invitations"
+                    message={listError}
+                    onRetry={listLoading ? undefined : () => refresh()}
+                    variant="inline"
+                  />
+                )}
+                {listLoading && visibleInvitations.length > 0 && (
+                  <LoadingState label="REFRESHING INVITATIONS..." variant="inline" />
+                )}
+                {hasLoadedInvitations && !listLoading && !listError && visibleInvitations.length === 0 && (
+                  <EmptyState
+                    title="No invitations yet"
+                    description="Invitations for this organization will appear here."
+                    sx={{ minHeight: 190 }}
+                  />
+                )}
+                {hasLoadedInvitations && visibleInvitations.length > 0 && (
                   <TableContainer sx={{ width: "100%", minWidth: 0, border: "1px solid #e1e5ea", borderRadius: 1.25, bgcolor: "#fff", overflowX: "auto" }}>
                     <Table size="small" sx={{ minWidth: 680 }}>
                       <TableHead>
@@ -437,7 +485,7 @@ export default function SocialAccountInvitationDialog({
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {invitations.map((invitation) => (
+                        {visibleInvitations.map((invitation) => (
                           <TableRow key={invitation.id} hover sx={{ "&:last-child td": { borderBottom: 0 } }}>
                             <TableCell sx={{ py: 0.8, px: 1.25, maxWidth: 250, color: "#1f2937", fontSize: 13, fontWeight: 600, overflowWrap: "anywhere" }}>
                               {invitation.recipient_email || "Share link"}
@@ -500,7 +548,7 @@ export default function SocialAccountInvitationDialog({
           />
           <Button
             variant="contained"
-            startIcon={action === "email" ? <CircularProgress size={17} color="inherit" /> : <EmailRoundedIcon />}
+            startIcon={action === "email" ? <LoadingSpinner size={17} color="inherit" decorative /> : <EmailRoundedIcon />}
             disabled={busy || !platforms.length}
             onClick={sendEmail}
             sx={{ minHeight: 44, minWidth: { sm: 190 }, width: { xs: "100%", sm: "auto" }, whiteSpace: "nowrap", borderRadius: 1.25, textTransform: "none", fontSize: 14, fontWeight: 700, bgcolor: "#1769f5", boxShadow: "none", "&:hover": { bgcolor: "#0f58d8", boxShadow: "none" } }}
@@ -532,7 +580,7 @@ export default function SocialAccountInvitationDialog({
         <DialogActions>
           <Button onClick={() => { setSharePlatform(""); setShareEmail(""); }} disabled={busy}>Cancel</Button>
           <Button variant="contained" onClick={sendPlatformEmail} disabled={busy || !sharePlatform}>
-            {action === `email-${sharePlatform}` ? <CircularProgress size={18} color="inherit" /> : "Send invitation"}
+            {action === `email-${sharePlatform}` ? <LoadingSpinner size={18} color="inherit" decorative /> : "Send invitation"}
           </Button>
         </DialogActions>
       </Dialog>

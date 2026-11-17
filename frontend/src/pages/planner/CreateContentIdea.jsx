@@ -69,7 +69,7 @@
 
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Box, Paper, Divider } from "@mui/material";
+import { Alert, Paper, Divider } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -78,12 +78,15 @@ import IdeaDetailsForm from "../../components/planner/create/IdeaDetailsForm";
 import ContentDetailsForm from "../../components/planner/create/ContentDetailsForm";
 import CreateContentIdeaFooter from "../../components/planner/create/CreateContentIdeaFooter";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import EmptyState from "../../components/ui/EmptyState";
 import { glassFormDividerSx, glassFormPaperSx } from "../../components/ui/form/glassFormSx";
 
 import { contentIdeaSchema } from "../../validation/contentIdea.schema";
 import { contentIdeaDefaultValues } from "../../constants/forms/contentIdeaDefaultValues";
 
 import contentPlannerService from "../../services/contentPlanner.service";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 export default function CreateContentIdea() {
   const navigate = useNavigate();
@@ -91,6 +94,7 @@ export default function CreateContentIdea() {
   const [organizations, setOrganizations] = useState([]);
   const [loadingOrganizations, setLoadingOrganizations] = useState(true);
   const [organizationError, setOrganizationError] = useState(null);
+  const [organizationsLoadedSuccessfully, setOrganizationsLoadedSuccessfully] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -116,28 +120,34 @@ export default function CreateContentIdea() {
         throw new Error(response?.message || "Unable to load organizations.");
       }
 
-      const organizationList = Array.isArray(response?.data?.organizations)
-        ? response.data.organizations
-        : [];
+      if (!Array.isArray(response?.data?.organizations)) {
+        throw new Error("Organization data was not returned.");
+      }
+
+      const organizationList = response.data.organizations;
 
       setOrganizations(organizationList);
+      setOrganizationsLoadedSuccessfully(true);
     } catch (error) {
       console.error("Failed to load Content Planner organizations:", error);
 
-      setOrganizationError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to load organizations.",
-      );
-
-      setOrganizations([]);
+      setOrganizationError(formatApiErrorMessage(error, {
+        fallback: "Unable to load organizations.",
+      }));
     } finally {
       setLoadingOrganizations(false);
     }
   }, []);
 
   useEffect(() => {
-    loadOrganizations();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) loadOrganizations();
+    });
+
+    return () => {
+      active = false;
+    };
   }, [loadOrganizations]);
 
   // ============================================================
@@ -177,8 +187,24 @@ export default function CreateContentIdea() {
   // LOADING
   // ============================================================
 
-  if (loadingOrganizations) {
+  if (loadingOrganizations && !organizationsLoadedSuccessfully) {
     return <LoadingState page="Create Content Idea" />;
+  }
+
+  if (organizationError && !organizationsLoadedSuccessfully) {
+    return <ErrorState message={organizationError} onRetry={loadOrganizations} variant="page" />;
+  }
+
+  if (!loadingOrganizations && !organizationError && organizationsLoadedSuccessfully && organizations.length === 0) {
+    return (
+      <EmptyState
+        title="No organizations available"
+        description="Create an organization before adding a content idea."
+        actionLabel="Create organization"
+        onAction={() => navigate("/organizations/new")}
+        sx={{ minHeight: 320 }}
+      />
+    );
   }
 
   return (
@@ -186,16 +212,15 @@ export default function CreateContentIdea() {
       <form onSubmit={methods.handleSubmit(onSubmit)}>
         <CreateContentIdeaHeader />
 
+        {loadingOrganizations && (
+          <LoadingState label="UPDATING ORGANIZATIONS..." variant="inline" />
+        )}
         {organizationError && (
-          <Alert
-            severity="error"
-            sx={{
-              mb: 3,
-              borderRadius: "12px",
-            }}
-          >
-            {organizationError}
-          </Alert>
+          <ErrorState
+            message={organizationError}
+            onRetry={loadOrganizations}
+            variant="inline"
+          />
         )}
 
         {submitError && (

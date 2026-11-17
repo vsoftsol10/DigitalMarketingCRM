@@ -144,7 +144,7 @@
 //   );
 // }
 
-import { Alert, Box, Stack, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -152,18 +152,22 @@ import dmAutomationService from "../../services/dmAutomation.service";
 
 import DMAutomationHeader from "../../components/dm-automation/DMAutomationHeader";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import EmptyState from "../../components/ui/EmptyState";
 import DMAutomationInfoBanner from "../../components/dm-automation/DMAutomationInfoBanner";
 import DMAutomationGrid from "../../components/dm-automation/DMAutomationGrid";
 import CreateAutomationDialog from "../../components/dm-automation/CreateAutomationDialog";
-
-import { TYPOGRAPHY } from "../../theme/typography";
 
 export default function DMAutomation() {
   const [automations, setAutomations] = useState([]);
 
   const [loading, setLoading] = useState(true);
 
-  const [error, setError] = useState(null);
+  const [hasLoadedAutomations, setHasLoadedAutomations] = useState(false);
+
+  const [loadError, setLoadError] = useState(null);
+
+  const [mutationError, setMutationError] = useState(null);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
@@ -176,7 +180,7 @@ export default function DMAutomation() {
   const loadAutomations = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+      setLoadError(null);
 
       const response = await dmAutomationService.getAutomations();
 
@@ -185,14 +189,10 @@ export default function DMAutomation() {
       }
 
       setAutomations(response);
+      setHasLoadedAutomations(true);
     } catch (error) {
       console.error("Failed to load DM automations:", error);
-
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to load DM automations.",
-      );
+      setLoadError(error);
     } finally {
       setLoading(false);
     }
@@ -209,12 +209,14 @@ export default function DMAutomation() {
   );
 
   const handleOpenCreateDialog = useCallback(() => {
+    setMutationError(null);
     setCreateDialogOpen(true);
   }, []);
 
   const handleCloseCreateDialog = useCallback(() => {
     setCreateDialogOpen(false);
     setEditingAutomation(null);
+    setMutationError(null);
   }, []);
 
   /**
@@ -229,7 +231,7 @@ export default function DMAutomation() {
   const handleCreateAutomation = useCallback(async (payload) => {
     try {
       setCreating(true);
-      setError(null);
+      setMutationError(null);
 
       const createdAutomation =
         await dmAutomationService.createAutomation(payload);
@@ -244,11 +246,7 @@ export default function DMAutomation() {
     } catch (error) {
       console.error("Failed to create DM automation:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to create DM automation.",
-      );
+      setMutationError(error);
     } finally {
       setCreating(false);
     }
@@ -262,7 +260,7 @@ export default function DMAutomation() {
 
       try {
         setUpdating(true);
-        setError(null);
+        setMutationError(null);
 
         const updatedAutomation = await dmAutomationService.updateAutomation(
           editingAutomation.id,
@@ -282,11 +280,7 @@ export default function DMAutomation() {
       } catch (error) {
         console.error("Failed to update DM automation:", error);
 
-        setError(
-          error?.response?.data?.message ||
-            error?.message ||
-            "Unable to update DM automation.",
-        );
+        setMutationError(error);
       } finally {
         setUpdating(false);
       }
@@ -295,6 +289,7 @@ export default function DMAutomation() {
   );
 
   const handleEditAutomation = useCallback((automation) => {
+    setMutationError(null);
     setEditingAutomation(automation);
     setCreateDialogOpen(true);
   }, []);
@@ -303,7 +298,7 @@ export default function DMAutomation() {
     const nextStatus = automation.status === "active" ? "inactive" : "active";
 
     try {
-      setError(null);
+      setMutationError(null);
 
       const updatedAutomation =
         await dmAutomationService.toggleAutomationStatus(
@@ -319,23 +314,33 @@ export default function DMAutomation() {
     } catch (error) {
       console.error("Failed to update DM automation status:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to update automation status.",
-      );
+      setMutationError(error);
     }
   }, []);
 
-  if (loading) {
+  if (loading && !hasLoadedAutomations) {
     return <LoadingState page="DM Automation" />;
   }
 
-  if (error) {
+  if (!hasLoadedAutomations && loadError) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
+      <ErrorState
+        title="Unable to load DM automations"
+        message={loadError}
+        onRetry={loading ? undefined : loadAutomations}
+        variant="page"
+      />
+    );
+  }
+
+  if (!hasLoadedAutomations) {
+    return (
+      <ErrorState
+        title="Unable to load DM automations"
+        message="Automation data was not returned."
+        onRetry={loading ? undefined : loadAutomations}
+        variant="page"
+      />
     );
   }
 
@@ -346,28 +351,34 @@ export default function DMAutomation() {
         minWidth: 0,
       }}
     >
+      {mutationError && (
+        <ErrorState
+          title="Unable to save automation changes"
+          message={mutationError}
+          variant="inline"
+          sx={{
+            position: "fixed",
+            top: { xs: 12, sm: 20 },
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 24px)",
+            maxWidth: 560,
+            zIndex: (theme) => theme.zIndex.modal + 1,
+          }}
+        />
+      )}
+
       <DMAutomationHeader onCreateAutomation={handleOpenCreateDialog} />
 
       <DMAutomationInfoBanner activeCount={activeAutomationCount} />
 
       <Box sx={{ mt: 3 }}>
         {automations.length === 0 ? (
-          <Stack
-            alignItems="center"
-            justifyContent="center"
-            sx={{
-              minHeight: 300,
-              textAlign: "center",
-            }}
-          >
-            <Typography sx={TYPOGRAPHY.cardTitle}>
-              No automations available
-            </Typography>
-
-            <Typography sx={TYPOGRAPHY.bodySmall}>
-              Create your first DM automation to get started.
-            </Typography>
-          </Stack>
+          <EmptyState
+            title="No automations available"
+            description="Create your first DM automation to get started."
+            sx={{ minHeight: 300 }}
+          />
         ) : (
           <DMAutomationGrid
             automations={automations}

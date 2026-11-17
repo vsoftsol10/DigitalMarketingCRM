@@ -7,7 +7,6 @@ import {
   Card,
   CardContent,
   Checkbox,
-  CircularProgress,
   Container,
   Divider,
   FormControlLabel,
@@ -22,6 +21,7 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import socialInvitationService from "../../services/social/socialInvitation.service";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
 
 const ACCEPTANCE_KEY = "social_invitation_acceptance";
 const RESUMPTION_KEY = "social_invitation_platform_resumption";
@@ -1259,7 +1259,7 @@ export default function AcceptInvitation() {
             {errorMessage && <Alert severity="error" sx={{ width: "100%" }}>{errorMessage}</Alert>}
             {isComplete && completionRetryNeeded && (
               <Button variant="contained" onClick={handleFinish} disabled={busy}>
-                {busy ? <CircularProgress size={20} color="inherit" /> : "Retry invitation completion"}
+                {busy ? <LoadingSpinner size={20} color="inherit" decorative /> : "Retry invitation completion"}
               </Button>
             )}
           </Stack>
@@ -1288,7 +1288,7 @@ export default function AcceptInvitation() {
             textAlign="center"
             sx={{ width: "100%", maxWidth: 400, mx: "auto" }}
           >
-            <CircularProgress size={28} thickness={4} aria-label="Loading" />
+            <LoadingSpinner size={28} thickness={4} decorative />
             <Typography variant="body2" fontWeight={600} color="text.primary" textAlign="center">
               {loadingLabel}
             </Typography>
@@ -1441,7 +1441,7 @@ export default function AcceptInvitation() {
                               </Stack>
                             ) : isConnected ? (
                               <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: "success.main" }}>
-                                {isAssociationPending ? <CircularProgress size={16} color="inherit" /> : <CheckCircleOutlineRoundedIcon fontSize="small" aria-hidden="true" />}
+                                {isAssociationPending ? <LoadingSpinner size={16} color="inherit" decorative /> : <CheckCircleOutlineRoundedIcon fontSize="small" aria-hidden="true" />}
                                 <Typography variant="body2" fontWeight={600} color="success.main">
                                   {isAssociationPending ? "Associating..." : "Connected"}
                                 </Typography>
@@ -1454,7 +1454,7 @@ export default function AcceptInvitation() {
                                 disabled={isAdding}
                                 onClick={() => handleAddFacebookPage(page)}
                                 aria-label={`Add Page ${page.name} to this invitation`}
-                                startIcon={isAdding ? <CircularProgress size={15} /> : null}
+                                startIcon={isAdding ? <LoadingSpinner size={15} decorative /> : null}
                                 sx={{
                                   minWidth: { xs: "100%", sm: 92 },
                                   minHeight: 34,
@@ -1496,7 +1496,7 @@ export default function AcceptInvitation() {
                   sx={{ alignSelf: { xs: "stretch", sm: "flex-end" }, minHeight: 40, borderRadius: 0 }}
                 >
                   {busy
-                    ? <CircularProgress size={20} color="inherit" />
+                    ? <LoadingSpinner size={20} color="inherit" decorative />
                     : "I’m Done Adding"}
                 </Button>
               )}
@@ -1609,7 +1609,7 @@ export default function AcceptInvitation() {
                     disabled={busy || !selectedPlatforms.some((platform) => supportedPlatforms.includes(platform))}
                     onClick={handleClaim}
                   >
-                    {busy ? <CircularProgress size={22} color="inherit" /> : "Continue"}
+                    {busy ? <LoadingSpinner size={22} color="inherit" decorative /> : "Continue"}
                   </Button>
                 </>
               )}
@@ -1725,7 +1725,7 @@ export default function AcceptInvitation() {
                                       </Stack>
                                     ) : isConnected ? (
                                       <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: "success.main" }}>
-                                        {isAssociationPending ? <CircularProgress size={16} color="inherit" /> : <CheckCircleOutlineRoundedIcon fontSize="small" aria-hidden="true" />}
+                                      {isAssociationPending ? <LoadingSpinner size={16} color="inherit" decorative /> : <CheckCircleOutlineRoundedIcon fontSize="small" aria-hidden="true" />}
                                         <Typography variant="body2" fontWeight={600} color="success.main">
                                           {isAssociationPending ? "Associating..." : "Connected"}
                                         </Typography>
@@ -1737,7 +1737,7 @@ export default function AcceptInvitation() {
                                         color="primary"
                                         disabled={isAdding}
                                         onClick={() => handleAddFacebookPage(page)}
-                                        startIcon={isAdding ? <CircularProgress size={16} /> : null}
+                                        startIcon={isAdding ? <LoadingSpinner size={16} decorative /> : null}
                                         sx={{ borderRadius: 1.75, minWidth: 104, minHeight: 32, whiteSpace: "nowrap" }}
                                       >
                                         {isAdding ? "Adding" : "Add"}
@@ -1774,7 +1774,7 @@ export default function AcceptInvitation() {
                               sx={{ alignSelf: { xs: "stretch", sm: "flex-end" }, borderRadius: 2, minHeight: 38, textTransform: "none" }}
                             >
                               {busy
-                                ? <CircularProgress size={20} color="inherit" />
+                                ? <LoadingSpinner size={20} color="inherit" decorative />
                                 : "Finish Connecting"}
                             </Button>
                           )}
@@ -1834,7 +1834,7 @@ export default function AcceptInvitation() {
                                   <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={1} justifyContent="flex-end">
                                     <Button disabled={busy} onClick={handleDeclineInstagram}>Discard preview</Button>
                                     <Button variant="contained" disabled={busy} onClick={handleConfirmInstagram} sx={{ borderRadius: 2 }}>
-                                      {busy ? <CircularProgress size={20} color="inherit" /> : "Retry connection"}
+                                      {busy ? <LoadingSpinner size={20} color="inherit" decorative /> : "Retry connection"}
                                     </Button>
                                   </Stack>
                                 )}
@@ -1852,7 +1852,7 @@ export default function AcceptInvitation() {
                                 <Button disabled={busy} onClick={handleDeclineInstagram}>Discard authorization</Button>
                               )}
                               <Button variant="contained" disabled={busy || !instagramSelectionKey} onClick={handleConfirmInstagram} sx={{ borderRadius: 2 }}>
-                                {busy ? <CircularProgress size={20} color="inherit" /> : "Retry connection"}
+                                {busy ? <LoadingSpinner size={20} color="inherit" decorative /> : "Retry connection"}
                               </Button>
                             </Stack>
                           </Box>
@@ -1868,7 +1868,7 @@ export default function AcceptInvitation() {
 
                   {isComplete && !isInstagramOnly && !platformSpecificFlow && selectedPlatforms.includes("facebook") && (
                     <Button variant="contained" size="large" onClick={handleFinish} disabled={busy}>
-                      {busy ? <CircularProgress size={22} color="inherit" /> : "I’m done connecting"}
+                      {busy ? <LoadingSpinner size={22} color="inherit" decorative /> : "I’m done connecting"}
                     </Button>
                   )}
                   {isComplete && isInstagramOnly && busy && (
@@ -1878,7 +1878,7 @@ export default function AcceptInvitation() {
                   )}
                   {isInstagramOnly && completionRetryNeeded && (
                     <Button variant="contained" size="large" onClick={handleFinish} disabled={busy} sx={{ borderRadius: 2 }}>
-                      {busy ? <CircularProgress size={22} color="inherit" /> : "Retry completion"}
+                      {busy ? <LoadingSpinner size={22} color="inherit" decorative /> : "Retry completion"}
                     </Button>
                   )}
                   {!hasPersistedAccount && credentialType !== "resumption" && (

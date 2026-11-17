@@ -35,6 +35,12 @@ class MetaCredentialStatus(models.TextChoices):
     ERROR = "ERROR", "Error"
 
 
+class MetaProviderExpiryState(models.TextChoices):
+    UNKNOWN = "UNKNOWN", "Unknown"
+    FINITE = "FINITE", "Finite"
+    NO_FINITE_EXPIRY = "NO_FINITE_EXPIRY", "No finite expiry"
+
+
 # ============================================================
 # META ACCOUNT CREDENTIAL
 # ============================================================
@@ -97,9 +103,17 @@ class MetaAccountCredential(BaseModel):
     # existing token_expires_at field, which retains its original meaning.
     provider_token_type = models.CharField(max_length=20, blank=True)
     provider_is_valid = models.BooleanField(null=True, blank=True)
+    provider_expiry_state = models.CharField(
+        max_length=20,
+        choices=MetaProviderExpiryState.choices,
+        null=True,
+        blank=True,
+        default=None,
+    )
     provider_expires_at = models.DateTimeField(null=True, blank=True)
     data_access_expires_at = models.DateTimeField(null=True, blank=True)
     last_health_check_at = models.DateTimeField(null=True, blank=True)
+    last_user_token_renewed_at = models.DateTimeField(null=True, blank=True)
     granted_permissions = models.JSONField(default=list, blank=True)
 
     class Meta:
@@ -136,7 +150,37 @@ class MetaAccountCredential(BaseModel):
                 ),
                 name="meta_credential_valid_owner",
             ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        credential_type=MetaCredentialType.USER,
+                        provider_expiry_state__in=MetaProviderExpiryState.values,
+                    )
+                    | models.Q(
+                        credential_type=MetaCredentialType.PAGE,
+                        provider_expiry_state__isnull=True,
+                    )
+                ),
+                name="meta_cred_exp_state_owner",
+            ),
         ]
+
+    def save(self, *args, **kwargs):
+        original_expiry_state = self.provider_expiry_state
+        if self.credential_type == MetaCredentialType.USER:
+            if self.provider_expiry_state is None:
+                self.provider_expiry_state = MetaProviderExpiryState.UNKNOWN
+        elif self.credential_type == MetaCredentialType.PAGE:
+            self.provider_expiry_state = None
+
+        if (
+            self.provider_expiry_state != original_expiry_state
+            and kwargs.get("update_fields") is not None
+        ):
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | {
+                "provider_expiry_state"
+            }
+        super().save(*args, **kwargs)
 
     def clean(self):
         super().clean()
@@ -443,6 +487,11 @@ class MetaTokenMaintenanceRun(models.Model):
     invalid = models.PositiveIntegerField(default=0)
     retry = models.PositiveIntegerField(default=0)
     reconnect_needed = models.PositiveIntegerField(default=0)
+    user_renewed = models.PositiveIntegerField(default=0)
+    user_skipped = models.PositiveIntegerField(default=0)
+    user_locked = models.PositiveIntegerField(default=0)
+    user_stale = models.PositiveIntegerField(default=0)
+    user_retry = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = "meta_token_maintenance_runs"

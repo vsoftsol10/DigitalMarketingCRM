@@ -108,6 +108,8 @@ export default function ContentPlannerTable({
       sx={{
         ...overviewGlassCardSx,
         width: "100%",
+        minHeight: loading && !hasIdeas ? 320 : undefined,
+        position: "relative",
         overflowX: "auto",
         overflowY: "hidden",
         "&::-webkit-scrollbar": { height: 8 },
@@ -122,19 +124,37 @@ export default function ContentPlannerTable({
           TABLE-ONLY LOADING
       ===================================================== */}
 
-      {loading && (
-        <LoadingState page="Content Planner" variant="overlay" />
+      {loading && hasIdeas && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 320,
+            zIndex: 2,
+          }}
+        >
+          <LoadingState page="Content Planner" variant="overlay" />
+        </Box>
       )}
 
-      <Table
-        sx={{
-          tableLayout: "fixed",
-
-          width: "100%",
-          minWidth: { xs: 960, md: "100%" },
-          background: "transparent",
-        }}
-      >
+      {loading && !hasIdeas ? (
+        <LoadingState
+          label="LOADING CONTENT IDEAS..."
+          variant="container"
+          minHeight={320}
+          sx={{ height: "100%" }}
+        />
+      ) : (
+        <Table
+          sx={{
+            tableLayout: "fixed",
+            width: "100%",
+            minWidth: { xs: 960, md: "100%" },
+            background: "transparent",
+          }}
+        >
         {/* ===================================================
             HEADER
         =================================================== */}
@@ -234,7 +254,8 @@ export default function ContentPlannerTable({
             </TableRow>
           )}
         </TableBody>
-      </Table>
+        </Table>
+      )}
     </TableContainer>
   );
 }

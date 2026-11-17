@@ -85,9 +85,17 @@ class SocialAccountReadSerializer(serializers.ModelSerializer):
 
     credential_status = serializers.SerializerMethodField()
 
+    parent_user_credential_status = serializers.SerializerMethodField()
+
+    parent_connection_id = serializers.SerializerMethodField()
+
     last_verified_at = serializers.SerializerMethodField()
 
     needs_reconnect = serializers.SerializerMethodField()
+
+    parent_needs_reconnect = serializers.SerializerMethodField()
+
+    page_needs_reconnect = serializers.SerializerMethodField()
 
     class Meta:
         model = SocialAccount
@@ -107,8 +115,12 @@ class SocialAccountReadSerializer(serializers.ModelSerializer):
             # Lifecycle fields
             "connection_status",
             "credential_status",
+            "parent_user_credential_status",
+            "parent_connection_id",
             "last_verified_at",
             "needs_reconnect",
+            "parent_needs_reconnect",
+            "page_needs_reconnect",
         )
 
         read_only_fields = fields
@@ -120,6 +132,16 @@ class SocialAccountReadSerializer(serializers.ModelSerializer):
         return SocialAccountLifecycleStatus.get_credential_status(
             obj,
         )
+
+    def get_parent_user_credential_status(self, obj):
+        return SocialAccountLifecycleStatus.get_parent_user_credential_status(
+            obj,
+        )
+
+    def get_parent_connection_id(self, obj):
+        if obj.platform != SocialPlatform.FACEBOOK or not obj.connection_id:
+            return None
+        return str(obj.connection_id)
 
     def get_last_verified_at(self, obj):
         return SocialAccountLifecycleStatus.get_last_verified_at(
@@ -137,6 +159,22 @@ class SocialAccountReadSerializer(serializers.ModelSerializer):
             social_account=obj,
             credential_status=credential_status,
         )
+
+    def get_parent_needs_reconnect(self, obj):
+        return SocialAccountLifecycleStatus.parent_meta_credential_needs_reconnect(
+            obj,
+        )
+
+    def get_page_needs_reconnect(self, obj):
+        credential_status = SocialAccountLifecycleStatus.get_credential_status(
+            obj,
+        )
+        return SocialAccountLifecycleStatus.page_needs_reconnect(
+            obj,
+            credential_status,
+        )
+
+
 class SocialAccountCreateSerializer(serializers.ModelSerializer):
     """
     Internal/manual social-account creation contract.

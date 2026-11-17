@@ -571,6 +571,7 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import YouTubeIcon from "@mui/icons-material/YouTube";
+import { shouldReconnectPage } from "./reconnectStatus";
 
 // ============================================================
 // PLATFORM ICONS
@@ -776,9 +777,7 @@ function ConnectedAccountRow({
 
   const connected = account?.connected === true;
 
-  const valid = account?.valid === true;
-
-  const needsReconnect = account?.needsReconnect === true;
+  const pageNeedsReconnect = shouldReconnectPage(account);
 
   // ==========================================================
   // STATUS CONFIGURATION
@@ -809,7 +808,7 @@ function ConnectedAccountRow({
   // ACTION STATE
   // ==========================================================
 
-  const canReconnect = needsReconnect && typeof onReconnect === "function";
+  const canReconnect = pageNeedsReconnect && typeof onReconnect === "function";
 
   const canDisconnect =
     connected &&

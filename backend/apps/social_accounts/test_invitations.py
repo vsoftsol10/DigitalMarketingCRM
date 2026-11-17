@@ -4,11 +4,12 @@ from importlib import import_module
 from datetime import timedelta
 from threading import Barrier
 from unittest import skipUnless
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from django.db import close_old_connections, connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TestCase, TransactionTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -26,6 +27,7 @@ from apps.integrations.meta.models import (
     MetaAccountCredential,
     MetaCredentialStatus,
     MetaCredentialType,
+    MetaProviderExpiryState,
 )
 
 from .invitations import (
@@ -53,6 +55,7 @@ from .invitations import (
     resume_invitation_platform,
     retry_email_invitation_delivery,
     validate_invitation,
+    _has_active_provider_credential,
 )
 from .models import (
     SocialAccount,
@@ -106,6 +109,10 @@ def create_connected_account(organization, account_id, platform, *, with_credent
             credential_type=MetaCredentialType.USER,
             access_token="encrypted-user-token-placeholder",
             status=MetaCredentialStatus.ACTIVE,
+            provider_expiry_state=MetaProviderExpiryState.FINITE,
+            provider_is_valid=True,
+            provider_expires_at=timezone.now() + timedelta(days=30),
+            data_access_expires_at=timezone.now() + timedelta(days=20),
         )
     elif with_credentials and platform == SocialPlatform.INSTAGRAM:
         InstagramAccountCredential.objects.create(
@@ -140,6 +147,57 @@ class SocialAccountInvitationAPITests(TestCase):
             "organization-social-account-invitation-share-create",
             kwargs={"organization_id": self.organization.organization_id},
         )
+
+    def test_facebook_eligibility_requires_known_current_user_expiry_state(self):
+        account = create_connected_account(
+            self.organization,
+            "user-expiry-facebook",
+            SocialPlatform.FACEBOOK,
+        )
+        user_credential = MetaAccountCredential.objects.get(
+            social_connection=account.connection,
+            credential_type=MetaCredentialType.USER,
+        )
+        now = timezone.now()
+
+        self.assertTrue(_has_active_provider_credential(account))
+
+        MetaAccountCredential.objects.filter(pk=user_credential.pk).update(
+            provider_expiry_state=MetaProviderExpiryState.NO_FINITE_EXPIRY,
+            provider_is_valid=True,
+            provider_expires_at=None,
+            data_access_expires_at=now + timedelta(days=2),
+        )
+        self.assertTrue(_has_active_provider_credential(account))
+
+        MetaAccountCredential.objects.filter(pk=user_credential.pk).update(
+            provider_is_valid=None,
+        )
+        self.assertFalse(_has_active_provider_credential(account))
+
+
+        MetaAccountCredential.objects.filter(pk=user_credential.pk).update(
+            provider_expiry_state=MetaProviderExpiryState.UNKNOWN,
+            provider_is_valid=True,
+            provider_expires_at=now + timedelta(days=2),
+            data_access_expires_at=now + timedelta(days=2),
+        )
+        self.assertFalse(_has_active_provider_credential(account))
+        user_credential.refresh_from_db()
+        self.assertEqual(user_credential.status, MetaCredentialStatus.ACTIVE)
+        self.assertFalse(user_credential.is_deleted)
+
+        MetaAccountCredential.objects.filter(pk=user_credential.pk).update(
+            provider_expiry_state=MetaProviderExpiryState.FINITE,
+            provider_expires_at=now - timedelta(seconds=1),
+        )
+        self.assertFalse(_has_active_provider_credential(account))
+
+        MetaAccountCredential.objects.filter(pk=user_credential.pk).update(
+            provider_expires_at=now + timedelta(days=2),
+            data_access_expires_at=now - timedelta(seconds=1),
+        )
+        self.assertFalse(_has_active_provider_credential(account))
 
     @override_settings(FRONTEND_URL="https://crm.example.test")
     def test_owner_can_create_facebook_instagram_or_combined_share_link(self):
@@ -928,6 +986,113 @@ class SocialAccountInvitationAPITests(TestCase):
         ):
             model_fields = {field.name for field in model._meta.get_fields()}
             self.assertTrue(forbidden_fields.isdisjoint(model_fields))
+
+
+class InvitationDeliveryProviderResponseTests(SimpleTestCase):
+    """Isolated adapter tests; these do not require database setup."""
+
+    def setUp(self):
+        self.invitation = SimpleNamespace(
+            allowed_platforms=[SocialPlatform.FACEBOOK],
+            expires_at=timezone.now() + timedelta(days=1),
+            organization=SimpleNamespace(name="Synthetic Organization"),
+            status=InvitationStatus.PENDING,
+            delivery_status=DeliveryStatus.PENDING,
+            refresh_from_db=MagicMock(),
+        )
+        self.attempt = {
+            "recipient_email": "synthetic-recipient@example.test",
+            "token": "synthetic-invitation-token",
+            "invitation_url": "https://example.test/invitation#synthetic",
+            "attempt_id": 3,
+        }
+
+    def deliver(self, provider_response):
+        from .invitation_delivery import deliver_prepared_invitation_email
+
+        with (
+            patch(
+                "apps.social_accounts.invitation_delivery.send_brevo_email",
+                return_value=provider_response,
+            ) as send_email,
+            patch(
+                "apps.social_accounts.invitation_delivery.platform_resumption_url",
+                return_value="https://example.test/invitation?connect=facebook",
+            ),
+            patch(
+                "apps.social_accounts.invitation_delivery.mark_email_invitation_sent",
+                return_value=True,
+            ) as mark_sent,
+            patch(
+                "apps.social_accounts.invitation_delivery.mark_email_invitation_failed",
+            ) as mark_failed,
+        ):
+            outcome = deliver_prepared_invitation_email(self.invitation, self.attempt)
+        return outcome, send_email, mark_sent, mark_failed
+
+    def test_missing_message_id_stays_pending(self):
+        outcome, _send, mark_sent, mark_failed = self.deliver({})
+
+        self.assertEqual(outcome, "pending")
+        self.assertEqual(self.invitation.delivery_status, DeliveryStatus.PENDING)
+        mark_sent.assert_not_called()
+        mark_failed.assert_not_called()
+
+    def test_empty_message_id_stays_pending(self):
+        outcome, _send, mark_sent, mark_failed = self.deliver({"messageId": ""})
+
+        self.assertEqual(outcome, "pending")
+        self.assertEqual(self.invitation.delivery_status, DeliveryStatus.PENDING)
+        mark_sent.assert_not_called()
+        mark_failed.assert_not_called()
+
+    def test_whitespace_only_message_id_stays_pending(self):
+        outcome, _send, mark_sent, mark_failed = self.deliver({"messageId": " \t\n"})
+
+        self.assertEqual(outcome, "pending")
+        self.assertEqual(self.invitation.delivery_status, DeliveryStatus.PENDING)
+        mark_sent.assert_not_called()
+        mark_failed.assert_not_called()
+
+    def test_valid_message_id_is_trimmed_and_persisted(self):
+        outcome, _send, mark_sent, mark_failed = self.deliver(
+            {"messageId": "  brevo-message-123  "}
+        )
+
+        self.assertEqual(outcome, "sent")
+        mark_sent.assert_called_once_with(
+            self.invitation,
+            self.attempt["attempt_id"],
+            provider_message_id="brevo-message-123",
+        )
+        mark_failed.assert_not_called()
+
+    def test_ambiguous_provider_error_stays_pending(self):
+        from apps.notifications.services import BrevoEmailError
+        from .invitation_delivery import deliver_prepared_invitation_email
+
+        with (
+            patch(
+                "apps.social_accounts.invitation_delivery.send_brevo_email",
+                side_effect=BrevoEmailError("synthetic ambiguous response"),
+            ),
+            patch(
+                "apps.social_accounts.invitation_delivery.platform_resumption_url",
+                return_value="https://example.test/invitation?connect=facebook",
+            ),
+            patch(
+                "apps.social_accounts.invitation_delivery.mark_email_invitation_sent",
+            ) as mark_sent,
+            patch(
+                "apps.social_accounts.invitation_delivery.mark_email_invitation_failed",
+            ) as mark_failed,
+        ):
+            outcome = deliver_prepared_invitation_email(self.invitation, self.attempt)
+
+        self.assertEqual(outcome, "pending")
+        self.assertEqual(self.invitation.delivery_status, DeliveryStatus.PENDING)
+        mark_sent.assert_not_called()
+        mark_failed.assert_not_called()
 
 
 class SocialAccountInvitationPlatformResumptionTests(TestCase):

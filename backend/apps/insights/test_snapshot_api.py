@@ -6,8 +6,20 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
+from apps.integrations.meta.models import (
+    MetaAccountCredential,
+    MetaCredentialStatus,
+    MetaCredentialType,
+)
 from apps.organizations.models import Organization
-from apps.social_accounts.models import SocialAccount, SocialAccountStatus, SocialPlatform
+from apps.social_accounts.models import (
+    SocialAccount,
+    SocialAccountStatus,
+    SocialConnection,
+    SocialConnectionProvider,
+    SocialConnectionStatus,
+    SocialPlatform,
+)
 from .models import (
     InsightsAccountSnapshot,
     InsightsContentSnapshotItem,
@@ -241,6 +253,20 @@ class InsightsSnapshotReadAPITests(APITestCase):
             provider_id="facebook-page-for-snapshot",
             platform=SocialPlatform.FACEBOOK,
         )
+        connection = SocialConnection.objects.create(
+            organization=self.organization,
+            provider=SocialConnectionProvider.META,
+            provider_user_id="invalid-user-with-existing-snapshot",
+            status=SocialConnectionStatus.ACTIVE,
+        )
+        account.connection = connection
+        account.save(update_fields=("connection", "updated_at"))
+        MetaAccountCredential.objects.create(
+            social_connection=connection,
+            credential_type=MetaCredentialType.USER,
+            access_token="SYNTHETIC_ENCRYPTED_USER_PLACEHOLDER",
+            status=MetaCredentialStatus.INVALID,
+        )
         url = reverse(
             "insights-account-snapshot",
             kwargs={
@@ -298,7 +324,10 @@ class InsightsSnapshotReadAPITests(APITestCase):
             "platform": SocialPlatform.FACEBOOK,
         }
 
-        with patch("apps.insights.services.fetch_provider_insights") as provider_call:
+        with (
+            patch("apps.insights.services.fetch_provider_insights") as provider_call,
+            patch("apps.integrations.meta.credentials.decrypt_token") as decrypt_token,
+        ):
             response = self.client.get(url, params)
 
         self.assertEqual(response.status_code, 200)
@@ -310,6 +339,7 @@ class InsightsSnapshotReadAPITests(APITestCase):
         self.assertNotIn("aggregation", returned["views"])
         self.assertEqual(returned["reach"]["period"], "week")
         provider_call.assert_not_called()
+        decrypt_token.assert_not_called()
 
     def test_missing_snapshot_does_not_fallback_or_fabricate_metrics(self):
         response = self.client.get(self.account_url, self.params)

@@ -6,7 +6,10 @@ from unittest.mock import Mock, patch
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
-from rest_framework.test import APIClient
+from rest_framework.response import Response
+from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
+
+from apps.common.throttles import RedisRateThrottle
 
 from apps.accounts.models import User
 from apps.organizations.models import Organization
@@ -30,6 +33,12 @@ from .services import (
     validate_media_assets_for_targets,
 )
 from .storage import PostMediaCloudinaryStorage
+from .views import (
+    OrganizationMediaUploadSessionAPIView,
+    OrganizationPostPublishNowAPIView,
+    OrganizationPostTargetPublishNowAPIView,
+    OrganizationPostTargetRetryAPIView,
+)
 
 
 @override_settings(
@@ -65,6 +74,7 @@ class UploadSizeLimitSerializerTests(SimpleTestCase):
                 })
                 self.assertFalse(serializer.is_valid())
                 self.assertIn("size", serializer.errors)
+
 
     def test_legacy_multipart_serializers_use_exact_byte_limits(self):
         image_bytes = BytesIO()
@@ -108,6 +118,263 @@ class UploadSizeLimitSerializerTests(SimpleTestCase):
             serializer.validate_image(image_file)
         with self.assertRaises(ValidationError):
             serializer.validate_video(video_file)
+
+
+class InMemoryAtomicRedis:
+    """Deterministic in-memory stand-in for Redis rate-limit EVAL."""
+
+    def __init__(self):
+        self.counters = {}
+        self.keys_seen = []
+
+    def eval(self, _script, key_count, *keys_and_windows):
+        keys = keys_and_windows[:key_count]
+        windows_ms = keys_and_windows[key_count:]
+        self.keys_seen.extend(keys)
+        values = []
+        for key, window_ms in zip(keys, windows_ms):
+            count, ttl = self.counters.get(key, (0, window_ms))
+            count += 1
+            self.counters[key] = (count, ttl)
+            values.extend((count, ttl))
+        return values
+
+
+@override_settings(
+    DMC_RATE_LIMITS={
+        "media_upload_create": ((20, 60),),
+        "media_upload_finalize": ((30, 60),),
+        "media_upload_finalize_session": ((5, 60),),
+    },
+    DMC_RATE_LIMIT_REDIS_FAILURE_POLICY="closed",
+)
+class MediaUploadRateLimitTests(SimpleTestCase):
+    databases = set()
+
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.redis = InMemoryAtomicRedis()
+        self.redis_patcher = patch.object(
+            RedisRateThrottle,
+            "_redis_client",
+            return_value=self.redis,
+        )
+        self.redis_patcher.start()
+        self.addCleanup(self.redis_patcher.stop)
+        self.user = SimpleNamespace(pk="synthetic-user", is_authenticated=True)
+        self.view = OrganizationMediaUploadSessionAPIView.as_view()
+
+    def dispatch(
+        self,
+        method,
+        organization_id="ORG-TEST",
+        session_id=None,
+        user=None,
+    ):
+        request = getattr(self.factory, method.lower())("/upload/", {}, format="json")
+        force_authenticate(request, user=user or self.user)
+        kwargs = {"organization_id": organization_id}
+        if session_id is not None:
+            kwargs["session_id"] = session_id
+        handler = Response({"accepted": True})
+        with patch.object(
+            OrganizationMediaUploadSessionAPIView,
+            method.lower(),
+            return_value=handler,
+        ):
+            return self.view(request, **kwargs)
+
+    def post(self, organization_id="ORG-TEST", session_id=None):
+        return self.dispatch("POST", organization_id, session_id)
+
+    def test_create_limit_is_20_per_minute_per_user_and_organization(self):
+        responses = [self.post() for _ in range(21)]
+
+        self.assertTrue(all(response.status_code == 200 for response in responses[:20]))
+        self.assertEqual(responses[20].status_code, 429)
+        self.assertIn("Retry-After", responses[20])
+        self.assertEqual(int(responses[20]["Retry-After"]), 60)
+
+    def test_finalize_limit_is_30_per_minute_per_user_and_organization(self):
+        responses = [
+            self.post(session_id=f"session-{index}")
+            for index in range(31)
+        ]
+
+        self.assertTrue(all(response.status_code == 200 for response in responses[:30]))
+        self.assertEqual(responses[30].status_code, 429)
+        self.assertEqual(int(responses[30]["Retry-After"]), 60)
+
+    def test_finalize_has_a_separate_per_session_burst_limit(self):
+        responses = [
+            self.post(session_id="session-one")
+            for _ in range(6)
+        ]
+
+        self.assertTrue(all(response.status_code == 200 for response in responses[:5]))
+        self.assertEqual(responses[5].status_code, 429)
+        self.assertIn("Retry-After", responses[5])
+        self.assertEqual(self.post(session_id="session-two").status_code, 200)
+
+    def test_user_and_organization_identifiers_have_independent_buckets(self):
+        first_user_responses = [
+            self.post(organization_id="ORG-ONE")
+            for _ in range(20)
+        ]
+
+        self.assertEqual(first_user_responses[-1].status_code, 200)
+        self.assertEqual(self.post(organization_id="ORG-TWO").status_code, 200)
+        other_user = SimpleNamespace(pk="other-user", is_authenticated=True)
+        self.assertEqual(
+            self.dispatch("POST", organization_id="ORG-ONE", user=other_user).status_code,
+            200,
+        )
+
+    def test_rate_limit_keys_hash_user_organization_and_session_identifiers(self):
+        self.post(organization_id="private-org", session_id="private-session")
+
+        self.assertEqual(len(self.redis.keys_seen), 2)
+        for key in self.redis.keys_seen:
+            self.assertTrue(key.startswith("dmc:ratelimit:v1:media_upload_"))
+            self.assertNotIn("private-org", key)
+            self.assertNotIn("private-session", key)
+            self.assertNotIn("synthetic-user", key)
+
+    def test_session_get_is_not_limited_by_create_or_finalize_post_scopes(self):
+        self.dispatch("GET", session_id="session-one")
+
+        self.assertEqual(self.redis.keys_seen, [])
+
+
+@override_settings(
+    DMC_RATE_LIMITS={
+        "publish_now": ((5, 60),),
+        "publish_target_now": ((5, 60),),
+        "publish_retry": ((3, 60), (20, 3600)),
+    },
+    DMC_RATE_LIMIT_REDIS_FAILURE_POLICY="closed",
+)
+class PublishingRateLimitTests(SimpleTestCase):
+    databases = set()
+
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.redis = InMemoryAtomicRedis()
+        self.redis_patcher = patch.object(
+            RedisRateThrottle,
+            "_redis_client",
+            return_value=self.redis,
+        )
+        self.redis_patcher.start()
+        self.addCleanup(self.redis_patcher.stop)
+        self.user = SimpleNamespace(pk="synthetic-publisher", is_authenticated=True)
+
+    def call_action(
+        self,
+        view_class,
+        *throttle_dimension_args,
+        organization_id="ORG-TEST",
+        user=None,
+    ):
+        request = self.factory.post("/publish/", {}, format="json")
+        force_authenticate(request, user=user or self.user)
+        kwargs = {
+            "organization_id": organization_id,
+            "post_id": "synthetic-post",
+        }
+        if throttle_dimension_args:
+            kwargs["target_id"] = throttle_dimension_args[0]
+        view = view_class.as_view()
+        handler = Response({"accepted": True})
+        with patch.object(view_class, "post", return_value=handler):
+            return view(request, **kwargs)
+
+    def test_aggregate_publish_now_is_limited_to_five_per_user_organization(self):
+        responses = [
+            self.call_action(OrganizationPostPublishNowAPIView)
+            for _ in range(6)
+        ]
+
+        self.assertTrue(all(response.status_code == 200 for response in responses[:5]))
+        self.assertEqual(responses[5].status_code, 429)
+        self.assertEqual(int(responses[5]["Retry-After"]), 60)
+
+    def test_target_publish_now_is_limited_to_five_per_user_organization(self):
+        responses = [
+            self.call_action(
+                OrganizationPostTargetPublishNowAPIView,
+                "target-one",
+            )
+            for _ in range(6)
+        ]
+
+        self.assertTrue(all(response.status_code == 200 for response in responses[:5]))
+        self.assertEqual(responses[5].status_code, 429)
+        self.assertEqual(int(responses[5]["Retry-After"]), 60)
+
+    def test_publish_now_counters_are_scoped_to_user_and_organization(self):
+        limited = [
+            self.call_action(OrganizationPostPublishNowAPIView)
+            for _ in range(6)
+        ]
+
+        self.assertEqual(limited[-1].status_code, 429)
+        self.assertEqual(
+            self.call_action(
+                OrganizationPostPublishNowAPIView,
+                organization_id="ORG-OTHER",
+            ).status_code,
+            200,
+        )
+        other_user = SimpleNamespace(pk="other-publisher", is_authenticated=True)
+        self.assertEqual(
+            self.call_action(
+                OrganizationPostPublishNowAPIView,
+                user=other_user,
+            ).status_code,
+            200,
+        )
+
+    def test_retry_is_limited_to_three_per_minute_per_target(self):
+        responses = [
+            self.call_action(OrganizationPostTargetRetryAPIView, "target-one")
+            for _ in range(4)
+        ]
+
+        self.assertTrue(all(response.status_code == 200 for response in responses[:3]))
+        self.assertEqual(responses[3].status_code, 429)
+        self.assertEqual(int(responses[3]["Retry-After"]), 60)
+        self.assertEqual(
+            self.call_action(OrganizationPostTargetRetryAPIView, "target-two").status_code,
+            200,
+        )
+
+    def test_retry_is_limited_to_twenty_per_hour_per_user_organization(self):
+        responses = [
+            self.call_action(
+                OrganizationPostTargetRetryAPIView,
+                f"target-{index}",
+            )
+            for index in range(21)
+        ]
+
+        self.assertTrue(all(response.status_code == 200 for response in responses[:20]))
+        self.assertEqual(responses[20].status_code, 429)
+        self.assertGreater(int(responses[20]["Retry-After"]), 60)
+
+    def test_publishing_rate_limit_keys_hash_all_subject_identifiers(self):
+        self.call_action(
+            OrganizationPostTargetRetryAPIView,
+            "private-target-id",
+            organization_id="private-organization-id",
+        )
+
+        self.assertEqual(len(self.redis.keys_seen), 2)
+        for key in self.redis.keys_seen:
+            self.assertTrue(key.startswith("dmc:ratelimit:v1:publish_retry:"))
+            self.assertNotIn("private-target-id", key)
+            self.assertNotIn("private-organization-id", key)
+            self.assertNotIn("synthetic-publisher", key)
 
 
 class UploadPolicyEndpointTests(SimpleTestCase):

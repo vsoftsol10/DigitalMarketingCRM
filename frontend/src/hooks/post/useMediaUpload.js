@@ -183,6 +183,7 @@ import {
   revokePreviewUrl,
   validateMediaFiles,
 } from "../../utils/post/media.utils";
+import formatApiErrorMessage from "../../utils/apiErrorMessage";
 import postMediaUploadService from "../../services/postMediaUpload.service";
 
 const IMAGE_TYPES = [
@@ -213,6 +214,7 @@ export default function useMediaUpload({
   const [rejectedFiles, setRejectedFiles] = useState([]);
   const uploadRequestsRef = useRef(new Map());
   const abortControllersRef = useRef(new Map());
+  const pendingFinalizationsRef = useRef(new Map());
 
   const watchedMedia = watch("media");
   const media = Array.isArray(watchedMedia) ? watchedMedia : EMPTY_MEDIA;
@@ -255,16 +257,39 @@ export default function useMediaUpload({
       return;
     }
 
+    let pendingFinalization = pendingFinalizationsRef.current.get(mediaItem.id);
+    if (pendingFinalization?.organizationId !== organizationId) {
+      pendingFinalizationsRef.current.delete(mediaItem.id);
+      pendingFinalization = null;
+    }
+
     const controller = new AbortController();
     uploadRequestsRef.current.set(mediaItem.id, true);
     abortControllersRef.current.set(mediaItem.id, controller);
 
     try {
       updateMediaItem(mediaItem.id, {
-        status: "UPLOADING",
-        progress: 0,
+        status: pendingFinalization ? "PROCESSING" : "UPLOADING",
+        progress: pendingFinalization ? 100 : 0,
         uploadError: "",
       });
+
+      if (pendingFinalization) {
+        const finalized = await postMediaUploadService.finalizeSession(
+          pendingFinalization.organizationId,
+          pendingFinalization.sessionId,
+          pendingFinalization.uploadResponse,
+        );
+        pendingFinalizationsRef.current.delete(mediaItem.id);
+        updateMediaItem(mediaItem.id, {
+          uploadSessionId: finalized.media_asset_id || pendingFinalization.sessionId,
+          status: "UPLOADED",
+          progress: 100,
+          uploadError: "",
+        });
+        return;
+      }
+
       const session = await postMediaUploadService.createSession(
         organizationId,
         mediaItem.file,
@@ -294,11 +319,17 @@ export default function useMediaUpload({
           },
         },
       );
+      pendingFinalizationsRef.current.set(mediaItem.id, {
+        organizationId,
+        sessionId: session.session_id,
+        uploadResponse,
+      });
       const finalized = await postMediaUploadService.finalizeSession(
         organizationId,
         session.session_id,
         uploadResponse,
       );
+      pendingFinalizationsRef.current.delete(mediaItem.id);
       updateMediaItem(mediaItem.id, {
         uploadSessionId: finalized.media_asset_id || session.session_id,
         status: "UPLOADED",
@@ -307,6 +338,13 @@ export default function useMediaUpload({
       });
     } catch (error) {
       if (error?.name === "AbortError") {
+        if (pendingFinalizationsRef.current.has(mediaItem.id)) {
+          updateMediaItem(mediaItem.id, {
+            status: "FAILED",
+            uploadError: "Upload verification was interrupted. Retry to finish.",
+          });
+          return;
+        }
         // Return an interrupted item to LOCAL so a development StrictMode
         // remount or an explicit retry can safely start a fresh session.
         updateMediaItem(mediaItem.id, {
@@ -318,7 +356,9 @@ export default function useMediaUpload({
       }
       updateMediaItem(mediaItem.id, {
         status: "FAILED",
-        uploadError: error?.message || "Media upload failed. Try again.",
+        uploadError: formatApiErrorMessage(error, {
+          fallback: "Media upload failed. Try again.",
+        }),
       });
     } finally {
       uploadRequestsRef.current.delete(mediaItem.id);
@@ -542,6 +582,7 @@ export default function useMediaUpload({
       abortControllersRef.current.get(id)?.abort();
       abortControllersRef.current.delete(id);
       uploadRequestsRef.current.delete(id);
+      pendingFinalizationsRef.current.delete(id);
       revokePreviewUrl(target);
     }
 
@@ -565,6 +606,7 @@ export default function useMediaUpload({
     abortControllersRef.current.forEach((controller) => controller.abort());
     abortControllersRef.current.clear();
     uploadRequestsRef.current.clear();
+    pendingFinalizationsRef.current.clear();
     media.forEach(
       revokePreviewUrl,
     );

@@ -79,9 +79,10 @@ def deliver_prepared_invitation_email(invitation, attempt):
     if not isinstance(response, dict):
         return "pending"
 
-    message_id = response.get("messageId", "")
-    if not isinstance(message_id, str):
+    message_id = response.get("messageId")
+    if not isinstance(message_id, str) or not message_id.strip():
         return "pending"
+    message_id = message_id.strip()
 
     promoted = mark_email_invitation_sent(
         invitation,

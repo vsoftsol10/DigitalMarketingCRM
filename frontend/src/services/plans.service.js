@@ -230,7 +230,29 @@ class PlansService {
       params,
     });
 
-    return response.data?.data || [];
+    if (response.data?.success !== true || !Array.isArray(response.data.data)) {
+      throw new Error("Plans were not returned in the expected format.");
+    }
+
+    const hasMalformedPlan = response.data.data.some((plan) => (
+      !plan
+      || typeof plan !== "object"
+      || Array.isArray(plan)
+      || typeof plan.id !== "string"
+      || !plan.id.trim()
+      || typeof plan.name !== "string"
+      || !plan.name.trim()
+      || typeof plan.type !== "string"
+      || !plan.type.trim()
+      || typeof plan.status !== "string"
+      || !plan.status.trim()
+    ));
+
+    if (hasMalformedPlan) {
+      throw new Error("Plans included an invalid plan entry.");
+    }
+
+    return response.data.data;
   }
 
   // ============================================================

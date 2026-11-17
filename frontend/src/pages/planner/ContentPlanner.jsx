@@ -124,6 +124,9 @@ import ContentPlannerFilters from "../../components/planner/ContentPlannerFilter
 import ContentPlannerTable from "../../components/planner/ContentPlannerTable";
 import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import EmptyState from "../../components/ui/EmptyState";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 import useDebounce from "../../hooks/common/useDebounce";
 
@@ -145,7 +148,8 @@ export default function ContentPlanner() {
 
   const [tableLoading, setTableLoading] = useState(false);
 
-  const [error, setError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   // ============================================================
   // FILTER STATE
@@ -192,7 +196,7 @@ export default function ContentPlanner() {
           setTableLoading(true);
         }
 
-        setError(null);
+        setLoadError(null);
 
         const response = await contentPlannerService.getContentPlanner({
           search,
@@ -213,6 +217,10 @@ export default function ContentPlanner() {
           throw new Error("Content planner data was not returned.");
         }
 
+        if (!Array.isArray(response.data.ideas) || !Array.isArray(response.data.organizations)) {
+          throw new Error("Content planner data was incomplete.");
+        }
+
         setPlanner(response.data);
       } catch (error) {
         if (requestId !== plannerRequestId.current) {
@@ -221,11 +229,9 @@ export default function ContentPlanner() {
 
         console.error("Failed to load content planner:", error);
 
-        setError(
-          error?.response?.data?.message ||
-            error?.message ||
-            "Unable to load content planner.",
-        );
+        setLoadError(formatApiErrorMessage(error, {
+          fallback: "Unable to load content planner.",
+        }));
       } finally {
         if (requestId === plannerRequestId.current) {
           setInitialLoading(false);
@@ -241,11 +247,20 @@ export default function ContentPlanner() {
   // ============================================================
 
   useEffect(() => {
-    loadPlanner({
-      search: "",
-      organization: "all",
-      initial: true,
+    let active = true;
+    Promise.resolve().then(() => {
+      if (!active) return;
+
+      loadPlanner({
+        search: "",
+        organization: "all",
+        initial: true,
+      });
     });
+
+    return () => {
+      active = false;
+    };
   }, [loadPlanner]);
 
   // ============================================================
@@ -332,7 +347,7 @@ export default function ContentPlanner() {
 
     try {
       setDeleteLoading(true);
-      setError(null);
+      setActionError(null);
 
       const response = await contentPlannerService.deleteIdea(selectedIdea.id);
 
@@ -355,11 +370,9 @@ export default function ContentPlanner() {
     } catch (error) {
       console.error("Failed to delete content idea:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to delete content idea.",
-      );
+      setActionError(formatApiErrorMessage(error, {
+        fallback: "Unable to delete content idea.",
+      }));
     } finally {
       setDeleteLoading(false);
     }
@@ -375,24 +388,20 @@ export default function ContentPlanner() {
   // INITIAL PAGE LOADING
   // ============================================================
 
-  if (initialLoading && !planner) {
-    return <LoadingState page="Content Planner" />;
-  }
-
   // ============================================================
   // INITIAL ERROR
   // ============================================================
 
-  if (error && !planner) {
-    return (
-      <Box
-        sx={{
-          p: 3,
-        }}
-      >
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
+  if (initialLoading && !planner) {
+    return <LoadingState page="Content Planner" />;
+  }
+
+  if (loadError && !planner) {
+    return <ErrorState message={loadError} onRetry={() => loadPlanner({
+      search: debouncedSearch.trim(),
+      organization: filters.organization,
+      initial: true,
+    })} variant="page" />;
   }
 
   // ============================================================
@@ -404,6 +413,7 @@ export default function ContentPlanner() {
   const organizations = planner?.organizations || [];
 
   const ideas = planner?.ideas || [];
+  const isPlannerLoading = (initialLoading && !planner) || tableLoading;
 
   const hasActiveFilters =
     filters.search.trim() !== "" || filters.organization !== "all";
@@ -414,17 +424,18 @@ export default function ContentPlanner() {
           PAGE ERROR
       ======================================================= */}
 
-      {error && (
-        <Alert
-          severity="error"
-          sx={{
-            mb: 3,
-            borderRadius: "12px",
-          }}
-        >
-          {error}
-        </Alert>
+      {loadError && (
+        <ErrorState
+          message={loadError}
+          onRetry={() => loadPlanner({
+            search: debouncedSearch.trim(),
+            organization: filters.organization,
+            initial: false,
+          })}
+          variant="inline"
+        />
       )}
+      {actionError && <Alert severity="error" sx={{ mb: 3 }}>{actionError}</Alert>}
 
       {/* =======================================================
           HEADER
@@ -463,12 +474,31 @@ export default function ContentPlanner() {
       ======================================================= */}
 
       <Box sx={{ mt: 4 }}>
-        <ContentPlannerTable
-          ideas={ideas}
-          onDelete={handleOpenDeleteDialog}
-          loading={tableLoading}
-          hasActiveFilters={hasActiveFilters}
-        />
+        {isPlannerLoading ? (
+          <ContentPlannerTable
+            ideas={ideas}
+            onDelete={handleOpenDeleteDialog}
+            loading
+            hasActiveFilters={hasActiveFilters}
+          />
+        ) : !loadError && ideas.length === 0 ? (
+          <EmptyState
+            title={hasActiveFilters ? "No matching content ideas" : "No content ideas yet"}
+            description={hasActiveFilters
+              ? "Try changing your search or organization filter."
+              : "Create a content idea to start planning your content."}
+            actionLabel={hasActiveFilters ? "Clear filters" : "Create content idea"}
+            onAction={hasActiveFilters ? handleClearFilters : () => navigate("/planner/new")}
+            sx={{ minHeight: 240 }}
+          />
+        ) : (
+          <ContentPlannerTable
+            ideas={ideas}
+            onDelete={handleOpenDeleteDialog}
+            loading={false}
+            hasActiveFilters={hasActiveFilters}
+          />
+        )}
       </Box>
 
       {/* =======================================================

@@ -44,6 +44,7 @@ import {
 } from "@mui/x-date-pickers/AdapterDayjs";
 
 import App from "./App";
+import AppErrorBoundary from "./components/ui/AppErrorBoundary";
 
 import theme from "./theme/theme";
 
@@ -62,14 +63,16 @@ ReactDOM.createRoot(
         <LocalizationProvider
           dateAdapter={AdapterDayjs}
         >
-          <AuthProvider>
-            <App />
+          <AppErrorBoundary>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </AppErrorBoundary>
 
-            <Toaster
-              position="top-right"
-              reverseOrder={false}
-            />
-          </AuthProvider>
+          <Toaster
+            position="top-right"
+            reverseOrder={false}
+          />
         </LocalizationProvider>
       </ThemeProvider>
     </QueryProvider>

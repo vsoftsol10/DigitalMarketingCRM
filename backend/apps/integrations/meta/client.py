@@ -1,8 +1,11 @@
 import logging
+import json
+from datetime import datetime, timezone as datetime_timezone
 from typing import Any, Dict, Optional, Tuple, Union
 
 import requests
 from django.conf import settings
+from django.utils import timezone
 
 from .constants import (
     META_GRAPH_BASE_URL,
@@ -32,6 +35,14 @@ class MetaAPIClient:
 
     This class does not contain persistence logic.
     """
+
+    _SAFE_META_ERROR_TYPES = {
+        "OAuthException",
+        "GraphMethodException",
+        "FacebookApiException",
+        "IGApiException",
+        "Exception",
+    }
 
     def __init__(self):
         self.base_url = META_GRAPH_BASE_URL
@@ -353,6 +364,418 @@ class MetaAPIClient:
         return self._handle_response(
             response,
         )
+
+    def exchange_user_access_token(
+        self,
+        *,
+        access_token: str,
+        required_permissions=("pages_show_list",),
+        expected_user_id: Optional[str] = None,
+    ) -> dict:
+        """Exchange a Meta USER token without persisting or logging it.
+
+        This method is intentionally isolated: OAuth callbacks, credential
+        persistence, and lifecycle tasks do not invoke it. The returned token
+        is available only to the caller in memory.
+        """
+        access_token = access_token.strip() if isinstance(access_token, str) else ""
+        if not access_token:
+            self._log_user_token_exchange_diagnostic(
+                "exchange_preflight_failure",
+                validation_reason="access_token_missing",
+                level=logging.WARNING,
+            )
+            raise MetaAPIError("Meta USER access token is required for exchange.")
+
+        if expected_user_id is not None and not str(expected_user_id).strip():
+            self._log_user_token_exchange_diagnostic(
+                "exchange_preflight_failure",
+                validation_reason="expected_user_id_missing",
+                level=logging.WARNING,
+            )
+            raise MetaAPIError("Expected Meta USER identity is required for exchange.")
+
+        app_id = str(getattr(settings, "META_APP_ID", "") or "").strip()
+        app_secret = str(getattr(settings, "META_APP_SECRET", "") or "").strip()
+        if not app_id or not app_secret:
+            self._log_user_token_exchange_diagnostic(
+                "exchange_preflight_failure",
+                validation_reason="meta_app_credentials_missing",
+                level=logging.WARNING,
+            )
+            raise MetaAPIError("Meta app credentials are not configured.")
+
+        params = {
+            "client_id": app_id,
+            "client_secret": app_secret,
+            "grant_type": "fb_exchange_token",
+            "fb_exchange_token": access_token,
+        }
+        try:
+            response = requests.get(
+                META_TOKEN_URL,
+                params=params,
+                timeout=self.timeout,
+            )
+        except requests.RequestException:
+            # The URL contains the source token and app secret. Never log or
+            # chain the transport exception, which can include that URL.
+            self._log_user_token_exchange_diagnostic(
+                "http_transport_failure",
+                level=logging.ERROR,
+            )
+            raise MetaAPIError("Meta USER token exchange request failed.") from None
+
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+            self._log_user_token_exchange_diagnostic(
+                "invalid_json_response",
+                http_status=response.status_code,
+            )
+
+        if not response.ok:
+            provider_error = payload.get("error") if isinstance(payload, dict) else {}
+            if not isinstance(provider_error, dict):
+                provider_error = {}
+            safe_error = {}
+            for key in ("code", "error_subcode"):
+                value = provider_error.get(key)
+                if isinstance(value, int) and not isinstance(value, bool):
+                    safe_error[key] = value
+            error_payload = {"error": safe_error} if safe_error else {}
+            self._log_user_token_exchange_diagnostic(
+                "non_success_http_response",
+                http_status=response.status_code,
+                error_code=safe_error.get("code"),
+                error_type=self._safe_meta_error_type(provider_error.get("type")),
+                level=logging.WARNING,
+            )
+            raise MetaAPIError(
+                "Meta USER token exchange failed.",
+                status_code=response.status_code,
+                error_payload=error_payload,
+            )
+
+        if not isinstance(payload, dict):
+            self._log_user_token_exchange_diagnostic(
+                "invalid_json_response",
+                http_status=response.status_code,
+                level=logging.WARNING,
+            )
+            raise MetaAPIError(
+                "Meta USER token exchange returned an invalid response.",
+                status_code=response.status_code,
+            )
+
+        exchanged_token = payload.get("access_token")
+        if not isinstance(exchanged_token, str) or not exchanged_token.strip():
+            self._log_user_token_exchange_diagnostic(
+                "missing_access_token",
+                http_status=response.status_code,
+                level=logging.WARNING,
+            )
+            raise MetaAPIError(
+                "Meta USER token exchange did not return an access token.",
+                status_code=response.status_code,
+            )
+        exchanged_token = exchanged_token.strip()
+
+        expires_in = None
+        if "expires_in" in payload:
+            expires_in_value = payload.get("expires_in")
+            if isinstance(expires_in_value, bool):
+                expires_in = None
+            elif isinstance(expires_in_value, int):
+                expires_in = expires_in_value
+            elif (
+                isinstance(expires_in_value, str)
+                and expires_in_value.strip().isdigit()
+            ):
+                try:
+                    expires_in = int(expires_in_value.strip())
+                except ValueError:
+                    expires_in = None
+            if expires_in is None or expires_in <= 0:
+                self._log_user_token_exchange_diagnostic(
+                    "missing_or_invalid_expires_in",
+                    http_status=response.status_code,
+                    expires_in_present=True,
+                    expires_in_type=self._safe_json_field_type(payload, "expires_in"),
+                    token_type_present="token_type" in payload,
+                    token_type_type=self._safe_json_field_type(payload, "token_type"),
+                    level=logging.WARNING,
+                )
+                raise MetaAPIError(
+                    "Meta USER token exchange returned an invalid expiry.",
+                    status_code=response.status_code,
+                )
+
+        validated_metadata = self.validate_user_token_for_exchange(
+            access_token=exchanged_token,
+            required_permissions=required_permissions,
+            expected_user_id=expected_user_id,
+        )
+        return {
+            "access_token": exchanged_token,
+            "expires_in": expires_in,
+            **validated_metadata,
+        }
+
+    @staticmethod
+    def _provider_timestamp(value: Any) -> Optional[int]:
+        """Parse a non-negative provider Unix timestamp without coercion."""
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value if value >= 0 else None
+        if isinstance(value, str) and value.strip().isdigit():
+            try:
+                return int(value.strip())
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
+    def _provider_datetime(timestamp: int) -> Optional[datetime]:
+        try:
+            return datetime.fromtimestamp(timestamp, tz=datetime_timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            return None
+
+    @staticmethod
+    def _safe_meta_error_type(value: Any) -> Optional[str]:
+        if isinstance(value, str) and value in MetaAPIClient._SAFE_META_ERROR_TYPES:
+            return value
+        return None
+
+    @staticmethod
+    def _safe_json_field_type(payload: dict, field: str) -> str:
+        if field not in payload:
+            return "missing"
+        value = payload[field]
+        if value is None:
+            return "null"
+        if isinstance(value, str):
+            return "string"
+        if isinstance(value, int) and not isinstance(value, bool):
+            return "integer"
+        return "other"
+
+    @staticmethod
+    def _log_user_token_exchange_diagnostic(
+        failure_stage: str,
+        *,
+        http_status: Optional[int] = None,
+        error_code: Optional[int] = None,
+        error_type: Optional[str] = None,
+        validation_reason: Optional[str] = None,
+        expires_in_present: Optional[bool] = None,
+        expires_in_type: Optional[str] = None,
+        token_type_present: Optional[bool] = None,
+        token_type_type: Optional[str] = None,
+        level: int = logging.INFO,
+    ) -> None:
+        """Log allowlisted exchange diagnostics without request/provider data."""
+        diagnostic = {"failure_stage": failure_stage}
+        if isinstance(http_status, int) and not isinstance(http_status, bool):
+            diagnostic["http_status_code"] = http_status
+        if isinstance(error_code, int) and not isinstance(error_code, bool):
+            diagnostic["meta_error_code"] = error_code
+        if error_type:
+            diagnostic["meta_error_type"] = error_type
+        if validation_reason:
+            diagnostic["validation_failure_reason"] = validation_reason
+        if isinstance(expires_in_present, bool):
+            diagnostic["expires_in_present"] = expires_in_present
+        if expires_in_type in {"integer", "string", "null", "other", "missing"}:
+            diagnostic["expires_in_type"] = expires_in_type
+        if isinstance(token_type_present, bool):
+            diagnostic["token_type_present"] = token_type_present
+        if token_type_type in {"integer", "string", "null", "other", "missing"}:
+            diagnostic["token_type_type"] = token_type_type
+        logger.log(
+            level,
+            "Meta USER token exchange diagnostic: %s",
+            json.dumps(diagnostic, separators=(",", ":"), sort_keys=True),
+            extra={"meta_user_token_exchange": diagnostic},
+        )
+
+    def validate_user_token_for_exchange(
+        self,
+        *,
+        access_token: str,
+        required_permissions=("pages_show_list",),
+        expected_user_id: Optional[str] = None,
+    ) -> dict:
+        """Validate a returned USER token and return safe expiry metadata."""
+        app_id = str(getattr(settings, "META_APP_ID", "") or "").strip()
+        if not app_id or not isinstance(access_token, str) or not access_token:
+            self._log_user_token_exchange_diagnostic(
+                "returned_token_validation_preflight_failure",
+                validation_reason="app_id_or_access_token_missing_or_invalid",
+                level=logging.WARNING,
+            )
+            raise MetaAPIError("Meta exchanged USER token validation failed.")
+        if isinstance(required_permissions, str):
+            self._log_user_token_exchange_diagnostic(
+                "returned_token_validation_preflight_failure",
+                validation_reason="required_permissions_invalid_type",
+                level=logging.WARNING,
+            )
+            raise MetaAPIError("Meta exchanged USER token validation failed.")
+        try:
+            required = {
+                permission.strip()
+                for permission in required_permissions
+                if isinstance(permission, str) and permission.strip()
+            }
+        except TypeError:
+            self._log_user_token_exchange_diagnostic(
+                "returned_token_validation_preflight_failure",
+                validation_reason="required_permissions_not_iterable",
+                level=logging.WARNING,
+            )
+            raise MetaAPIError("Meta exchanged USER token validation failed.") from None
+        if not required:
+            self._log_user_token_exchange_diagnostic(
+                "returned_token_validation_preflight_failure",
+                validation_reason="required_permissions_empty",
+                level=logging.WARNING,
+            )
+            raise MetaAPIError("Meta exchanged USER token validation failed.")
+
+        validation_reason = "debug_token_lookup_failed"
+        try:
+            debug = self.diagnose_token(access_token=access_token)
+            if not isinstance(debug, dict):
+                validation_reason = "debug_token_response_invalid"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            debug_app_id = debug.get("app_id")
+            token_type = debug.get("type")
+            is_valid = debug.get("is_valid")
+            expires_at = self._provider_timestamp(debug.get("expires_at"))
+            data_access_expires_at = self._provider_timestamp(
+                debug.get("data_access_expires_at")
+            )
+
+            if str(debug_app_id or "") != app_id:
+                validation_reason = "app_id_mismatch"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            if not isinstance(token_type, str) or token_type.upper() != "USER":
+                validation_reason = "token_type_not_user"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            if is_valid is not True:
+                validation_reason = "token_not_valid"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            if expected_user_id is not None:
+                returned_user_id = debug.get("user_id")
+                if (
+                    not isinstance(returned_user_id, str)
+                    or not returned_user_id.strip()
+                    or returned_user_id.strip() != str(expected_user_id).strip()
+                ):
+                    validation_reason = "user_id_mismatch"
+                    raise MetaAPIError("Meta exchanged USER token validation failed.")
+            if expires_at is None:
+                validation_reason = "token_expiry_missing_or_invalid"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            if expires_at == 0:
+                provider_expiry_state = "NO_FINITE_EXPIRY"
+                provider_expires_at = None
+            elif expires_at <= int(timezone.now().timestamp()):
+                validation_reason = "token_expired"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            else:
+                provider_expiry_state = "FINITE"
+                provider_expires_at = self._provider_datetime(expires_at)
+                if provider_expires_at is None:
+                    validation_reason = "token_expiry_missing_or_invalid"
+                    raise MetaAPIError("Meta exchanged USER token validation failed.")
+
+            if data_access_expires_at is None:
+                validation_reason = "data_access_expiry_missing_or_invalid"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            if data_access_expires_at <= int(timezone.now().timestamp()):
+                validation_reason = "data_access_expired"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            data_access_expiry = self._provider_datetime(data_access_expires_at)
+            if data_access_expiry is None:
+                validation_reason = "data_access_expiry_missing_or_invalid"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+
+            validation_reason = "permission_lookup_failed"
+            permissions_response = self.get_user_permissions(
+                access_token=access_token,
+            )
+            data = (
+                permissions_response.get("data")
+                if isinstance(permissions_response, dict)
+                else None
+            )
+            if not isinstance(data, list):
+                validation_reason = "permission_response_invalid"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            granted = {
+                item.get("permission")
+                for item in data
+                if isinstance(item, dict)
+                and item.get("status") == "granted"
+                and isinstance(item.get("permission"), str)
+            }
+            if not required.issubset(granted):
+                validation_reason = "required_permissions_missing"
+                raise MetaAPIError("Meta exchanged USER token validation failed.")
+            validated_metadata = {
+                "provider_expiry_state": provider_expiry_state,
+                "provider_expires_at": provider_expires_at,
+                "data_access_expires_at": data_access_expiry,
+            }
+            self._log_user_token_exchange_diagnostic(
+                "returned_token_validation_success",
+                level=logging.INFO,
+            )
+            return validated_metadata
+        except MetaAPIError as exc:
+            # Do not pass through a provider payload or message that could
+            # contain a token, secret, query string, or raw response data.
+            details = self.safe_error_metadata(exc)
+            provider_error = (
+                exc.error_payload.get("error")
+                if isinstance(exc.error_payload, dict)
+                else None
+            )
+            if not isinstance(provider_error, dict):
+                provider_error = {}
+            self._log_user_token_exchange_diagnostic(
+                "returned_token_validation_failure",
+                http_status=details["http_status"],
+                error_code=details["graph_error_code"],
+                error_type=self._safe_meta_error_type(provider_error.get("type")),
+                validation_reason=validation_reason,
+                level=logging.WARNING,
+            )
+            safe_error = {
+                key: value
+                for key, value in (
+                    ("code", details["graph_error_code"]),
+                    ("error_subcode", details["graph_error_subcode"]),
+                )
+                if value is not None
+            }
+            raise MetaAPIError(
+                "Meta exchanged USER token validation failed.",
+                status_code=details["http_status"],
+                error_payload={"error": safe_error} if safe_error else {},
+            ) from None
+        except Exception:
+            self._log_user_token_exchange_diagnostic(
+                "returned_token_validation_failure",
+                validation_reason="unexpected_validation_error",
+                level=logging.WARNING,
+            )
+            raise
 
     # ========================================================
     # CURRENT META USER

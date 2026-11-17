@@ -22,6 +22,11 @@ from apps.plans.models import Plan
 from apps.posts.models import Post, PostPlatform, PostStatus, SocialPlatform
 
 from .models import UserNotification, UserNotificationType
+from .services import (
+    record_social_credential_reconnect_required,
+    resolve_social_credential_reconnect_required,
+    social_credential_reconnect_event_key,
+)
 
 
 class UserNotificationLifecycleTests(TestCase):
@@ -146,6 +151,92 @@ class UserNotificationLifecycleTests(TestCase):
             [UserNotificationType.POST_PUBLISHED],
         )
         self.assertEqual(get_dashboard_data(user=self.user)["notifications"], [])
+
+    def test_social_reconnect_notification_is_deduplicated_resolved_and_owner_scoped(self):
+        notification = record_social_credential_reconnect_required(
+            organization=self.organization,
+            scope="instagram",
+            subject_id="instagram-account-test",
+            platform="instagram",
+            account_name="Example Instagram Account",
+        )
+        duplicate = record_social_credential_reconnect_required(
+            organization=self.organization,
+            scope="instagram",
+            subject_id="instagram-account-test",
+            platform="instagram",
+            account_name="Example Instagram Account",
+        )
+
+        self.assertEqual(duplicate.pk, notification.pk)
+        self.assertEqual(
+            UserNotification.objects.filter(
+                event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            notification.event_key,
+            social_credential_reconnect_event_key(
+                scope="instagram",
+                subject_id="instagram-account-test",
+            ),
+        )
+        self.assertIn("Example Instagram Account", notification.message)
+
+        response = self.client.get("/api/notifications/")
+        self.assertEqual(response.status_code, 200)
+        visible_types = [
+            item["type"] for item in response.data["data"]["notifications"]
+        ]
+        self.assertIn(
+            UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED,
+            visible_types,
+        )
+        notice_data = response.data["data"]["notifications"][0]
+        self.assertNotIn("access_token", notice_data)
+        self.assertNotIn("refresh_token", notice_data)
+        self.assertNotIn("credential", notice_data)
+
+        other_user = User.objects.create_user(
+            email="notification-unrelated@example.com",
+            first_name="Unrelated",
+            password="password",
+        )
+        self.client.force_authenticate(other_user)
+        other_response = self.client.get("/api/notifications/")
+        self.assertEqual(other_response.status_code, 200)
+        self.assertEqual(other_response.data["data"]["notifications"], [])
+
+        self.client.force_authenticate(self.user)
+        self.assertEqual(
+            resolve_social_credential_reconnect_required(
+                organization=self.organization,
+                scope="instagram",
+                subject_id="instagram-account-test",
+            ),
+            1,
+        )
+        notification.refresh_from_db()
+        self.assertIsNotNone(notification.resolved_at)
+
+        reopened = record_social_credential_reconnect_required(
+            organization=self.organization,
+            scope="instagram",
+            subject_id="instagram-account-test",
+            platform="instagram",
+            account_name="Example Instagram Account",
+        )
+        notification.refresh_from_db()
+        self.assertEqual(reopened.pk, notification.pk)
+        self.assertIsNone(notification.resolved_at)
+        self.assertIsNone(notification.read_at)
+        self.assertEqual(
+            UserNotification.objects.filter(
+                event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED
+            ).count(),
+            1,
+        )
 
     def test_expired_subscription_is_actionable_then_activation_resolves_it(self):
         self.target.status = PostStatus.PUBLISHED

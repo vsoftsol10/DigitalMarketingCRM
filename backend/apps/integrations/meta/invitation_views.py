@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 
 from apps.common.responses import success_response
 from apps.social_accounts.invitations import (
+    InvitationError,
     InvalidInvitation,
     consume_invitation_oauth_attempt,
 )
@@ -222,6 +223,11 @@ class InvitationFacebookPageAddAPIView(APIView):
                 page_id=serializer.validated_data["page_id"],
             )
         except InvalidInvitation:
+            return Response(
+                {"detail": "This Facebook Page could not be added from this invitation."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except InvitationError:
             return Response(
                 {"detail": "This Facebook Page could not be added from this invitation."},
                 status=status.HTTP_400_BAD_REQUEST,

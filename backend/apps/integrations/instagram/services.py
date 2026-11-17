@@ -674,6 +674,16 @@ class InstagramOAuthService:
                 last_verified_at=now,
             )
 
+        from apps.notifications.services import (
+            resolve_social_credential_reconnect_required,
+        )
+
+        resolve_social_credential_reconnect_required(
+            organization=organization,
+            scope="instagram",
+            subject_id=social_account.pk,
+        )
+
         return social_account
 
     # ========================================================
@@ -836,6 +846,16 @@ class InstagramOAuthService:
                 status=InstagramCredentialStatus.ACTIVE,
                 last_verified_at=now,
             )
+
+        from apps.notifications.services import (
+            resolve_social_credential_reconnect_required,
+        )
+
+        resolve_social_credential_reconnect_required(
+            organization=organization,
+            scope="instagram",
+            subject_id=social_account.pk,
+        )
         return social_account
 
     @transaction.atomic
@@ -880,8 +900,8 @@ class InstagramCredentialService:
         Revoke the locally stored Instagram credential when
         the user disconnects the account.
 
-        The encrypted token is intentionally retained for
-        historical/audit purposes.
+        The encrypted token is cleared while the credential
+        record is retained for lifecycle history and reconnect.
 
         Because the credential status becomes REVOKED,
         automatic token maintenance will not use it.
@@ -897,10 +917,12 @@ class InstagramCredentialService:
         )
 
         if credential:
+            credential.encrypted_access_token = ""
             credential.status = InstagramCredentialStatus.REVOKED
 
             credential.save(
                 update_fields=[
+                    "encrypted_access_token",
                     "status",
                     "updated_at",
                 ],

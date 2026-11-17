@@ -1,3 +1,8 @@
+import hashlib
+import hmac
+
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import (
     JSONParser,
@@ -7,6 +12,7 @@ from rest_framework.parsers import (
 from rest_framework.views import APIView
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.accounts.serializers import (
     ChangePasswordSerializer,
@@ -21,6 +27,117 @@ from apps.accounts.services import (
 )
 
 from apps.common.utils import api_response
+from apps.common.throttles import RedisRateThrottle
+
+
+def _login_subject_digest(subject):
+    return hmac.new(
+        str(settings.SECRET_KEY).encode("utf-8"),
+        subject.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _login_source_ip(request):
+    """Use the socket peer until the deployment explicitly trusts a proxy."""
+    return str(request.META.get("REMOTE_ADDR") or "")
+
+
+class LoginAccountRateThrottle(RedisRateThrottle):
+    """Limit login attempts by source IP and normalized email identifier."""
+
+    scope = "login"
+
+    def _configured_limits(self):
+        limits = super()._configured_limits()
+        if len(limits) < 2:
+            raise ImproperlyConfigured(
+                "The login scope requires account-minute and IP-hour limits."
+            )
+        return [limits[0]]
+
+    def _subject_digest(self, request):
+        identifier = request.data.get("email", "")
+        normalized_identifier = (
+            identifier.strip().casefold()
+            if isinstance(identifier, str)
+            else ""
+        )
+        subject = f"login:ip:{_login_source_ip(request)}:account:{normalized_identifier}"
+        return _login_subject_digest(subject)
+
+
+class LoginIPRateThrottle(RedisRateThrottle):
+    """Limit all login attempts from one DRF-trusted source IP."""
+
+    scope = "login"
+
+    def _configured_limits(self):
+        limits = super()._configured_limits()
+        if len(limits) < 2:
+            raise ImproperlyConfigured(
+                "The login scope requires account-minute and IP-hour limits."
+            )
+        return [limits[1]]
+
+    def _subject_digest(self, request):
+        return _login_subject_digest(f"login:ip:{_login_source_ip(request)}")
+
+
+def _refresh_token_fingerprint(token):
+    token_value = token if isinstance(token, str) else ""
+    return hmac.new(
+        str(settings.SECRET_KEY).encode("utf-8"),
+        token_value.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+class RefreshTokenRateThrottle(RedisRateThrottle):
+    """Limit refresh attempts by source IP and a keyed token fingerprint."""
+
+    scope = "token_refresh"
+
+    def _configured_limits(self):
+        limits = super()._configured_limits()
+        if len(limits) < 2:
+            raise ImproperlyConfigured(
+                "The token_refresh scope requires token-minute and IP-hour limits."
+            )
+        return [limits[0]]
+
+    def _subject_digest(self, request):
+        refresh_token = request.data.get("refresh", "")
+        fingerprint = _refresh_token_fingerprint(refresh_token)
+        subject = (
+            f"token_refresh:ip:{_login_source_ip(request)}:token:{fingerprint}"
+        )
+        return _login_subject_digest(subject)
+
+
+class RefreshIPRateThrottle(RedisRateThrottle):
+    """Limit all refresh attempts from one source IP."""
+
+    scope = "token_refresh"
+
+    def _configured_limits(self):
+        limits = super()._configured_limits()
+        if len(limits) < 2:
+            raise ImproperlyConfigured(
+                "The token_refresh scope requires token-minute and IP-hour limits."
+            )
+        return [limits[1]]
+
+    def _subject_digest(self, request):
+        return _login_subject_digest(
+            f"token_refresh:ip:{_login_source_ip(request)}"
+        )
+
+
+class RateLimitedTokenRefreshView(TokenRefreshView):
+    """SimpleJWT refresh endpoint with endpoint-scoped Redis limits."""
+
+    throttle_classes = [RefreshTokenRateThrottle, RefreshIPRateThrottle]
 
 
 # ============================================================
@@ -34,6 +151,7 @@ class LoginAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [LoginAccountRateThrottle, LoginIPRateThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(

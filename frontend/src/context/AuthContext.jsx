@@ -91,8 +91,11 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
+
+import toast from "react-hot-toast";
 
 import { token } from "../utils/token";
 import { authService } from "../services/auth.service";
@@ -102,6 +105,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const sessionRestoreFailureNotified = useRef(false);
 
   // ==========================================
   // LOGIN
@@ -144,7 +148,18 @@ export function AuthProvider({ children }) {
           await authService.getCurrentUser();
 
         setUser(currentUser);
-      } catch (error) {
+      } catch {
+        if (!sessionRestoreFailureNotified.current) {
+          sessionRestoreFailureNotified.current = true;
+          toast(
+            "Your previous session could not be restored. You may need to sign in again.",
+            {
+              id: "session-restoration-failed",
+              icon: "ℹ️",
+            },
+          );
+        }
+
         token.clearTokens();
         setUser(null);
       } finally {

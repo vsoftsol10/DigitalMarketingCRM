@@ -538,11 +538,8 @@
 // }
 
 import {
-  Alert,
   Box,
   Pagination,
-  Stack,
-  Typography,
 } from "@mui/material";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -559,6 +556,9 @@ import StatsCards from "../../components/organization/list/StatsCards";
 import SearchTabs from "../../components/organization/list/SearchTabs";
 import OrganizationGrid from "../../components/organization/list/OrganizationGrid";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import EmptyState from "../../components/ui/EmptyState";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 import organizationService from "../../services/organization/organization.service";
 
@@ -609,6 +609,7 @@ export default function OrganizationList() {
   // ============================================================
 
   const [error, setError] = useState(null);
+  const [hasLoadedSuccessfully, setHasLoadedSuccessfully] = useState(false);
 
   // ============================================================
   // GLOBAL SUMMARY
@@ -685,9 +686,11 @@ export default function OrganizationList() {
 
       const responseData = response?.data;
 
-      const nextOrganizations = Array.isArray(responseData?.items)
-        ? responseData.items
-        : [];
+      if (!Array.isArray(responseData?.items)) {
+        throw new Error("Organization data was not returned.");
+      }
+
+      const nextOrganizations = responseData.items;
 
       const nextSummary = responseData?.summary || {
         total_clients: 0,
@@ -707,6 +710,8 @@ export default function OrganizationList() {
       };
 
       setOrganizations(nextOrganizations);
+      setHasLoadedSuccessfully(true);
+      isFirstLoad.current = false;
 
       setSummary(nextSummary);
 
@@ -718,44 +723,16 @@ export default function OrganizationList() {
 
       console.error("Failed to load organizations:", error);
 
-      const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Unable to load organizations.";
+      const errorMessage = formatApiErrorMessage(error, {
+        fallback: "Unable to load organizations.",
+      });
 
       setError(errorMessage);
-
-      /*
-       * During background refresh we intentionally keep the
-       * existing organizations and summary on screen.
-       */
-
-      if (isFirstLoad.current) {
-        setOrganizations([]);
-
-        setSummary({
-          total_clients: 0,
-          active_organizations: 0,
-          inactive_organizations: 0,
-          connected_accounts: 0,
-          active_subscriptions: 0,
-        });
-
-        setPagination({
-          page: 1,
-          page_size: 10,
-          total_items: 0,
-          total_pages: 1,
-          has_next: false,
-          has_previous: false,
-        });
-      }
     } finally {
       if (requestId === loadRequestId.current) {
         setInitialLoading(false);
         setRefreshing(false);
 
-        isFirstLoad.current = false;
       }
     }
   }, [activeTab, search, page]);
@@ -765,7 +742,14 @@ export default function OrganizationList() {
   // ============================================================
 
   useEffect(() => {
-    loadOrganizations();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) loadOrganizations();
+    });
+
+    return () => {
+      active = false;
+    };
   }, [loadOrganizations]);
 
   // ============================================================
@@ -848,6 +832,7 @@ export default function OrganizationList() {
   const handleClearSearch = useCallback(() => {
     setPage(1);
     setSearchInput("");
+    setActiveTab("all");
   }, []);
 
   // ============================================================
@@ -897,12 +882,8 @@ export default function OrganizationList() {
   // INITIAL LOAD ERROR
   // ============================================================
 
-  if (error && !hasOrganizations && !hasActiveFilters) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ borderRadius: "16px", border: "1px solid rgba(255,255,255,.85)", boxShadow: "0 6px 16px rgba(77, 59, 75, .08)" }}>{error}</Alert>
-      </Box>
-    );
+  if (error && !hasLoadedSuccessfully) {
+    return <ErrorState message={error} onRetry={loadOrganizations} variant="page" />;
   }
 
   // ============================================================
@@ -989,89 +970,33 @@ export default function OrganizationList() {
           onTabChange={handleTabChange}
           counts={counts}
         >
-          <Box sx={{ position: "relative" }}>
+          <Box sx={{ position: "relative", width: "100%", minHeight: refreshing ? 280 : undefined }}>
           {/* ==================================================
               NO FILTER / NO DATA
           ================================================== */}
 
-          {!hasOrganizations && !hasSearchOrFilterResult && (
-            <Stack
-              alignItems="center"
-              justifyContent="center"
-              sx={{
-                minHeight: 280,
-                textAlign: "center",
-                px: 2,
-              }}
-            >
-              <Box sx={{ width: 58, height: 58, mb: 2, display: "grid", placeItems: "center", borderRadius: "50%", color: "#705AD1", background: "linear-gradient(145deg, #F0ECFF, #FFFFFF)", border: "1px solid rgba(255,255,255,.95)", boxShadow: "0 6px 15px rgba(91, 87, 165, .13), inset 0 1px 0 #fff" }}>
-                <BusinessOutlinedIcon sx={{ fontSize: 27 }} />
-              </Box>
-              <Typography
-                sx={{
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  lineHeight: "24px",
-                  color: "#17294D",
-                }}
-              >
-                No organizations found
-              </Typography>
-
-              <Typography
-                sx={{
-                  mt: 0.5,
-                  fontSize: "13px",
-                  fontWeight: 400,
-                  lineHeight: "20px",
-                  color: "#64748B",
-                }}
-              >
-                Organizations will appear here once they are created.
-              </Typography>
-            </Stack>
+          {hasLoadedSuccessfully && !initialLoading && !refreshing && !error && !hasOrganizations && !hasSearchOrFilterResult && (
+            <EmptyState
+              icon={<BusinessOutlinedIcon />}
+              title="No organizations found"
+              description="Organizations will appear here once they are created."
+              sx={{ minHeight: 280 }}
+            />
           )}
 
           {/* ==================================================
               SEARCH / FILTER NO MATCH
           ================================================== */}
 
-          {!hasOrganizations && hasSearchOrFilterResult && (
-            <Stack
-              alignItems="center"
-              justifyContent="center"
-              sx={{
-                minHeight: 280,
-                textAlign: "center",
-                px: 2,
-              }}
-            >
-              <Box sx={{ width: 58, height: 58, mb: 2, display: "grid", placeItems: "center", borderRadius: "50%", color: "#5685CC", background: "linear-gradient(145deg, #EAF4FF, #FFFFFF)", border: "1px solid rgba(255,255,255,.95)", boxShadow: "0 6px 15px rgba(72, 117, 170, .12), inset 0 1px 0 #fff" }}>
-                <BusinessOutlinedIcon sx={{ fontSize: 27 }} />
-              </Box>
-              <Typography
-                sx={{
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  lineHeight: "24px",
-                  color: "#17294D",
-                }}
-              >
-                No matching organizations
-              </Typography>
-
-              <Typography
-                sx={{
-                  mt: 0.5,
-                  fontSize: "13px",
-                  fontWeight: 400,
-                  lineHeight: "20px",
-                  color: "#64748B",
-                }}
-              >
-                Try changing your search or filter.
-              </Typography>
-            </Stack>
+          {hasLoadedSuccessfully && !initialLoading && !refreshing && !error && !hasOrganizations && hasSearchOrFilterResult && (
+            <EmptyState
+              icon={<BusinessOutlinedIcon />}
+              title="No matching organizations"
+              description="Try changing your search or filter."
+              actionLabel="Clear filters"
+              onAction={handleClearSearch}
+              sx={{ minHeight: 280 }}
+            />
           )}
 
           {/* ==================================================
@@ -1134,18 +1059,8 @@ export default function OrganizationList() {
           BACKGROUND ERROR
       ====================================================== */}
 
-      {error && (
-        <Alert
-          severity="error"
-          sx={{
-            mt: 2,
-            borderRadius: "16px",
-            border: "1px solid rgba(255,255,255,.85)",
-            boxShadow: "0 6px 16px rgba(77, 59, 75, .08)",
-          }}
-        >
-          {error}
-        </Alert>
+      {error && hasLoadedSuccessfully && (
+        <ErrorState message={error} onRetry={loadOrganizations} variant="inline" />
       )}
     </>
   );

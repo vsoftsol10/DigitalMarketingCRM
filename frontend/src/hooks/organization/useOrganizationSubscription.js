@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import organizationService from "../../services/organization/organization.service";
 import { NOTIFICATION_QUERY_KEY } from "../../services/notification.service";
+import formatApiErrorMessage from "../../utils/apiErrorMessage";
 
 export default function useOrganizationSubscription({
   organizationId,
@@ -18,6 +19,10 @@ export default function useOrganizationSubscription({
   // ============================================================
 
   const [history, setHistory] = useState([]);
+
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  const [historyOrganizationId, setHistoryOrganizationId] = useState(null);
 
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -146,7 +151,7 @@ export default function useOrganizationSubscription({
     if (!organizationId) {
       setHistoryError("Organization ID is required.");
 
-      return [];
+      return null;
     }
 
     try {
@@ -156,30 +161,34 @@ export default function useOrganizationSubscription({
       const response =
         await organizationService.getSubscriptionHistory(organizationId);
 
-      if (!response?.success) {
+      if (response?.success !== true) {
+        const message = typeof response?.message === "string"
+          ? response.message.trim()
+          : "";
+        throw new Error(message || "Unable to load subscription history.");
+      }
+
+      if (!Array.isArray(response.data)) {
         throw new Error(
-          response?.message || "Unable to load subscription history.",
+          "Subscription history was not returned in the expected format.",
         );
       }
 
-      const historyData = Array.isArray(response?.data) ? response.data : [];
+      const historyData = response.data;
 
       setHistory(historyData);
+      setHistoryLoaded(true);
+      setHistoryOrganizationId(organizationId);
 
       return historyData;
     } catch (error) {
       console.error("Failed to load subscription history:", error);
 
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Unable to load subscription history.";
+      setHistoryError(formatApiErrorMessage(error, {
+        fallback: "Unable to load subscription history.",
+      }));
 
-      setHistoryError(message);
-
-      setHistory([]);
-
-      return [];
+      return null;
     } finally {
       setHistoryLoading(false);
     }
@@ -215,6 +224,7 @@ export default function useOrganizationSubscription({
 
     // History
     history,
+    historyLoaded: historyLoaded && historyOrganizationId === organizationId,
     historyLoading,
     historyError,
     loadHistory,

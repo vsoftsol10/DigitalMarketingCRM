@@ -615,6 +615,11 @@ class InstagramTokenLifecycleService:
             if credential.status == InstagramCredentialStatus.REVOKED:
                 return
 
+            was_already_reconnect_required = credential.status in {
+                InstagramCredentialStatus.EXPIRED,
+                InstagramCredentialStatus.ERROR,
+            }
+
             credential.status = InstagramCredentialStatus.EXPIRED
             credential.last_verified_at = timezone.now()
 
@@ -638,6 +643,18 @@ class InstagramTokenLifecycleService:
                     "updated_at",
                 ],
             )
+            if not was_already_reconnect_required:
+                from apps.notifications.services import (
+                    record_social_credential_reconnect_required,
+                )
+
+                record_social_credential_reconnect_required(
+                    organization=social_account.organization,
+                    scope="instagram",
+                    subject_id=social_account.pk,
+                    platform="instagram",
+                    account_name=social_account.username or social_account.account_name,
+                )
 
     # ========================================================
     # MARK ERROR
@@ -663,6 +680,11 @@ class InstagramTokenLifecycleService:
             if credential.status == InstagramCredentialStatus.REVOKED:
                 return
 
+            was_already_reconnect_required = credential.status in {
+                InstagramCredentialStatus.EXPIRED,
+                InstagramCredentialStatus.ERROR,
+            }
+
             credential.status = InstagramCredentialStatus.ERROR
             credential.last_verified_at = timezone.now()
 
@@ -686,6 +708,18 @@ class InstagramTokenLifecycleService:
                     "updated_at",
                 ],
             )
+            if not was_already_reconnect_required:
+                from apps.notifications.services import (
+                    record_social_credential_reconnect_required,
+                )
+
+                record_social_credential_reconnect_required(
+                    organization=social_account.organization,
+                    scope="instagram",
+                    subject_id=social_account.pk,
+                    platform="instagram",
+                    account_name=social_account.username or social_account.account_name,
+                )
 
     # ========================================================
     # REFRESH ALL DUE CREDENTIALS

@@ -30,6 +30,7 @@ backend/logs/
 # Celery
 backend/celerybeat-schedule
 backend/celerybeat-schedule.*
+backend/celery-insights-debug.log
 
 # Node
 frontend/node_modules/
@@ -48,3 +49,5 @@ frontend/dist.zip
 
 # Local project notes
 projectdis.txt
+
+*.log

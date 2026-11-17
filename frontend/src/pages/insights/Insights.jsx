@@ -11,10 +11,28 @@ import ContentPerformanceCard from "../../components/insights/ContentPerformance
 import InsightsExportDialog from "../../components/reports/InsightsExportDialog";
 import { insightsGlassSurfaceSx } from "../../components/insights/insightsGlassSx";
 import LoadingState from "../../components/ui/LoadingState";
+import EmptyState from "../../components/ui/EmptyState";
+import formatApiErrorMessage from "../../utils/apiErrorMessage";
 
 const PERIOD_DAYS = { "7D": 7, "30D": 30, "28D": 28 };
 const ACTIVE_SYNC_STATUSES = ["queued", "syncing"];
 const TERMINAL_SYNC_STATUSES = ["complete", "partial", "failed"];
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isOrganizationList(value) {
+  return Array.isArray(value) && value.every((organization) =>
+    isRecord(organization) && organization.id != null && typeof organization.name === "string",
+  );
+}
+
+function isAccountList(value) {
+  return Array.isArray(value) && value.every((account) =>
+    isRecord(account) && account.id != null && typeof account.platform === "string",
+  );
+}
 
 function isActiveSyncRunning(activeSync) {
   if (!activeSync) return false;
@@ -85,7 +103,9 @@ export default function Insights() {
     enabled: Boolean(organizationId),
   });
 
-  const allAccounts = Array.isArray(accountsQuery.data) ? accountsQuery.data : [];
+  const hasValidAccountsResponse = isAccountList(accountsQuery.data);
+  const accountsResponseInvalid = accountsQuery.isSuccess && !hasValidAccountsResponse;
+  const allAccounts = hasValidAccountsResponse ? accountsQuery.data : [];
   const supportedAccounts = allAccounts.filter((account) =>
     ["instagram", "facebook"].includes(String(account.platform || "").toLowerCase()),
   );
@@ -174,7 +194,9 @@ export default function Insights() {
     },
   });
 
-  const organizations = Array.isArray(organizationsQuery.data) ? organizationsQuery.data : [];
+  const hasValidOrganizationsResponse = isOrganizationList(organizationsQuery.data);
+  const organizationsResponseInvalid = organizationsQuery.isSuccess && !hasValidOrganizationsResponse;
+  const organizations = hasValidOrganizationsResponse ? organizationsQuery.data : [];
   const accounts = platform
     ? supportedAccounts.filter((account) => String(account.platform).toLowerCase() === platform)
     : supportedAccounts;
@@ -392,32 +414,64 @@ export default function Insights() {
           severity="error"
           action={<Button color="inherit" size="small" onClick={() => organizationsQuery.refetch()}>Retry</Button>}
         >
-          Could not load accessible organizations. Please try again.
+          {formatApiErrorMessage(organizationsQuery.error, { fallback: "Could not load accessible organizations. Please try again." })}
         </Alert>
       )}
-      {organizationsQuery.isSuccess && !organizations.length && (
-        <Alert severity="info">No accessible organizations are available for Insights.</Alert>
+      {organizationsResponseInvalid && (
+        <Alert severity="error">The organizations response was not in the expected format. Please retry.</Alert>
+      )}
+      {organizationsQuery.isSuccess && hasValidOrganizationsResponse && !organizations.length && (
+        <EmptyState
+          title="No organizations available"
+          description="No accessible organizations are available for Insights."
+        />
       )}
       {organizationId && accountsQuery.isError && (
         <Alert
           severity="error"
           action={<Button color="inherit" size="small" onClick={() => accountsQuery.refetch()}>Retry</Button>}
         >
-          Could not load connected accounts for this organization.
+          {formatApiErrorMessage(accountsQuery.error, { fallback: "Could not load connected accounts for this organization." })}
         </Alert>
       )}
-      {organizationId && accountsQuery.isSuccess && !supportedAccounts.length && (
-        <Alert severity="info">No connected Instagram or Facebook accounts are available for this organization.</Alert>
+      {organizationId && accountsResponseInvalid && (
+        <Alert severity="error">The connected accounts response was not in the expected format. Please retry.</Alert>
       )}
-      {organizationId && platform && accountsQuery.isSuccess && supportedAccounts.length > 0 && !accounts.length && (
-        <Alert severity="info">No connected {platform[0].toUpperCase() + platform.slice(1)} accounts are available for this organization.</Alert>
+      {organizationId && accountsQuery.isSuccess && hasValidAccountsResponse && !supportedAccounts.length && (
+        <Alert
+          severity="warning"
+          sx={{
+            width: "100%",
+            py: 0.5,
+            borderRadius: 3,
+            "&&": {
+              backgroundColor: "#FFF8E1",
+              backgroundImage: "none",
+              border: "1px solid #F2D38B",
+              color: "#704A0A",
+            },
+            "& .MuiAlert-icon": { color: "#A96A00" },
+          }}
+        >
+          <Typography component="span" sx={{ fontSize: 14, lineHeight: 1.5, overflowWrap: "anywhere" }}>
+            The selected organization has no connected Facebook or Instagram accounts.
+          </Typography>
+        </Alert>
+      )}
+      {organizationId && platform && accountsQuery.isSuccess && hasValidAccountsResponse && supportedAccounts.length > 0 && !accounts.length && (
+        <EmptyState
+          title={`No ${platform[0].toUpperCase() + platform.slice(1)} accounts`}
+          description={`No connected ${platform[0].toUpperCase() + platform.slice(1)} accounts are available for this organization.`}
+        />
       )}
       {selected && accountSnapshotQuery.isError && (
         <Alert
           severity="error"
           action={<Button color="inherit" size="small" onClick={() => accountSnapshotQuery.refetch()}>Retry</Button>}
         >
-          Could not load account Insights for the selected account. Please try again.
+          {accountData
+            ? `Could not refresh account Insights. Previously loaded data remains visible. ${formatApiErrorMessage(accountSnapshotQuery.error, { fallback: "Please try again." })}`
+            : formatApiErrorMessage(accountSnapshotQuery.error, { fallback: "Could not load account Insights for the selected account. Please try again." })}
         </Alert>
       )}
       {selected && contentSnapshotQuery.isError && (
@@ -425,7 +479,9 @@ export default function Insights() {
           severity="error"
           action={<Button color="inherit" size="small" onClick={() => contentSnapshotQuery.refetch()}>Retry</Button>}
         >
-          Could not load content Insights for the selected account. Please try again.
+          {contentData
+            ? `Could not refresh content Insights. Previously loaded data remains visible. ${formatApiErrorMessage(contentSnapshotQuery.error, { fallback: "Please try again." })}`
+            : formatApiErrorMessage(contentSnapshotQuery.error, { fallback: "Could not load content Insights for the selected account. Please try again." })}
         </Alert>
       )}
       {selected && accountSync && (
@@ -552,7 +608,7 @@ export default function Insights() {
       )}
 
       <Stack spacing={2.5} sx={{ width: "100%", minWidth: 0 }}>
-        <InsightsStats metrics={metrics} loading={accountLoading} selected={selected && !accountSnapshotQuery.isError} />
+        <InsightsStats metrics={metrics} loading={accountLoading} selected={selected && Boolean(accountData)} />
         <PostPerformanceCard
           organizationId={organizationId}
           socialAccountId={accountId}
@@ -566,7 +622,7 @@ export default function Insights() {
           content={contentData?.content_performance}
           account={accountData?.account || selectedAccount}
           loading={contentLoading}
-          selected={selected && !contentSnapshotQuery.isError}
+          selected={selected}
           pagination={pagination}
           pageNumber={pagination?.page || contentPage}
           onNext={handleNextPage}
@@ -575,7 +631,8 @@ export default function Insights() {
       </Stack>
 
       {selected && (accountSnapshotQuery.isFetching || contentSnapshotQuery.isFetching)
-        && !accountSnapshotQuery.isLoading && !contentSnapshotQuery.isLoading && (
+        && !accountSnapshotQuery.isLoading && !contentSnapshotQuery.isLoading
+        && !isRefreshingInsights && (
         <Box sx={{ position: "fixed", right: 22, bottom: 20, ...insightsGlassSurfaceSx, borderRadius: 999, px: 1.25, py: 0.8, display: "flex", alignItems: "center", gap: 1, boxShadow: "0 8px 18px rgba(70,106,172,0.16), inset 0 1px 0 #FFFFFF" }}>
           <LoadingState label="UPDATING INSIGHTS..." variant="inline" />
         </Box>

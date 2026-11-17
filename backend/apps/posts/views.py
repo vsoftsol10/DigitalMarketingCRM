@@ -1,4 +1,6 @@
 from datetime import timedelta
+import hashlib
+import hmac
 import logging
 import uuid
 
@@ -7,6 +9,7 @@ from cloudinary import utils as cloudinary_utils
 from cloudinary.exceptions import Error as CloudinaryError
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -24,6 +27,7 @@ from cloudinary.exceptions import BadRequest as CloudinaryBadRequest
 
 from apps.common.exceptions import BadRequestException, ResourceNotFoundException
 from apps.common.responses import success_response
+from apps.common.throttles import RedisRateThrottle
 from apps.organizations.models import Organization
 from apps.organizations.selectors import get_organization_by_id
 
@@ -69,6 +73,72 @@ from .services import (
 
 CLOUDINARY_RESOURCE_TIMEOUT_SECONDS = 120
 logger = logging.getLogger(__name__)
+
+
+class PublishingActionRateThrottle(RedisRateThrottle):
+    """Hash publishing action subjects before passing them to Redis."""
+
+    def allow_request(self, request, view):
+        self.organization_id = view.kwargs.get("organization_id", "")
+        self.target_id = view.kwargs.get("target_id", "")
+        return super().allow_request(request, view)
+
+    def _digest_subject(self, subject):
+        return hmac.new(
+            str(settings.SECRET_KEY).encode("utf-8"),
+            subject.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+    def _user_organization_subject(self, request):
+        user_id = getattr(getattr(request, "user", None), "pk", "")
+        return self._digest_subject(
+            f"user:{user_id}:organization:{self.organization_id}"
+        )
+
+
+class OrganizationPublishNowRateThrottle(PublishingActionRateThrottle):
+    scope = "publish_now"
+
+    def _subject_digest(self, request):
+        return self._user_organization_subject(request)
+
+
+class TargetPublishNowRateThrottle(PublishingActionRateThrottle):
+    scope = "publish_target_now"
+
+    def _subject_digest(self, request):
+        return self._user_organization_subject(request)
+
+
+class PublishRetryPerTargetRateThrottle(PublishingActionRateThrottle):
+    scope = "publish_retry"
+
+    def _configured_limits(self):
+        limits = super()._configured_limits()
+        if len(limits) < 2:
+            raise ImproperlyConfigured(
+                "The publish_retry scope requires target-minute and user-organization-hour limits."
+            )
+        return [limits[0]]
+
+    def _subject_digest(self, request):
+        return self._digest_subject(f"target:{self.target_id}")
+
+
+class PublishRetryUserOrganizationRateThrottle(PublishingActionRateThrottle):
+    scope = "publish_retry"
+
+    def _configured_limits(self):
+        limits = super()._configured_limits()
+        if len(limits) < 2:
+            raise ImproperlyConfigured(
+                "The publish_retry scope requires target-minute and user-organization-hour limits."
+            )
+        return [limits[1]]
+
+    def _subject_digest(self, request):
+        return self._user_organization_subject(request)
 
 
 def _safe_cloudinary_error_message(exc):
@@ -138,6 +208,16 @@ class OrganizationMediaUploadSessionAPIView(APIView):
     """Create, inspect, and finalize a direct signed Cloudinary upload."""
 
     permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        if self.request.method != "POST":
+            return []
+        if self.kwargs.get("session_id") is None:
+            return [MediaUploadCreateRateThrottle()]
+        return [
+            MediaUploadFinalizeRateThrottle(),
+            MediaUploadSessionBurstRateThrottle(),
+        ]
 
     def get_session(self, organization_id, session_id, user, lock=False):
         organization = _get_owned_organization(organization_id, user)
@@ -405,6 +485,43 @@ class OrganizationMediaUploadSessionAPIView(APIView):
             data=data,
             message="Media upload session fetched.",
         )
+
+
+class MediaUploadSessionRateThrottle(RedisRateThrottle):
+    """Build hashed rate-limit subjects from upload ownership identifiers."""
+
+    include_session = False
+
+    def allow_request(self, request, view):
+        self.organization_id = view.kwargs.get("organization_id", "")
+        self.session_id = view.kwargs.get("session_id", "")
+        return super().allow_request(request, view)
+
+    def _subject_digest(self, request):
+        user_id = getattr(getattr(request, "user", None), "pk", "")
+        subject = (
+            f"media-upload:user:{user_id}:organization:{self.organization_id}"
+        )
+        if self.include_session:
+            subject = f"{subject}:session:{self.session_id}"
+        return hmac.new(
+            str(settings.SECRET_KEY).encode("utf-8"),
+            subject.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+
+class MediaUploadCreateRateThrottle(MediaUploadSessionRateThrottle):
+    scope = "media_upload_create"
+
+
+class MediaUploadFinalizeRateThrottle(MediaUploadSessionRateThrottle):
+    scope = "media_upload_finalize"
+
+
+class MediaUploadSessionBurstRateThrottle(MediaUploadSessionRateThrottle):
+    scope = "media_upload_finalize_session"
+    include_session = True
 
 
 class MediaUploadPolicyAPIView(APIView):
@@ -849,6 +966,8 @@ class OrganizationPostTargetScheduleAPIView(OrganizationPostDetailAPIView):
 class OrganizationPostPublishNowAPIView(OrganizationPostDetailAPIView):
     """Publish one scheduled post immediately through the existing task."""
 
+    throttle_classes = [OrganizationPublishNowRateThrottle]
+
     def post(self, request, organization_id, post_id):
         organization = self.get_organization(organization_id, request.user)
         post = self.get_object(organization=organization, post_id=post_id)
@@ -865,6 +984,11 @@ class OrganizationPostPublishNowAPIView(OrganizationPostDetailAPIView):
 
 class OrganizationPostTargetRetryAPIView(OrganizationPostDetailAPIView):
     """Retry exactly one failed publishing destination."""
+
+    throttle_classes = [
+        PublishRetryPerTargetRateThrottle,
+        PublishRetryUserOrganizationRateThrottle,
+    ]
 
     def post(self, request, organization_id, post_id, target_id):
         organization = self.get_organization(organization_id, request.user)
@@ -886,6 +1010,8 @@ class OrganizationPostTargetRetryAPIView(OrganizationPostDetailAPIView):
 
 class OrganizationPostTargetPublishNowAPIView(OrganizationPostDetailAPIView):
     """Immediately publish exactly one Calendar-selected destination."""
+
+    throttle_classes = [TargetPublishNowRateThrottle]
 
     def post(self, request, organization_id, post_id, target_id):
         organization = self.get_organization(organization_id, request.user)

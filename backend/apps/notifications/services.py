@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 import requests
@@ -37,7 +37,8 @@ def _resolve_notifications(
 
 def _record_user_notification(
     *,
-    activity,
+    activity=None,
+    organization=None,
     event_type,
     event_key,
     title,
@@ -46,7 +47,9 @@ def _record_user_notification(
     subscription=None,
     reopen=False,
 ):
-    organization = activity.organization
+    organization = organization or (activity.organization if activity else None)
+    if organization is None:
+        return None
     recipient_id = organization.created_by_id
     if not recipient_id:
         return None
@@ -168,6 +171,198 @@ def record_activity_notification(activity):
         )
 
     return None
+
+
+def social_credential_reconnect_event_key(*, scope, subject_id):
+    """Return a stable key for one account or shared Meta connection."""
+    return f"social-reconnect:{scope}:{subject_id}"
+
+
+def record_social_credential_reconnect_required(
+    *,
+    organization,
+    scope,
+    subject_id,
+    platform,
+    account_name="",
+):
+    """Create or reopen one owner-scoped credential reconnection notice."""
+    if not organization or not organization.created_by_id:
+        return None
+
+    event_key = social_credential_reconnect_event_key(
+        scope=scope,
+        subject_id=subject_id,
+    )
+    if scope == "meta-connection":
+        title = "Meta connection needs reconnection"
+        message = (
+            "The shared Meta connection used by Facebook Pages in "
+            f"{organization.name} needs reconnection. Reconnect a Page from "
+            "Social Accounts."
+        )
+    else:
+        platform_name = "Instagram" if platform == "instagram" else "Facebook"
+        account_label = (account_name or f"{platform_name} account").strip()[:160]
+        title = f"{platform_name} account needs reconnection"
+        message = (
+            f"{account_label} can no longer be used on {platform_name}. "
+            "Reconnect it from Social Accounts."
+        )
+
+    try:
+        with transaction.atomic():
+            existing = UserNotification.objects.filter(
+                event_key=event_key,
+                is_deleted=False,
+            ).first()
+            if existing is not None and existing.resolved_at is None:
+                return existing
+            return _record_user_notification(
+                organization=organization,
+                event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED,
+                event_key=event_key,
+                title=title,
+                message=message,
+                reopen=True,
+            )
+    except Exception:
+        logger.exception(
+            "Unable to persist social credential reconnect notification. "
+            "event_key=%s",
+            event_key,
+        )
+        return None
+
+
+def resolve_social_credential_reconnect_required(
+    *,
+    organization,
+    scope,
+    subject_id,
+):
+    """Resolve the reconnect notice for exactly one credential scope."""
+    event_key = social_credential_reconnect_event_key(
+        scope=scope,
+        subject_id=subject_id,
+    )
+    try:
+        now = timezone.now()
+        return UserNotification.objects.filter(
+            organization=organization,
+            event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED,
+            event_key=event_key,
+            is_deleted=False,
+            resolved_at__isnull=True,
+        ).update(
+            resolved_at=now,
+            updated_at=now,
+        )
+    except Exception:
+        logger.exception(
+            "Unable to resolve social credential reconnect notification. "
+            "event_key=%s",
+            event_key,
+        )
+        return 0
+
+
+META_USER_DATA_ACCESS_EXPIRY_EVENT_PREFIX = "meta-user-data-access-expiry"
+META_USER_DATA_ACCESS_WARNING_STAGES = {
+    "14d": "Meta access expires in 14 days",
+    "3d": "Meta access expires in 3 days",
+}
+
+
+def meta_user_data_access_expiry_event_key(*, connection_id, stage):
+    if stage not in META_USER_DATA_ACCESS_WARNING_STAGES:
+        raise ValueError("Unsupported Meta data-access warning stage.")
+    return f"{META_USER_DATA_ACCESS_EXPIRY_EVENT_PREFIX}:{connection_id}:{stage}"
+
+
+def record_meta_user_data_access_expiry_warning(
+    *, organization, connection_id, stage, expires_at
+):
+    """Create or reopen one owner-scoped Meta data-access expiry warning."""
+    if stage not in META_USER_DATA_ACCESS_WARNING_STAGES:
+        raise ValueError("Unsupported Meta data-access warning stage.")
+    if not organization or not organization.created_by_id:
+        return None
+    if timezone.is_naive(expires_at):
+        expires_at = timezone.make_aware(
+            expires_at,
+            timezone.get_current_timezone(),
+        )
+
+    title = META_USER_DATA_ACCESS_WARNING_STAGES[stage]
+    event_key = meta_user_data_access_expiry_event_key(
+        connection_id=connection_id,
+        stage=stage,
+    )
+    try:
+        with transaction.atomic():
+            existing = UserNotification.objects.filter(
+                event_key=event_key,
+                is_deleted=False,
+            ).first()
+            if existing is not None and existing.resolved_at is None:
+                return existing
+            expiry_date = timezone.localtime(expires_at).strftime("%b %d, %Y")
+            return _record_user_notification(
+                organization=organization,
+                event_type=UserNotificationType.META_USER_DATA_ACCESS_EXPIRING,
+                event_key=event_key,
+                title=title,
+                message=(
+                    f"The shared Meta connection for {organization.name} needs "
+                    f"reauthorization by {expiry_date} to keep Facebook Pages connected."
+                ),
+                reopen=True,
+            )
+    except Exception:
+        logger.exception(
+            "Unable to persist Meta data-access expiry warning. event_key=%s",
+            event_key,
+        )
+        return None
+
+
+def resolve_meta_user_data_access_expiry_warnings(
+    *, connection_id, organization=None, organization_id=None, stage=None
+):
+    """Resolve warning events for one Meta connection, optionally one stage."""
+    if organization is None and organization_id is None:
+        return 0
+    filters = {
+        "event_type": UserNotificationType.META_USER_DATA_ACCESS_EXPIRING,
+        "event_key__startswith": (
+            f"{META_USER_DATA_ACCESS_EXPIRY_EVENT_PREFIX}:{connection_id}:"
+        ),
+        "is_deleted": False,
+        "resolved_at__isnull": True,
+    }
+    if organization is not None:
+        filters["organization"] = organization
+    else:
+        filters["organization_id"] = organization_id
+    if stage is not None:
+        filters["event_key"] = meta_user_data_access_expiry_event_key(
+            connection_id=connection_id,
+            stage=stage,
+        )
+        filters.pop("event_key__startswith")
+    try:
+        now = timezone.now()
+        return UserNotification.objects.filter(**filters).update(
+            resolved_at=now,
+            updated_at=now,
+        )
+    except Exception:
+        logger.exception(
+            "Unable to resolve Meta data-access expiry warnings. connection_id=%s",
+            connection_id,
+        )
+        return 0
 
 
 class BrevoEmailError(Exception):

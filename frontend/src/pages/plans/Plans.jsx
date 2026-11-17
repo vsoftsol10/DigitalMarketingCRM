@@ -1,9 +1,4 @@
-import {
-  Alert,
-  Box,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -11,9 +6,11 @@ import plansService from "../../services/plans.service";
 
 import PlansHeader from "../../components/plans/PlansHeader";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import EmptyState from "../../components/ui/EmptyState";
 import PlansGrid from "../../components/plans/PlansGrid";
 
-import { TYPOGRAPHY } from "../../theme/typography";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 export default function Plans() {
   const navigate = useNavigate();
@@ -21,6 +18,7 @@ export default function Plans() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasLoadedSuccessfully, setHasLoadedSuccessfully] = useState(false);
 
   const loadPlans = useCallback(async () => {
     try {
@@ -34,21 +32,27 @@ export default function Plans() {
       }
 
       setPlans(response);
+      setHasLoadedSuccessfully(true);
     } catch (error) {
       console.error("Failed to load plans:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to load plans.",
-      );
+      setError(formatApiErrorMessage(error, {
+        fallback: "Unable to load plans.",
+      }));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadPlans();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) loadPlans();
+    });
+
+    return () => {
+      active = false;
+    };
   }, [loadPlans]);
 
   const handleCreatePlan = () => {
@@ -63,18 +67,12 @@ export default function Plans() {
     navigate(`/plans/${plan.id}`);
   };
 
-  if (loading) {
+  if (loading && !hasLoadedSuccessfully) {
     return <LoadingState page="Plans" />;
   }
 
-  if (error) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          {error}
-        </Alert>
-      </Box>
-    );
+  if (error && !hasLoadedSuccessfully) {
+    return <ErrorState message={error} onRetry={loadPlans} variant="page" />;
   }
 
   return (
@@ -84,6 +82,8 @@ export default function Plans() {
         minWidth: 0,
       }}
     >
+      {error && <ErrorState message={error} onRetry={loadPlans} variant="inline" />}
+      {loading && <LoadingState label="UPDATING PLANS..." variant="inline" />}
       <PlansHeader
         onCustomPlan={handleCustomPlan}
         onCreatePlan={handleCreatePlan}
@@ -96,21 +96,13 @@ export default function Plans() {
         }}
       >
         {plans.length === 0 ? (
-          <Stack
-            alignItems="center"
-            justifyContent="center"
-            sx={{
-              minHeight: 300,
-            }}
-          >
-            <Typography sx={TYPOGRAPHY.cardTitle}>
-              No plans available
-            </Typography>
-
-            <Typography sx={TYPOGRAPHY.bodySmall}>
-              Create your first subscription plan.
-            </Typography>
-          </Stack>
+          !loading && hasLoadedSuccessfully && !error ? (
+            <EmptyState
+              title="No plans available"
+              description="Create your first subscription plan."
+              sx={{ minHeight: 300 }}
+            />
+          ) : null
         ) : (
           <PlansGrid
             plans={plans}

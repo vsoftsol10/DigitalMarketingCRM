@@ -1,6 +1,7 @@
 import {
   Alert,
   Box,
+  Button,
   Drawer,
   IconButton,
   Stack,
@@ -12,6 +13,8 @@ import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 
 import SubscriptionHistoryItem from "./SubscriptionHistoryItem";
 import LoadingState from "../../ui/LoadingState";
+import ErrorState from "../../ui/ErrorState";
+import EmptyState from "../../ui/EmptyState";
 
 const DRAWER_WIDTH = 460;
 
@@ -19,8 +22,10 @@ export default function SubscriptionHistoryDrawer({
   open,
   onClose,
   subscriptions = [],
+  hasLoadedHistory = false,
   loading = false,
   error = null,
+  onRetry,
 }) {
   return (
     <Drawer
@@ -220,7 +225,7 @@ export default function SubscriptionHistoryDrawer({
             LOADING
         =================================================== */}
 
-        {loading && (
+        {loading && !hasLoadedHistory && (
           <LoadingState
             label="LOADING SUBSCRIPTION HISTORY..."
             variant="container"
@@ -228,18 +233,46 @@ export default function SubscriptionHistoryDrawer({
           />
         )}
 
+        {loading && hasLoadedHistory && (
+          <LoadingState
+            label="REFRESHING SUBSCRIPTION HISTORY..."
+            variant="inline"
+          />
+        )}
+
         {/* ===================================================
             ERROR
         =================================================== */}
 
-        {!loading && error && (
+        {!loading && error && !hasLoadedHistory && (
+          <ErrorState
+            title="Unable to load subscription history"
+            message={error}
+            onRetry={onRetry ? () => { void onRetry(); } : undefined}
+            retryLabel="Retry"
+            variant="inline"
+            sx={{ minHeight: 320 }}
+          />
+        )}
+
+        {error && hasLoadedHistory && (
           <Alert
             severity="error"
             sx={{
               borderRadius: "12px",
             }}
+            action={onRetry ? (
+              <Button
+                color="inherit"
+                size="small"
+                disabled={loading}
+                onClick={() => { void onRetry(); }}
+              >
+                Retry
+              </Button>
+            ) : undefined}
           >
-            {error}
+            Could not refresh subscription history. Previously loaded history remains available. {error}
           </Alert>
         )}
 
@@ -247,80 +280,20 @@ export default function SubscriptionHistoryDrawer({
             EMPTY
         =================================================== */}
 
-        {!loading && !error && subscriptions.length === 0 && (
-          <Box
-            sx={{
-              minHeight: 320,
-
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Stack
-              spacing={1}
-              alignItems="center"
-              sx={{
-                textAlign: "center",
-              }}
-            >
-              <Box
-                sx={{
-                  width: 48,
-                  height: 48,
-
-                  borderRadius: "14px",
-
-                  background:
-                    "linear-gradient(145deg, rgba(238,245,255,.98), rgba(222,234,252,.9))",
-
-                  border: "1px solid rgba(255,255,255,.9)",
-
-                  boxShadow:
-                    "0 4px 10px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.96)",
-
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-
-                  color: "#7184AD",
-                }}
-              >
-                <HistoryOutlinedIcon />
-              </Box>
-
-              <Typography
-                sx={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#17294F",
-                }}
-              >
-                No subscription history
-              </Typography>
-
-              <Typography
-                sx={{
-                  maxWidth: 280,
-
-                  fontSize: 13,
-                  lineHeight: "19px",
-
-                  color: "#657899",
-                }}
-              >
-                Subscription activity will appear here once a subscription is
-                created.
-              </Typography>
-            </Stack>
-          </Box>
+        {hasLoadedHistory && !loading && !error && subscriptions.length === 0 && (
+          <EmptyState
+            icon={<HistoryOutlinedIcon />}
+            title="No subscription history"
+            description="Subscription activity will appear here once a subscription is created."
+            sx={{ minHeight: 320 }}
+          />
         )}
 
         {/* ===================================================
             HISTORY LIST
         =================================================== */}
 
-        {!loading && !error && subscriptions.length > 0 && (
+        {hasLoadedHistory && subscriptions.length > 0 && (
           <Box>
             {subscriptions.map((subscription, index) => (
               <SubscriptionHistoryItem

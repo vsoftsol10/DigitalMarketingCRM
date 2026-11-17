@@ -1511,6 +1511,7 @@ from .models import (
     MetaCredentialType,
     MetaOAuthSession,
 )
+from .selectors import meta_user_credential_expiry_eligibility_q
 
 logger = logging.getLogger(__name__)
 
@@ -2070,6 +2071,26 @@ class MetaSocialAccountService:
     # USER CREDENTIAL
     # ========================================================
 
+    @staticmethod
+    def _schedule_user_credential_health_check(credential_id):
+        """Run provider metadata persistence only after OAuth data commits."""
+        credential_id = str(credential_id)
+
+        def check_health():
+            try:
+                from .lifecycle import MetaTokenLifecycleService
+
+                MetaTokenLifecycleService().check_user_credential_health_after_oauth(
+                    credential_id,
+                )
+            except Exception:
+                logger.warning(
+                    "Meta OAuth credential health check deferred safely. credential_id=%s",
+                    credential_id,
+                )
+
+        transaction.on_commit(check_health)
+
     def _save_user_credential(
         self,
         *,
@@ -2129,14 +2150,26 @@ class MetaSocialAccountService:
             credential.last_verified_at = now
             credential.is_deleted = False
             credential.deleted_at = None
-            credential.provider_token_type = ""
-            credential.provider_is_valid = None
-            credential.provider_expires_at = None
-            credential.data_access_expires_at = None
-            credential.last_health_check_at = None
-            credential.granted_permissions = []
 
             credential.save()
+            from apps.notifications.services import (
+                resolve_social_credential_reconnect_required,
+            )
+
+            resolve_social_credential_reconnect_required(
+                organization=connection.organization,
+                scope="meta-connection",
+                subject_id=connection.pk,
+            )
+            from apps.notifications.services import (
+                resolve_meta_user_data_access_expiry_warnings,
+            )
+
+            resolve_meta_user_data_access_expiry_warnings(
+                organization=connection.organization,
+                connection_id=connection.pk,
+            )
+            self._schedule_user_credential_health_check(credential.pk)
 
             return credential
 
@@ -2144,7 +2177,7 @@ class MetaSocialAccountService:
         # CREATE USER CREDENTIAL
         # ----------------------------------------------------
 
-        return MetaAccountCredential.objects.create(
+        credential = MetaAccountCredential.objects.create(
             social_connection=connection,
             social_account=None,
             credential_type=MetaCredentialType.USER,
@@ -2153,6 +2186,25 @@ class MetaSocialAccountService:
             status=MetaCredentialStatus.ACTIVE,
             last_verified_at=now,
         )
+        from apps.notifications.services import (
+            resolve_social_credential_reconnect_required,
+        )
+
+        resolve_social_credential_reconnect_required(
+            organization=connection.organization,
+            scope="meta-connection",
+            subject_id=connection.pk,
+        )
+        from apps.notifications.services import (
+            resolve_meta_user_data_access_expiry_warnings,
+        )
+
+        resolve_meta_user_data_access_expiry_warnings(
+            organization=connection.organization,
+            connection_id=connection.pk,
+        )
+        self._schedule_user_credential_health_check(credential.pk)
+        return credential
 
     # ========================================================
     # SOCIAL ACCOUNT
@@ -2350,6 +2402,15 @@ class MetaSocialAccountService:
             credential.deleted_at = None
 
             credential.save()
+            from apps.notifications.services import (
+                resolve_social_credential_reconnect_required,
+            )
+
+            resolve_social_credential_reconnect_required(
+                organization=social_account.organization,
+                scope="facebook-page",
+                subject_id=social_account.pk,
+            )
 
             return credential
 
@@ -2357,7 +2418,7 @@ class MetaSocialAccountService:
         # CREATE PAGE CREDENTIAL
         # ----------------------------------------------------
 
-        return MetaAccountCredential.objects.create(
+        credential = MetaAccountCredential.objects.create(
             social_account=social_account,
             social_connection=None,
             credential_type=MetaCredentialType.PAGE,
@@ -2366,6 +2427,16 @@ class MetaSocialAccountService:
             status=MetaCredentialStatus.ACTIVE,
             last_verified_at=now,
         )
+        from apps.notifications.services import (
+            resolve_social_credential_reconnect_required,
+        )
+
+        resolve_social_credential_reconnect_required(
+            organization=social_account.organization,
+            scope="facebook-page",
+            subject_id=social_account.pk,
+        )
+        return credential
 
     # ========================================================
     # SAVE SELECTED FACEBOOK ACCOUNTS
@@ -3334,13 +3405,7 @@ class MetaOAuthService:
             status=MetaCredentialStatus.ACTIVE,
             access_token__gt="",
             is_deleted=False,
-        ).filter(
-            Q(token_expires_at__isnull=True) | Q(token_expires_at__gt=now),
-            Q(provider_is_valid__isnull=True) | Q(provider_is_valid=True),
-            Q(provider_expires_at__isnull=True) | Q(provider_expires_at__gt=now),
-            Q(data_access_expires_at__isnull=True)
-            | Q(data_access_expires_at__gt=now),
-        )
+        ).filter(meta_user_credential_expiry_eligibility_q(now))
 
         return set(
             SocialAccount.objects.filter(
@@ -3721,10 +3786,12 @@ class MetaCredentialService:
         )
 
         if credential:
+            credential.access_token = ""
             credential.status = MetaCredentialStatus.REVOKED
 
             credential.save(
                 update_fields=[
+                    "access_token",
                     "status",
                     "updated_at",
                 ]

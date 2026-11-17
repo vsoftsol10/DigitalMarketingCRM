@@ -1,12 +1,13 @@
 import { AutoAwesomeRounded, RefreshRounded } from "@mui/icons-material";
 
-import { Box } from "@mui/material";
+import { Alert, Box } from "@mui/material";
 
 import { useFormContext } from "react-hook-form";
 
 import PrimaryButton from "../../../ui/button/PrimaryButton";
 
 import { useGenerateAICaption } from "../../../../hooks/mutations/useGenerateAICaption";
+import formatApiErrorMessage from "../../../../utils/apiErrorMessage";
 
 export default function AIGenerateButton({
   setSuggestions,
@@ -14,7 +15,7 @@ export default function AIGenerateButton({
 }) {
   const { watch } = useFormContext();
 
-  const { mutate, isPending } = useGenerateAICaption();
+  const { mutate, isPending, error } = useGenerateAICaption();
 
   function handleGenerate() {
     const payload = {
@@ -47,50 +48,59 @@ export default function AIGenerateButton({
   }
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "flex-end",
-        mt: 0.5,
-      }}
-    >
-      <PrimaryButton
-        type="button"
-        startIcon={hasSuggestion ? <RefreshRounded /> : <AutoAwesomeRounded />}
-        loading={isPending}
-        onClick={handleGenerate}
+    <>
+      {error && (
+        <Alert severity="error" sx={{ mb: 1.5 }}>
+          {formatApiErrorMessage(error, {
+            fallback: "Unable to generate captions. Please try again.",
+          })}
+        </Alert>
+      )}
+      <Box
         sx={{
-          width: "auto",
-          minWidth: 0,
-          height: 40,
-          px: 2.25,
-          borderRadius: "14px",
-          fontSize: 13.5,
-          fontWeight: 600,
-          textTransform: "none",
-          border: "1px solid rgba(255,255,255,.7)",
-          background:
-            "linear-gradient(115deg, #A96BEA 0%, #7074ED 54%, #4A91ED 100%)",
-          boxShadow:
-            "0 7px 15px rgba(100,92,203,.25), 0 2px 5px rgba(65,101,210,.14), inset 0 1px 0 rgba(255,255,255,.46), inset 0 -2px 3px rgba(67,71,163,.16)",
-          "&:hover": {
-            background:
-              "linear-gradient(115deg, #9D60E3 0%, #5E70E8 56%, #3D8FEA 100%)",
-            boxShadow:
-              "0 9px 17px rgba(100,92,203,.3), 0 3px 6px rgba(65,101,210,.18), inset 0 1px 0 rgba(255,255,255,.42)",
-          },
-          "&.Mui-disabled": {
-            color: "rgba(255,255,255,.78)",
-            background: "linear-gradient(115deg, #B993DD, #929BE1)",
-          },
+          display: "flex",
+          justifyContent: "flex-end",
+          mt: 0.5,
         }}
       >
-        {isPending
-          ? "Generating..."
-          : hasSuggestion
-            ? "Regenerate"
-            : "Generate Caption"}
-      </PrimaryButton>
-    </Box>
+        <PrimaryButton
+          type="button"
+          startIcon={hasSuggestion ? <RefreshRounded /> : <AutoAwesomeRounded />}
+          loading={isPending}
+          onClick={handleGenerate}
+          sx={{
+            width: "auto",
+            minWidth: 0,
+            height: 40,
+            px: 2.25,
+            borderRadius: "14px",
+            fontSize: 13.5,
+            fontWeight: 600,
+            textTransform: "none",
+            border: "1px solid rgba(255,255,255,.7)",
+            background:
+              "linear-gradient(115deg, #A96BEA 0%, #7074ED 54%, #4A91ED 100%)",
+            boxShadow:
+              "0 7px 15px rgba(100,92,203,.25), 0 2px 5px rgba(65,101,210,.14), inset 0 1px 0 rgba(255,255,255,.46), inset 0 -2px 3px rgba(67,71,163,.16)",
+            "&:hover": {
+              background:
+                "linear-gradient(115deg, #9D60E3 0%, #5E70E8 56%, #3D8FEA 100%)",
+              boxShadow:
+                "0 9px 17px rgba(100,92,203,.3), 0 3px 6px rgba(65,101,210,.18), inset 0 1px 0 rgba(255,255,255,.42)",
+            },
+            "&.Mui-disabled": {
+              color: "rgba(255,255,255,.78)",
+              background: "linear-gradient(115deg, #B993DD, #929BE1)",
+            },
+          }}
+        >
+          {isPending
+            ? "Generating..."
+            : hasSuggestion
+              ? "Regenerate"
+              : "Generate Caption"}
+        </PrimaryButton>
+      </Box>
+    </>
   );
 }

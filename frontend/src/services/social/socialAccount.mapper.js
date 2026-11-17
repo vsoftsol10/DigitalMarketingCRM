@@ -87,9 +87,17 @@ export function mapSocialAccount(account) {
 
     credentialStatus: account.credential_status || null,
 
+    parentUserCredentialStatus: account.parent_user_credential_status || null,
+
+    parentConnectionId: account.parent_connection_id || null,
+
     lastVerifiedAt: account.last_verified_at || null,
 
     needsReconnect: account.needs_reconnect === true,
+
+    parentNeedsReconnect: account.parent_needs_reconnect === true,
+
+    pageNeedsReconnect: account.page_needs_reconnect === true,
   };
 }
 

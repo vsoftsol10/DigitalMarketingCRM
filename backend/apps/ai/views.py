@@ -3,9 +3,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from apps.common.responses import success_response
+from apps.common.throttles import RedisRateThrottle
 
 from .serializers import AICaptionGenerateSerializer
 from .services import AICaptionService
+
+
+class AICaptionGenerateRateThrottle(RedisRateThrottle):
+    """Apply the configured minute and daily limits to authenticated users."""
+
+    scope = "ai_caption_generate"
 
 
 class AICaptionGenerateAPIView(APIView):
@@ -16,6 +23,7 @@ class AICaptionGenerateAPIView(APIView):
     permission_classes = [
         IsAuthenticated,
     ]
+    throttle_classes = [AICaptionGenerateRateThrottle]
 
     def post(self, request):
         serializer = AICaptionGenerateSerializer(

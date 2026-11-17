@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Badge,
@@ -13,6 +13,10 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import NotificationIcon from "../dashboard/NotificationIcon";
+import LoadingState from "../ui/LoadingState";
+import LoadingSpinner from "../ui/LoadingSpinner";
+import ErrorState from "../ui/ErrorState";
+import EmptyState from "../ui/EmptyState";
 import formatActivityDate from "../../utils/date/formatActivityDate";
 import { useAuthContext } from "../../context/AuthContext";
 import notificationService, { NOTIFICATION_QUERY_KEY } from "../../services/notification.service";
@@ -23,6 +27,7 @@ export default function HeaderNotificationCenter() {
   const { user } = useAuthContext();
   const [anchorEl, setAnchorEl] = useState(null);
   const [isClearing, setIsClearing] = useState(false);
+  const pendingReadIdsRef = useRef(new Set());
   const notificationQueryKey = [
     ...NOTIFICATION_QUERY_KEY,
     user?.id || user?.email || "anonymous",
@@ -32,17 +37,33 @@ export default function HeaderNotificationCenter() {
     isError,
     isFetching,
     isLoading,
+    error: notificationQueryError,
     refetch,
   } = useQuery({
     queryKey: notificationQueryKey,
-    queryFn: notificationService.getNotifications,
+    queryFn: async () => {
+      const response = await notificationService.getNotifications();
+      if (
+        !response
+        || !Array.isArray(response.notifications)
+        || !Number.isFinite(response.unread_count)
+      ) {
+        throw new Error("Notification data was not returned in the expected format.");
+      }
+      return response;
+    },
     enabled: Boolean(user),
     refetchOnMount: "always",
     refetchInterval: 60000,
   });
-  const notifications = notificationData?.notifications || [];
-  const unreadCount = notificationData?.unread_count || 0;
-  const loading = notifications.length === 0 && (isLoading || isFetching);
+  const hasNotificationData = Boolean(
+    notificationData
+    && Array.isArray(notificationData.notifications)
+    && Number.isFinite(notificationData.unread_count),
+  );
+  const notifications = hasNotificationData ? notificationData.notifications : [];
+  const unreadCount = hasNotificationData ? notificationData.unread_count : 0;
+  const loading = !hasNotificationData && (isLoading || isFetching);
 
   async function openCenter(event) {
     setAnchorEl(event.currentTarget);
@@ -70,34 +91,53 @@ export default function HeaderNotificationCenter() {
     }
   }
 
-  function openNotification(notification) {
-    void queryClient.cancelQueries({
-      queryKey: notificationQueryKey,
-      exact: true,
-    });
-    queryClient.setQueryData(notificationQueryKey, (current) => {
-      if (!current) return current;
+  async function openNotification(notification) {
+    const notificationId = notification?.id;
+    if (!notificationId || pendingReadIdsRef.current.has(notificationId)) return;
 
-      return {
-        ...current,
-        notifications: (current.notifications || []).filter(
-          (item) => item.id !== notification.id,
-        ),
-        unread_count: notification.is_read
-          ? current.unread_count || 0
-          : Math.max(0, (current.unread_count || 0) - 1),
-      };
-    });
-    setAnchorEl(null);
+    pendingReadIdsRef.current.add(notificationId);
 
-    if (["FAILED_POST", "POST_PUBLISHED"].includes(notification.type) && notification.target_id) {
-      navigate("/calendar", { state: { targetId: notification.target_id } });
-    } else if (notification.organization_id) {
-      navigate(`/organizations/${notification.organization_id}/overview`);
-    }
+    try {
+      await queryClient.cancelQueries({
+        queryKey: notificationQueryKey,
+        exact: true,
+      });
 
-    if (!notification.is_read) {
-      void notificationService.markAsRead(notification.id).catch(() => {});
+      const previousData = queryClient.getQueryData(notificationQueryKey);
+      let optimisticData = null;
+      if (previousData) {
+        optimisticData = queryClient.setQueryData(notificationQueryKey, {
+          ...previousData,
+          notifications: (previousData.notifications || []).filter(
+            (item) => item.id !== notificationId,
+          ),
+          unread_count: notification.is_read
+            ? previousData.unread_count || 0
+            : Math.max(0, (previousData.unread_count || 0) - 1),
+        });
+      }
+      setAnchorEl(null);
+
+      if (["FAILED_POST", "POST_PUBLISHED"].includes(notification.type) && notification.target_id) {
+        navigate("/calendar", { state: { targetId: notification.target_id } });
+      } else if (notification.organization_id) {
+        navigate(`/organizations/${notification.organization_id}/overview`);
+      }
+
+      if (!notification.is_read) {
+        try {
+          await notificationService.markAsRead(notificationId);
+        } catch {
+          if (previousData && optimisticData) {
+            queryClient.setQueryData(notificationQueryKey, (current) => (
+              current === optimisticData ? previousData : current
+            ));
+          }
+          toast.error("Unable to mark this notification as read. Please try again.");
+        }
+      }
+    } finally {
+      pendingReadIdsRef.current.delete(notificationId);
     }
   }
 
@@ -194,6 +234,19 @@ export default function HeaderNotificationCenter() {
               {unreadCount} unread
             </Typography>
           </Box>
+          <Box
+            sx={{
+              width: 18,
+              height: 18,
+              flex: "0 0 18px",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            {isFetching && hasNotificationData && (
+              <LoadingSpinner size={16} ariaLabel="Updating notifications" />
+            )}
+          </Box>
           <Button
             size="small"
             onClick={clearAllNotifications}
@@ -227,39 +280,48 @@ export default function HeaderNotificationCenter() {
             "&::-webkit-scrollbar-thumb": { borderRadius: 8, background: "rgba(122,143,190,.36)" },
           }}
         >
-          {loading && notifications.length === 0 ? (
-            <Typography
-              sx={{
-                height: "100%",
-                px: 2,
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-                fontSize: 14,
-                color: "#71809D",
-                background: "rgba(246,249,255,.6)",
-              }}
-            >
-              Loading notifications…
-            </Typography>
-          ) : notifications.length === 0 ? (
-            <Typography
-              sx={{
-                height: "100%",
-                px: 2,
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-                fontSize: 14,
-                color: "#71809D",
-                background: "rgba(246,249,255,.6)",
-              }}
-            >
-              {isError ? "Unable to load notifications" : "No new notifications"}
-            </Typography>
-          ) : notifications.map((notification) => (
+          {loading ? (
+            <LoadingState
+              label="LOADING NOTIFICATIONS..."
+              variant="container"
+              minHeight={220}
+            />
+          ) : !hasNotificationData && isError ? (
+            <ErrorState
+              title="Unable to load notifications"
+              message={isError ? notificationQueryError : null}
+              onRetry={isFetching ? undefined : () => refetch()}
+              variant="container"
+              sx={{ minHeight: 220 }}
+            />
+          ) : !hasNotificationData ? (
+            <ErrorState
+              title="Notifications unavailable"
+              message={user
+                ? "Notification data is unavailable."
+                : "Sign in to view notifications."}
+              onRetry={user && !isFetching ? () => refetch() : undefined}
+              variant="container"
+              sx={{ minHeight: 220 }}
+            />
+          ) : (
+            <>
+              {isError && (
+                <ErrorState
+                  title="Unable to refresh notifications"
+                  message={notificationQueryError}
+                  onRetry={isFetching ? undefined : () => refetch()}
+                  variant="inline"
+                />
+              )}
+              {!isError && notifications.length === 0 && (
+                <EmptyState
+                  title="No new notifications"
+                  description="You're all caught up. New notifications will appear here."
+                  sx={{ minHeight: 220 }}
+                />
+              )}
+              {notifications.map((notification) => (
             <Box
               key={notification.id}
               component="button"
@@ -308,7 +370,9 @@ export default function HeaderNotificationCenter() {
                 {!notification.is_read && <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#EF4444" }} />}
               </Box>
             </Box>
-          ))}
+              ))}
+            </>
+          )}
         </Box>
       </Popover>
     </>

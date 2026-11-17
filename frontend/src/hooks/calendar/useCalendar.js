@@ -262,8 +262,6 @@ export default function useCalendar({
       setBackgroundSyncing(false);
       setLoading(true);
     }
-    setError(null);
-
     const request = (async () => {
       try {
         const data = await calendarService.getEvents(params, {
@@ -274,13 +272,18 @@ export default function useCalendar({
           return;
         }
 
-        const nextEvents = Array.isArray(data) ? data : [];
+        if (!Array.isArray(data)) {
+          throw new Error("Calendar events were not returned in the expected format.");
+        }
+
+        const nextEvents = data;
         setEvents((currentEvents) => (
           areCalendarEventListsEqual(currentEvents, nextEvents)
             ? currentEvents
             : nextEvents
         ));
         setHasLoadedEvents(true);
+        setError(null);
         return nextEvents;
       } catch (err) {
         if (controller.signal.aborted || eventRequestRef.current.id !== requestId) {
@@ -288,11 +291,7 @@ export default function useCalendar({
         }
 
         console.error("Failed to fetch calendar events:", err);
-        setError(
-          err?.response?.data?.detail ||
-            err?.message ||
-            "Unable to load calendar events.",
-        );
+        setError(err);
       } finally {
         if (eventRequestRef.current.id === requestId) {
           eventRequestRef.current = {
@@ -326,51 +325,36 @@ export default function useCalendar({
   const fetchFilterOptions =
     useCallback(async () => {
       setFilterOptionsLoading(true);
-      setFilterOptionsError(null);
 
       try {
         const data =
           await calendarService.getFilterOptions();
 
+        if (
+          !data
+          || typeof data !== "object"
+          || !Array.isArray(data.organizations)
+          || !Array.isArray(data.social_accounts)
+          || !Array.isArray(data.contentTypes)
+          || !Array.isArray(data.statuses)
+        ) {
+          throw new Error("Calendar filter options were not returned in the expected format.");
+        }
+
         setFilterOptions({
-          organizations:
-            Array.isArray(data?.organizations)
-              ? data.organizations
-              : [],
-
-          socialAccounts:
-            Array.isArray(data?.social_accounts)
-              ? data.social_accounts
-              : [],
-
-          contentTypes:
-            Array.isArray(data?.contentTypes)
-              ? data.contentTypes
-              : [],
-
-          statuses:
-            Array.isArray(data?.statuses)
-              ? data.statuses
-              : [],
+          organizations: data.organizations,
+          socialAccounts: data.social_accounts,
+          contentTypes: data.contentTypes,
+          statuses: data.statuses,
         });
+        setFilterOptionsError(null);
       } catch (err) {
         console.error(
           "Failed to fetch calendar filter options:",
           err
         );
 
-        setFilterOptions({
-          organizations: [],
-          socialAccounts: [],
-          contentTypes: [],
-          statuses: [],
-        });
-
-        setFilterOptionsError(
-          err?.response?.data?.detail ||
-            err?.message ||
-            "Unable to load calendar filter options."
-        );
+        setFilterOptionsError(err);
       } finally {
         setFilterOptionsLoading(false);
       }
@@ -524,6 +508,10 @@ export default function useCalendar({
     isBackgroundSyncing: backgroundSyncing && hasLoadedEvents,
 
     filterOptionsLoading,
+
+    hasLoadedEvents,
+
+    refreshFilterOptions: fetchFilterOptions,
 
     error,
 

@@ -133,9 +133,38 @@ const socialAccountService = {
       { signal },
     );
 
+    if (!response || !response.data) {
+      throw new Error("The social account response was not returned.");
+    }
+
+    if (response.data?.success !== true) {
+      const message = typeof response.data.message === "string"
+        ? response.data.message.trim()
+        : "";
+      throw new Error(message || "Unable to load social accounts.");
+    }
+
+    if (!Array.isArray(response.data.data)) {
+      throw new Error("Social account data was not returned in the expected format.");
+    }
+
+    const hasMalformedAccount = response.data.data.some((account) => (
+      !account
+      || typeof account !== "object"
+      || Array.isArray(account)
+      || typeof account.id !== "string"
+      || !account.id.trim()
+      || typeof account.platform !== "string"
+      || !account.platform.trim()
+    ));
+
+    if (hasMalformedAccount) {
+      throw new Error("Social account data included an invalid account entry.");
+    }
+
     return {
       ...response.data,
-      data: mapSocialAccounts(response.data?.data),
+      data: mapSocialAccounts(response.data.data),
     };
   },
 

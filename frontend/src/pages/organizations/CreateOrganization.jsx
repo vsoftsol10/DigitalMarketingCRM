@@ -4,7 +4,7 @@ import { FormProvider, useForm } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 
@@ -14,6 +14,8 @@ import PrimaryContactForm from "../../components/organization/create/PrimaryCont
 import SubscriptionForm from "../../components/organization/create/SubscriptionForm";
 import CreateOrganizationFooter from "../../components/organization/create/CreateOrganizationFooter";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import EmptyState from "../../components/ui/EmptyState";
 import FormSection from "../../components/ui/form/FormSection";
 import {
   glassFormDividerSx,
@@ -26,6 +28,7 @@ import { organizationDefaultValues } from "../../constants/forms/organizationDef
 
 import organizationService from "../../services/organization/organization.service";
 import plansService from "../../services/plans.service";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 export default function CreateOrganization() {
   const navigate = useNavigate();
@@ -58,58 +61,54 @@ export default function CreateOrganization() {
   const [plansLoading, setPlansLoading] = useState(true);
 
   const [plansError, setPlansError] = useState(null);
+  const [plansLoadedSuccessfully, setPlansLoadedSuccessfully] = useState(false);
+  const isMounted = useRef(false);
 
   // ============================================================
   // LOAD ACTIVE PLANS
   // ============================================================
 
-  useEffect(() => {
-    let mounted = true;
+  const loadActivePlans = useCallback(async () => {
+    if (!isMounted.current) return;
 
-    async function loadActivePlans() {
-      try {
-        setPlansLoading(true);
+    try {
+      setPlansLoading(true);
+      setPlansError(null);
 
-        setPlansError(null);
+      const plans = await plansService.getPlans({ status: "active" });
 
-        const plans = await plansService.getPlans({
-          status: "active",
-        });
-
-        if (!mounted) {
-          return;
-        }
-
-        if (!Array.isArray(plans)) {
-          throw new Error("Invalid plans response.");
-        }
-
-        setActivePlans(plans);
-      } catch (error) {
-        console.error("Failed to load active plans:", error);
-
-        if (mounted) {
-          setPlansError(
-            error?.response?.data?.message ||
-              error?.message ||
-              "Unable to load subscription plans.",
-          );
-
-          setActivePlans([]);
-        }
-      } finally {
-        if (mounted) {
-          setPlansLoading(false);
-        }
+      if (!Array.isArray(plans)) {
+        throw new Error("Invalid plans response.");
       }
-    }
 
-    loadActivePlans();
+      if (isMounted.current) {
+        setActivePlans(plans);
+        setPlansLoadedSuccessfully(true);
+      }
+    } catch (error) {
+      console.error("Failed to load active plans:", error);
+      if (isMounted.current) {
+        setPlansError(formatApiErrorMessage(error, {
+          fallback: "Unable to load subscription plans.",
+        }));
+      }
+    } finally {
+      if (isMounted.current) setPlansLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    isMounted.current = true;
+    Promise.resolve().then(() => {
+      if (active) loadActivePlans();
+    });
 
     return () => {
-      mounted = false;
+      active = false;
+      isMounted.current = false;
     };
-  }, []);
+  }, [loadActivePlans]);
 
   // ============================================================
   // SUBMIT
@@ -245,25 +244,6 @@ export default function CreateOrganization() {
             PLANS ERROR
         ==================================================== */}
 
-        {plansError && (
-          <Alert
-            severity="error"
-            sx={{
-              maxWidth: "980px",
-
-              mx: "auto",
-
-              mb: 3,
-
-              borderRadius: "16px",
-              border: "1px solid rgba(255,255,255,.85)",
-              boxShadow: "0 6px 16px rgba(77, 59, 75, .08)",
-            }}
-          >
-            {plansError}
-          </Alert>
-        )}
-
         {/* ====================================================
             FORM CONTAINER
         ==================================================== */}
@@ -306,6 +286,18 @@ export default function CreateOrganization() {
                   label="LOADING SUBSCRIPTION PLANS..."
                   variant="container"
                   minHeight={56}
+                />
+              ) : plansError ? (
+                <ErrorState
+                  message={plansError}
+                  onRetry={loadActivePlans}
+                  variant="inline"
+                />
+              ) : plansLoadedSuccessfully && activePlans.length === 0 ? (
+                <EmptyState
+                  title="No active plans available"
+                  description="An active subscription plan is required to create an organization."
+                  sx={{ py: 1 }}
                 />
               ) : (
                 <SubscriptionForm plans={activePlans} />

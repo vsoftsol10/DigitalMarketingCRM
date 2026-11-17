@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Box, Typography } from "@mui/material";
+import LoadingSpinner from "./LoadingSpinner";
 
 const SCROLL_CLIP_VALUES = new Set(["auto", "scroll", "hidden", "clip"]);
 
@@ -81,6 +82,8 @@ function LoadingIndicator({ loadingLabel, variant, minHeight, sx = {} }) {
     <Box
       role="status"
       aria-live="polite"
+      aria-atomic="true"
+      aria-busy="true"
       aria-label={loadingLabel}
       sx={{
         ...(variantSx[variant] || variantSx.page),
@@ -91,12 +94,13 @@ function LoadingIndicator({ loadingLabel, variant, minHeight, sx = {} }) {
       <Box
         sx={{
           display: "flex",
-          flexDirection: "column",
+          flexDirection: variant === "inline" ? "row" : "column",
           alignItems: "center",
-          gap: 1.15,
+          gap: variant === "inline" ? 1 : 1.15,
           px: 1,
         }}
       >
+        <LoadingSpinner size={variant === "inline" ? 18 : 28} decorative />
         <Typography
           component="p"
           sx={{
@@ -112,31 +116,6 @@ function LoadingIndicator({ loadingLabel, variant, minHeight, sx = {} }) {
           {loadingLabel}
         </Typography>
 
-        <Box
-          aria-hidden="true"
-          sx={{
-            position: "relative",
-            width: { xs: 128, sm: 140 },
-            height: 4,
-            overflow: "hidden",
-            borderRadius: 99,
-            background: "rgba(130,148,177,.16)",
-            "&::before": {
-              content: '""',
-              position: "absolute",
-              inset: "0 auto 0 0",
-              width: "28%",
-              borderRadius: 99,
-              background: "linear-gradient(90deg, #A96BEA 0%, #7074ED 52%, #4A91ED 100%)",
-              boxShadow: "0 0 8px rgba(112,116,237,.22)",
-              animation: "loadingLineSlide 1.35s ease-in-out infinite",
-            },
-            "@keyframes loadingLineSlide": {
-              "0%": { transform: "translateX(-110%)" },
-              "100%": { transform: "translateX(470%)" },
-            },
-          }}
-        />
       </Box>
     </Box>
   );
@@ -145,11 +124,14 @@ function LoadingIndicator({ loadingLabel, variant, minHeight, sx = {} }) {
 export default function LoadingState({
   page,
   label,
+  message,
   variant = "page",
   minHeight,
   sx = {},
 }) {
-  const loadingLabel = label || `LOADING ${String(page || "").toUpperCase()}...`;
+  const loadingLabel = label
+    || message
+    || (page ? `LOADING ${String(page).toUpperCase()}...` : "Loading...");
   const anchorRef = useRef(null);
   const [visibleBounds, setVisibleBounds] = useState(null);
 

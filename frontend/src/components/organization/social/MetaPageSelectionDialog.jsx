@@ -2,7 +2,6 @@ import {
   Alert,
   Avatar,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -14,6 +13,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import LoadingState from "../../ui/LoadingState";
+import LoadingSpinner from "../../ui/LoadingSpinner";
 
 import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 import {
@@ -151,7 +151,7 @@ export default function MetaPageSelectionDialog({
                   />
                   <Button
                     variant={isConnected ? "outlined" : "contained"}
-                    startIcon={isAdding ? <CircularProgress size={16} color="inherit" /> : isConnected ? undefined : <AddIcon />}
+                    startIcon={isAdding ? <LoadingSpinner size={16} color="inherit" decorative /> : isConnected ? undefined : <AddIcon />}
                     disabled={busy || isConnected || !pageId}
                     onClick={() => onAdd(pageId)}
                     aria-label={

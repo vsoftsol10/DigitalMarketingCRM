@@ -1,4 +1,5 @@
-from django.db.models import Case, IntegerField, Value, When
+from django.db.models import Case, IntegerField, Q, Value, When
+from django.utils import timezone
 
 from apps.social_accounts.models import (
     SocialAccount,
@@ -10,7 +11,34 @@ from .models import (
     MetaAccountCredential,
     MetaCredentialStatus,
     MetaCredentialType,
+    MetaProviderExpiryState,
 )
+
+
+def meta_user_credential_expiry_eligibility_q(now=None):
+    """Expiry conditions required before a Meta USER token may be used."""
+    now = now or timezone.now()
+    legacy_expiry_is_current = Q(token_expires_at__isnull=True) | Q(
+        token_expires_at__gt=now
+    )
+    data_access_is_current = Q(data_access_expires_at__gt=now)
+    finite_provider_expiry_is_current = (
+        Q(
+            provider_expiry_state=MetaProviderExpiryState.FINITE,
+            provider_expires_at__gt=now,
+        )
+        & (Q(provider_is_valid__isnull=True) | Q(provider_is_valid=True))
+    )
+    no_finite_expiry_is_confirmed = Q(
+        provider_expiry_state=MetaProviderExpiryState.NO_FINITE_EXPIRY,
+        provider_is_valid=True,
+        provider_expires_at__isnull=True,
+    )
+    return (
+        legacy_expiry_is_current
+        & data_access_is_current
+        & (finite_provider_expiry_is_current | no_finite_expiry_is_confirmed)
+    )
 
 
 def get_meta_connection(
@@ -101,27 +129,41 @@ def get_meta_connection_credential(
     social_connection,
 ):
     """
-    Return the USER credential belonging to a Meta connection.
+    Return a usable USER credential, or an inactive lifecycle record.
 
+    Active UNKNOWN/expired credentials are excluded so they cannot be used
+    as an indefinite fallback. Inactive lifecycle rows remain selectable for
+    reconnect-status display; token consumers must continue to require ACTIVE.
     The stored access_token is encrypted.
     """
 
     if not social_connection:
         return None
 
+    now = timezone.now()
     return (
         MetaAccountCredential.objects.filter(
             social_connection=social_connection,
             credential_type=MetaCredentialType.USER,
             is_deleted=False,
         )
+        .filter(
+            (
+                Q(status=MetaCredentialStatus.ACTIVE, access_token__gt="")
+                & meta_user_credential_expiry_eligibility_q(now)
+            )
+            | Q(
+                status__in=(
+                    MetaCredentialStatus.EXPIRED,
+                    MetaCredentialStatus.REVOKED,
+                    MetaCredentialStatus.INVALID,
+                    MetaCredentialStatus.ERROR,
+                )
+            )
+        )
         .order_by(
             Case(
-                When(
-                    status=MetaCredentialStatus.ACTIVE,
-                    access_token__gt="",
-                    then=Value(0),
-                ),
+                When(status=MetaCredentialStatus.ACTIVE, then=Value(0)),
                 default=Value(1),
                 output_field=IntegerField(),
             ),

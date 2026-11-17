@@ -307,7 +307,7 @@
 //   );
 // }
 
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -322,6 +322,10 @@ import CalendarFilters from "../../components/calendar/CalendarFilters";
 import CalendarEventDetails from "../../components/calendar/event-details/CalendarEventDetails";
 import CalendarScheduleDialog from "../../components/calendar/event-details/CalendarScheduleDialog";
 import LoadingState from "../../components/ui/LoadingState";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import ErrorState from "../../components/ui/ErrorState";
+import formatApiErrorMessage from "../../utils/apiErrorMessage";
+import EmptyState from "../../components/ui/EmptyState";
 import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
 
 import useCalendar from "../../hooks/calendar/useCalendar";
@@ -400,11 +404,14 @@ export default function Calendar() {
 
     filterOptionsLoading,
 
+    hasLoadedEvents,
+
     error,
 
     filterOptionsError,
 
     refresh,
+    refreshFilterOptions,
     removeEvent,
     syncEvent,
   } = useCalendar({
@@ -634,7 +641,10 @@ export default function Calendar() {
       await action();
       return true;
     } catch (actionError) {
-      toast.error(getActionErrorMessage(actionError, fallbackMessage));
+      const message = actionType === "publish" || actionType === "retry"
+        ? formatApiErrorMessage(actionError, { fallback: fallbackMessage })
+        : getActionErrorMessage(actionError, fallbackMessage);
+      toast.error(message);
       return false;
     } finally {
       actionInFlightRef.current = false;
@@ -820,6 +830,26 @@ export default function Calendar() {
         activeFilterCount={activeFilterCount}
       />
 
+      <Box
+        sx={{
+          mt: 1.5,
+          minHeight: 36,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        {filterOptionsError ? (
+          <ErrorState
+            title="Unable to load calendar filters"
+            message={filterOptionsError}
+            onRetry={filterOptionsLoading ? undefined : refreshFilterOptions}
+            variant="inline"
+          />
+        ) : filterOptionsLoading && hasLoadedEvents && !isInitialLoading && !isRefreshing ? (
+          <LoadingSpinner size={16} ariaLabel="Loading calendar filters" />
+        ) : null}
+      </Box>
+
       {/* ========================================
           CALENDAR CONTENT
       ======================================== */}
@@ -842,69 +872,38 @@ export default function Calendar() {
             CALENDAR ERROR
         ====================================== */}
 
-        {!isInitialLoading && error && !events.length && (
-          <Box
-            sx={{
-              minHeight: 300,
+        {!isInitialLoading && !hasLoadedEvents && error && (
+          <ErrorState
+            title="Unable to load calendar"
+            message={error}
+            onRetry={loading || isBackgroundSyncing ? undefined : refresh}
+            variant="container"
+            sx={{ minHeight: 300 }}
+          />
+        )}
 
-              display: "flex",
+        {hasLoadedEvents && error && (
+          <ErrorState
+            title="Unable to refresh calendar"
+            message={error}
+            onRetry={loading || isBackgroundSyncing ? undefined : refresh}
+            variant="inline"
+          />
+        )}
 
-              flexDirection: "column",
-
-              alignItems: "center",
-
-              justifyContent: "center",
-
-              gap: 1,
-            }}
-          >
-            <Typography
-              sx={{
-                fontWeight: 600,
-                color: "text.primary",
-              }}
-            >
-              Unable to load calendar
-            </Typography>
-
-            <Typography
-              sx={{
-                fontSize: 14,
-                color: "text.secondary",
-              }}
-            >
-              {error}
-            </Typography>
-
-            <Typography
-              component="button"
-              onClick={refresh}
-              sx={{
-                mt: 1,
-
-                border: "none",
-
-                bgcolor: "transparent",
-
-                color: "primary.main",
-
-                cursor: "pointer",
-
-                fontWeight: 600,
-
-                fontSize: 14,
-              }}
-            >
-              Try again
-            </Typography>
-          </Box>
+        {hasLoadedEvents && !error && events.length === 0 && (
+          <EmptyState
+            title="No calendar events"
+            description="There are no events to show for this month and these filters."
+            sx={{ minHeight: 300 }}
+          />
         )}
 
         {/* ======================================
             CALENDAR GRID
         ====================================== */}
 
-        {!isInitialLoading && (!error || events.length > 0) && (
+        {hasLoadedEvents && events.length > 0 && (
           <CalendarGrid
             currentDate={currentDate}
             events={events}

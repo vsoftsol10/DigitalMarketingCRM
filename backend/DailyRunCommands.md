@@ -1,7 +1,8 @@
 Terminal 1 — WSL(Redis)
 
 sudo service redis-server start
-redis-cli -a 290505 ping
+redis-cli -a pass ping
+redis-cli -a 'YOUR_REDIS_PASSWORD' ping
 
 Expected: PONG
 ---------------------------------------------------------
@@ -37,3 +38,5 @@ Terminal 5 — PowerShell(React Frontend)
 
 cd "C:\Users\S MUTHU KRISHNAN\Desktop\digital-marketing-platform\frontend"
 npm run dev
+
+Sma

@@ -169,6 +169,14 @@ class EmailEvent(BaseModel):
 
 class UserNotificationType(models.TextChoices):
     FAILED_POST = "FAILED_POST", "Failed Post"
+    META_USER_DATA_ACCESS_EXPIRING = (
+        "META_USER_DATA_ACCESS_EXPIRING",
+        "Meta User Data Access Expiring",
+    )
+    SOCIAL_ACCOUNT_RECONNECT_REQUIRED = (
+        "SOCIAL_ACCOUNT_RECONNECT_REQUIRED",
+        "Social Account Reconnect Required",
+    )
     SUBSCRIPTION_EXPIRED = "SUBSCRIPTION_EXPIRED", "Subscription Expired"
     SUBSCRIPTION_EXPIRING = "SUBSCRIPTION_EXPIRING", "Subscription Expiring Soon"
     POST_PUBLISHED = "POST_PUBLISHED", "Post Published"

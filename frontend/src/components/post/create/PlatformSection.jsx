@@ -8,6 +8,9 @@ import { useFormContext } from "react-hook-form";
 
 import SectionCard from "./SectionCard";
 import SocialAccountCard from "./SocialAccountCard";
+import LoadingState from "../../ui/LoadingState";
+import ErrorState from "../../ui/ErrorState";
+import EmptyState from "../../ui/EmptyState";
 
 import { PLATFORM_IDS } from "../../../constants/platforms/platformCapabilities";
 
@@ -55,7 +58,15 @@ const PLATFORM_LABELS = {
 // COMPONENT
 // ============================================================
 
-export default function PlatformSection({ platforms = [], accounts = [] }) {
+export default function PlatformSection({
+  platforms = [],
+  accounts = [],
+  accountsLoading = false,
+  accountsRefreshing = false,
+  accountsError = null,
+  accountsLoadedSuccessfully = false,
+  onRetryAccounts,
+}) {
   const {
     watch,
     setValue,
@@ -180,6 +191,10 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
   // ==========================================================
 
   useEffect(() => {
+    if (!accountsLoadedSuccessfully) {
+      return;
+    }
+
     const currentAccountIds = Array.isArray(selectedAccountIds)
       ? selectedAccountIds
       : [];
@@ -258,6 +273,7 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
     }
   }, [
     organizationAccounts,
+    accountsLoadedSuccessfully,
     capabilityMap,
     selectedAccountIds,
     selectedPlatforms,
@@ -390,26 +406,99 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
     );
   }
 
-  // ==========================================================
-  // NO CONNECTED ACCOUNTS
-  // ==========================================================
-
-  if (!organizationAccounts.length) {
+  if (accountsLoading && !accountsLoadedSuccessfully) {
     return (
       <SectionCard
         title="Publishing Accounts"
         description="Choose the accounts where this post will be published."
       >
-        <Alert
-          severity="info"
-          icon={<InfoOutlinedIcon />}
-          sx={{
-            borderRadius: 2,
-            fontSize: 13,
-          }}
-        >
-          No connected social accounts are available for this organization.
-        </Alert>
+        <LoadingState
+          label="LOADING CONNECTED ACCOUNTS..."
+          variant="container"
+          minHeight={120}
+        />
+      </SectionCard>
+    );
+  }
+
+  if (!accountsLoadedSuccessfully && accountsError) {
+    return (
+      <SectionCard
+        title="Publishing Accounts"
+        description="Choose the accounts where this post will be published."
+      >
+        <ErrorState
+          title="Unable to load social accounts"
+          message={accountsError}
+          onRetry={onRetryAccounts}
+          variant="container"
+        />
+      </SectionCard>
+    );
+  }
+
+  if (!accountsLoadedSuccessfully) {
+    return (
+      <SectionCard
+        title="Publishing Accounts"
+        description="Choose the accounts where this post will be published."
+      >
+        <ErrorState
+          title="Unable to load social accounts"
+          message="Social account data was not returned."
+          onRetry={onRetryAccounts}
+          variant="container"
+        />
+      </SectionCard>
+    );
+  }
+
+  // ==========================================================
+  // NO CONNECTED ACCOUNTS
+  // ==========================================================
+
+  if (accountsError && !organizationAccounts.length) {
+    return (
+      <SectionCard
+        title="Publishing Accounts"
+        description="Choose the accounts where this post will be published."
+      >
+        <ErrorState
+          title="Unable to refresh social accounts"
+          message={accountsError}
+          onRetry={onRetryAccounts}
+          variant="container"
+        />
+      </SectionCard>
+    );
+  }
+
+  if (!organizationAccounts.length && accountsRefreshing) {
+    return (
+      <SectionCard
+        title="Publishing Accounts"
+        description="Choose the accounts where this post will be published."
+      >
+        <LoadingState
+          label="UPDATING CONNECTED ACCOUNTS..."
+          variant="container"
+          minHeight={120}
+        />
+      </SectionCard>
+    );
+  }
+
+  if (!organizationAccounts.length && !accountsError) {
+    return (
+      <SectionCard
+        title="Publishing Accounts"
+        description="Choose the accounts where this post will be published."
+      >
+        <EmptyState
+          title="No connected social accounts"
+          description="Connect a social account to this organization before selecting a publishing destination."
+          sx={{ py: 1 }}
+        />
       </SectionCard>
     );
   }
@@ -441,6 +530,18 @@ export default function PlatformSection({ platforms = [], accounts = [] }) {
       description="Choose the accounts where this post will be published."
     >
       <Stack spacing={3}>
+        {accountsError && (
+          <ErrorState
+            title="Unable to refresh social accounts"
+            message={accountsError}
+            onRetry={onRetryAccounts}
+            variant="inline"
+          />
+        )}
+        {accountsRefreshing && (
+          <LoadingState label="UPDATING CONNECTED ACCOUNTS..." variant="inline" />
+        )}
+
         {/* ====================================================
             MEDIA REQUIRED
         ==================================================== */}

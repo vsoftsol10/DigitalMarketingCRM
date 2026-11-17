@@ -97,11 +97,26 @@ function normalizeCalendarEvent(event) {
 const calendarService = {
   async getEvents(params = {}, { signal } = {}) {
     const response = await calendarApi.getEvents(params, { signal });
-    const events = Array.isArray(response?.data) ? response.data : [];
+    if (response?.success !== true || !Array.isArray(response.data)) {
+      throw new Error("Calendar events were not returned in the expected format.");
+    }
 
-    return events
-      .map(normalizeCalendarEvent)
-      .filter(Boolean);
+    const hasMalformedEvent = response.data.some((event) => (
+      !event
+      || typeof event !== "object"
+      || Array.isArray(event)
+      || typeof event.id !== "string"
+      || !event.id.trim()
+      || typeof event.platform !== "string"
+      || !event.platform.trim()
+    ));
+
+    if (hasMalformedEvent) {
+      throw new Error("Calendar events included an invalid event entry.");
+    }
+
+    return response.data
+      .map(normalizeCalendarEvent);
   },
 
   async getFilterOptions() {

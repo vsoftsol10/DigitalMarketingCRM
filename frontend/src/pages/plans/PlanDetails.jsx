@@ -12,6 +12,8 @@ import PlanDetailsCard from "../../components/plans/details/PlanDetailsCard";
 
 import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 export default function PlanDetails() {
   const navigate = useNavigate();
@@ -20,6 +22,8 @@ export default function PlanDetails() {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -30,7 +34,7 @@ export default function PlanDetails() {
     async function loadPlan() {
       try {
         setLoading(true);
-        setError(null);
+        setLoadError(null);
 
         const response = await plansService.getPlan(planId);
 
@@ -48,11 +52,9 @@ export default function PlanDetails() {
         console.error("Failed to load plan:", error);
 
         if (mounted) {
-          setError(
-            error?.response?.data?.message ||
-              error?.message ||
-              "Unable to load plan.",
-          );
+          setLoadError(formatApiErrorMessage(error, {
+            fallback: "Unable to load plan.",
+          }));
         }
       } finally {
         if (mounted) {
@@ -66,11 +68,12 @@ export default function PlanDetails() {
     return () => {
       mounted = false;
     };
-  }, [planId, navigate]);
+  }, [planId, navigate, loadAttempt]);
 
   const handleDelete = async () => {
     try {
       setDeleteLoading(true);
+      setError(null);
 
       await plansService.deletePlan(plan.id);
 
@@ -82,11 +85,9 @@ export default function PlanDetails() {
     } catch (error) {
       console.error("Failed to delete plan:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to delete plan.",
-      );
+      setError(formatApiErrorMessage(error, {
+        fallback: "Unable to delete plan.",
+      }));
 
       setDeleteDialogOpen(false);
     } finally {
@@ -98,12 +99,8 @@ export default function PlanDetails() {
     return <LoadingState page="Plan Details" />;
   }
 
-  if (error) {
-    return (
-      <Box sx={{ width: "100%" }}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
+  if (loadError) {
+    return <ErrorState message={loadError} onRetry={() => setLoadAttempt((attempt) => attempt + 1)} variant="page" />;
   }
 
   if (!plan) {
@@ -131,11 +128,22 @@ export default function PlanDetails() {
         },
       }}
     >
+      {error && (
+        <Alert severity="error" role="alert" sx={{ mb: 3, borderRadius: "12px" }}>
+          {formatApiErrorMessage(error, {
+            fallback: "Unable to delete plan.",
+          })}
+        </Alert>
+      )}
+
       <PlanDetailsHeader
         plan={plan}
         onBack={() => navigate("/plans")}
         onEdit={() => navigate(`/plans/${plan.id}/edit`)}
-        onDelete={() => setDeleteDialogOpen(true)}
+        onDelete={() => {
+          setError(null);
+          setDeleteDialogOpen(true);
+        }}
       />
 
       <Box

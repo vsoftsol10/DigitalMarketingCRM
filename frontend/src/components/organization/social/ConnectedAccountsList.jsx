@@ -1,8 +1,11 @@
-import { Box, Button, Typography } from "@mui/material";
+import { Alert, AlertTitle, Box } from "@mui/material";
+import ShareOutlinedIcon from "@mui/icons-material/ShareOutlined";
 
 import ConnectedAccountRow from "./ConnectedAccountRow";
-import SocialAccountEmptyState from "./SocialAccountEmptyState";
 import LoadingState from "../../ui/LoadingState";
+import ErrorState from "../../ui/ErrorState";
+import EmptyState from "../../ui/EmptyState";
+import { getParentReconnectGroups } from "./reconnectStatus";
 
 // ============================================================
 // CONNECTED ACCOUNTS LIST
@@ -62,11 +65,13 @@ export default function ConnectedAccountsList({
           : `${account.platform || "account"}-${account.username || "unknown"}-${index}`,
     }));
 
+  const parentReconnectGroups = getParentReconnectGroups(normalizedAccounts);
+
   // ============================================================
   // LOADING STATE
   // ============================================================
 
-  if (loading) {
+  if (loading && normalizedAccounts.length === 0) {
     return (
       <LoadingState
         label="LOADING CONNECTED ACCOUNTS..."
@@ -80,68 +85,14 @@ export default function ConnectedAccountsList({
   // ERROR STATE
   // ============================================================
 
-  if (error) {
+  if (error && normalizedAccounts.length === 0) {
     return (
-      <Box
-        role="alert"
-        sx={{
-          py: 4,
-          px: 3,
-
-          border: "1px solid #FECACA",
-
-          borderRadius: "16px",
-
-          bgcolor: "#FEF2F2",
-
-          textAlign: "center",
-        }}
-      >
-        <Typography
-          sx={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: "#B91C1C",
-          }}
-        >
-          Unable to load social accounts
-        </Typography>
-
-        <Typography
-          sx={{
-            mt: 0.5,
-            fontSize: 13,
-            color: "#DC2626",
-          }}
-        >
-          {error}
-        </Typography>
-
-        {typeof onRetry === "function" && (
-          <Button
-            type="button"
-            variant="outlined"
-            size="small"
-            onClick={onRetry}
-            sx={{
-              mt: 2,
-              height: 34,
-              borderRadius: "10px",
-              borderColor: "#FECACA",
-              color: "#B91C1C",
-              textTransform: "none",
-              fontSize: 13,
-              fontWeight: 600,
-              "&:hover": {
-                borderColor: "#DC2626",
-                bgcolor: "#FEF2F2",
-              },
-            }}
-          >
-            Try again
-          </Button>
-        )}
-      </Box>
+      <ErrorState
+        title="Unable to load social accounts"
+        message={error}
+        onRetry={loading ? undefined : onRetry}
+        variant="container"
+      />
     );
   }
 
@@ -150,7 +101,14 @@ export default function ConnectedAccountsList({
   // ============================================================
 
   if (normalizedAccounts.length === 0) {
-    return <SocialAccountEmptyState />;
+    return (
+      <EmptyState
+        icon={<ShareOutlinedIcon />}
+        title="No accounts connected yet"
+        description="Connect this organization's social accounts to start publishing and managing social activity."
+        sx={{ minHeight: 190 }}
+      />
+    );
   }
 
   // ============================================================
@@ -163,6 +121,51 @@ export default function ConnectedAccountsList({
         width: "100%",
       }}
     >
+      {error && (
+        <ErrorState
+          title="Unable to refresh social accounts"
+          message={error}
+          onRetry={loading ? undefined : onRetry}
+          variant="inline"
+        />
+      )}
+
+      {loading && (
+        <LoadingState label="UPDATING CONNECTED ACCOUNTS..." variant="inline" />
+      )}
+
+      {parentReconnectGroups.map((group) => {
+        const pageNames = group.accounts
+          .map((account) => account.pageName || account.accountName)
+          .filter(Boolean);
+        const connectedActivePageExists = group.accounts.some(
+          (account) => (
+            account.connected === true
+            && account.valid === true
+            && account.credentialStatus === "active"
+          ),
+        );
+
+        return (
+          <Alert
+            key={group.key}
+            severity="warning"
+            sx={{ mt: 2, alignItems: "flex-start" }}
+          >
+            <AlertTitle>Meta connection needs reconnect</AlertTitle>
+            The parent Facebook USER authorization{pageNames.length > 0
+              ? ` shared by ${pageNames.join(", ")}`
+              : " for these Pages"} needs reconnect
+            {group.parentUserCredentialStatus
+              ? ` (status: ${group.parentUserCredentialStatus}). `
+              : ". "}
+            {connectedActivePageExists && (
+              <> Connected Pages with an active Page credential remain available for Page-level publishing and Insights.</>
+            )}
+          </Alert>
+        );
+      })}
+
       {normalizedAccounts.map((account) => (
         <ConnectedAccountRow
           key={account._rowKey}

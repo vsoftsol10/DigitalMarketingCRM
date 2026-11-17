@@ -222,6 +222,28 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.common.exception_handler.custom_exception_handler",
 }
 
+# Endpoint-specific Redis rate limits. These scopes are configuration only;
+# views opt in explicitly by declaring RedisRateThrottle subclasses.
+DMC_RATE_LIMITS = {
+    "login": ((5, 60), (30, 3600)),
+    "token_refresh": ((10, 60), (30, 3600)),
+    "media_upload_create": ((20, 60),),
+    "media_upload_finalize": ((30, 60),),
+    "media_upload_finalize_session": ((5, 60),),
+    "ai_caption_generate": ((5, 60), (50, 86400)),
+    "publish_now": ((5, 60),),
+    "publish_target_now": ((5, 60),),
+    "publish_retry": ((3, 60), (20, 3600)),
+}
+DMC_RATE_LIMIT_REDIS_FAILURE_POLICY = config(
+    "DMC_RATE_LIMIT_REDIS_FAILURE_POLICY",
+    default="closed",
+).strip().lower()
+if DMC_RATE_LIMIT_REDIS_FAILURE_POLICY not in {"closed", "open"}:
+    raise ImproperlyConfigured(
+        "DMC_RATE_LIMIT_REDIS_FAILURE_POLICY must be 'closed' or 'open'."
+    )
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
@@ -242,6 +264,7 @@ CORS_ALLOW_HEADERS = [
     *default_headers,
     "idempotency-key",
 ]
+CORS_EXPOSE_HEADERS = ["Retry-After"]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://digitalmarketingcrm.onrender.com",
@@ -340,6 +363,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": ("apps.integrations.meta.tasks." "maintain_meta_tokens_task"),
         "schedule": 3600.0,
     },
+    "monitor-meta-user-data-access-expiry": {
+        "task": (
+            "apps.integrations.meta.tasks."
+            "monitor_meta_user_data_access_expiry_task"
+        ),
+        "schedule": 6 * 60 * 60.0,
+    },
     "cleanup-invitation-oauth-secrets": {
         "task": "apps.social_accounts.tasks.cleanup_invitation_oauth_secrets_task",
         "schedule": 60.0,
@@ -379,6 +409,49 @@ META_GRAPH_API_VERSION = config(
     default="v26.0",
 )
 
+META_USER_TOKEN_AUTO_RENEWAL_ENABLED = config(
+    "META_USER_TOKEN_AUTO_RENEWAL_ENABLED",
+    default=False,
+    cast=bool,
+)
+
+META_USER_TOKEN_RENEWAL_WINDOW_SECONDS = config(
+    "META_USER_TOKEN_RENEWAL_WINDOW_SECONDS",
+    default=7 * 24 * 60 * 60,
+    cast=int,
+)
+if META_USER_TOKEN_RENEWAL_WINDOW_SECONDS < 1:
+    raise ImproperlyConfigured(
+        "META_USER_TOKEN_RENEWAL_WINDOW_SECONDS must be positive."
+    )
+
+META_USER_TOKEN_RENEWAL_COOLDOWN_SECONDS = config(
+    "META_USER_TOKEN_RENEWAL_COOLDOWN_SECONDS",
+    default=24 * 60 * 60,
+    cast=int,
+)
+if META_USER_TOKEN_RENEWAL_COOLDOWN_SECONDS < 1:
+    raise ImproperlyConfigured(
+        "META_USER_TOKEN_RENEWAL_COOLDOWN_SECONDS must be positive."
+    )
+
+META_USER_TOKEN_RENEWAL_REQUIRED_PERMISSIONS = tuple(
+    permission.strip()
+    for permission in config(
+        "META_USER_TOKEN_RENEWAL_REQUIRED_PERMISSIONS",
+        default=(
+            "read_insights,pages_show_list,business_management,"
+            "pages_read_engagement,pages_read_user_content,pages_manage_posts,"
+            "public_profile"
+        ),
+    ).split(",")
+    if permission.strip()
+)
+if not META_USER_TOKEN_RENEWAL_REQUIRED_PERMISSIONS:
+    raise ImproperlyConfigured(
+        "META_USER_TOKEN_RENEWAL_REQUIRED_PERMISSIONS must not be empty."
+    )
+
 META_OAUTH_REDIRECT_URI = config(
     "META_OAUTH_REDIRECT_URI",
     default="",
@@ -393,16 +466,10 @@ META_INVITATION_OAUTH_REDIRECT_URI = config(
 
 # Facebook Login for Business configuration.
 #
-# Current Meta configuration:
-#   - General login variation
-#   - System-user access token
-#   - Never expiration
-#   - Pages asset
-#   - Instagram accounts asset
-#   - Business Portfolio based authorization
-#
-# Keep this configuration ID aligned with the Meta Developer
-# Dashboard configuration.
+# Login variation, access token type, permissions, and asset selection are
+# controlled by the configuration in Meta Developer Dashboard. Django passes
+# its ID to Meta through META_BUSINESS_LOGIN_CONFIG_ID. Keep that setting
+# aligned with the intended Dashboard configuration.
 META_BUSINESS_LOGIN_CONFIG_ID = config(
     "META_BUSINESS_LOGIN_CONFIG_ID",
     default="",

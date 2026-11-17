@@ -1271,9 +1271,9 @@
 //   );
 // }
 
-import { Alert, Box, Snackbar } from "@mui/material";
+import { Alert, Box, Button, Snackbar } from "@mui/material";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -1299,6 +1299,8 @@ import SubscriptionCard from "../../components/organization/overview/cards/Subsc
 
 import SocialAccountsSection from "../../components/organization/social/SocialAccountsSection";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import formatApiErrorMessage from "../../utils/apiErrorMessage";
 import MetaPageSelectionDialog from "../../components/organization/social/MetaPageSelectionDialog";
 
 // ============================================================
@@ -1350,9 +1352,24 @@ export default function OrganizationOverview() {
 
   const [organization, setOrganization] = useState(null);
 
+  const [organizationDataId, setOrganizationDataId] = useState(null);
+
   const [loading, setLoading] = useState(true);
 
-  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [organizationLoadError, setOrganizationLoadError] = useState(null);
+
+  const [organizationLoadErrorId, setOrganizationLoadErrorId] = useState(null);
+
+  const [organizationRefreshError, setOrganizationRefreshError] = useState(null);
+
+  const organizationRequestId = useRef(0);
+
+  const organizationDataRef = useRef({ organization: null, organizationId: null });
+  organizationDataRef.current = { organization, organizationId: organizationDataId };
+  const activeOrganizationIdRef = useRef(organizationId);
+  activeOrganizationIdRef.current = organizationId;
 
   // ============================================================
   // DELETE STATE
@@ -1361,6 +1378,12 @@ export default function OrganizationOverview() {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [deleting, setDeleting] = useState(false);
+
+  const [deleteError, setDeleteError] = useState(null);
+
+  useEffect(() => {
+    setDeleteError(null);
+  }, [organizationId]);
 
   // ============================================================
   // ACTIVE PLANS STATE
@@ -1482,19 +1505,45 @@ export default function OrganizationOverview() {
   // ============================================================
 
   const loadOrganization = useCallback(async () => {
+    if (activeOrganizationIdRef.current !== organizationId) {
+      return;
+    }
+
+    const requestId = organizationRequestId.current + 1;
+    organizationRequestId.current = requestId;
+
     if (!organizationId) {
-      setError("Organization ID is missing.");
+      setOrganizationLoadError(new Error("Organization ID is missing."));
+      setOrganizationLoadErrorId(organizationId);
       setLoading(false);
+      setRefreshing(false);
 
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
+    const hasCurrentOrganization = Boolean(
+      organizationDataRef.current.organization
+      && organizationDataRef.current.organizationId === organizationId,
+    );
 
+    try {
+      if (hasCurrentOrganization) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+        setOrganizationLoadError(null);
+        setOrganizationLoadErrorId(null);
+        setOrganizationRefreshError(null);
+      }
       const response =
         await organizationService.getOrganization(organizationId);
+
+      if (
+        requestId !== organizationRequestId.current
+        || activeOrganizationIdRef.current !== organizationId
+      ) {
+        return;
+      }
 
       if (!response?.success) {
         throw new Error(response?.message || "Unable to load organization.");
@@ -1505,16 +1554,34 @@ export default function OrganizationOverview() {
       }
 
       setOrganization(response.data);
+      setOrganizationDataId(organizationId);
+      setOrganizationLoadError(null);
+      setOrganizationLoadErrorId(null);
+      setOrganizationRefreshError(null);
     } catch (error) {
+      if (
+        requestId !== organizationRequestId.current
+        || activeOrganizationIdRef.current !== organizationId
+      ) {
+        return;
+      }
+
       console.error("Failed to load organization:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to load organization.",
-      );
+      if (hasCurrentOrganization) {
+        setOrganizationRefreshError(error);
+      } else {
+        setOrganizationLoadError(error);
+        setOrganizationLoadErrorId(organizationId);
+      }
     } finally {
-      setLoading(false);
+      if (
+        requestId === organizationRequestId.current
+        && activeOrganizationIdRef.current === organizationId
+      ) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [organizationId]);
 
@@ -1938,12 +2005,8 @@ export default function OrganizationOverview() {
       console.error("Failed to load active plans:", error);
 
       setPlansError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to load active subscription plans.",
+        error,
       );
-
-      setActivePlans([]);
 
       return [];
     } finally {
@@ -1979,6 +2042,8 @@ export default function OrganizationOverview() {
     clearError: clearSubscriptionError,
 
     history,
+
+    historyLoaded,
 
     historyLoading,
 
@@ -2122,7 +2187,7 @@ export default function OrganizationOverview() {
 
     try {
       setDeleting(true);
-      setError(null);
+      setDeleteError(null);
 
       const response =
         await organizationService.deleteOrganization(organizationId);
@@ -2137,11 +2202,8 @@ export default function OrganizationOverview() {
     } catch (error) {
       console.error("Failed to delete organization:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to delete organization. Please try again.",
-      );
+      setDeleteOpen(false);
+      setDeleteError({ organizationId, error });
     } finally {
       setDeleting(false);
     }
@@ -2372,7 +2434,29 @@ export default function OrganizationOverview() {
   // INITIAL LOADING
   // ============================================================
 
-  if (loading) {
+  const hasCurrentOrganization = Boolean(
+    organization && organizationDataId === organizationId,
+  );
+  const currentOrganizationLoadError = organizationLoadErrorId === organizationId
+    ? organizationLoadError
+    : null;
+
+  if (loading || (!hasCurrentOrganization && !currentOrganizationLoadError)) {
+    return <LoadingState page="Organization Overview" />;
+  }
+
+  if (currentOrganizationLoadError) {
+    return (
+      <ErrorState
+        title="Unable to load organization"
+        message={currentOrganizationLoadError}
+        onRetry={loading ? undefined : loadOrganization}
+        variant="page"
+      />
+    );
+  }
+
+  if (!hasCurrentOrganization) {
     return <LoadingState page="Organization Overview" />;
   }
 
@@ -2380,7 +2464,7 @@ export default function OrganizationOverview() {
   // ORGANIZATION LOAD ERROR
   // ============================================================
 
-  if (error || !organization) {
+  if (!organization) {
     return (
       <Box
         sx={{
@@ -2389,7 +2473,7 @@ export default function OrganizationOverview() {
           p: 3,
         }}
       >
-        <Alert severity="error">{error || "Organization not found."}</Alert>
+        <Alert severity="error">Organization not found.</Alert>
       </Box>
     );
   }
@@ -2408,6 +2492,50 @@ export default function OrganizationOverview() {
 
   return (
     <>
+      {deleteError?.organizationId === organizationId && (
+        <Alert
+          severity="error"
+          sx={{ mx: { xs: 1.5, sm: 3 }, mt: 2, borderRadius: "12px" }}
+          action={(
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteOpen(true);
+              }}
+            >
+              Try again
+            </Button>
+          )}
+        >
+          {formatApiErrorMessage(deleteError.error, {
+            fallback: "Unable to delete organization. Please try again.",
+          })}
+        </Alert>
+      )}
+
+      {organizationRefreshError && (
+        <Alert
+          severity="error"
+          sx={{ mx: { xs: 1.5, sm: 3 }, mt: 2, borderRadius: "12px" }}
+          action={(
+            <Button
+              color="inherit"
+              size="small"
+              disabled={refreshing}
+              onClick={() => { void loadOrganization(); }}
+            >
+              Retry
+            </Button>
+          )}
+        >
+          {formatApiErrorMessage(organizationRefreshError, {
+            fallback: "Unable to refresh organization details.",
+          })}
+        </Alert>
+      )}
+
       {/* ======================================================
           HEADER
       ====================================================== */}
@@ -2416,7 +2544,10 @@ export default function OrganizationOverview() {
         organization={organization}
         onEdit={() => navigate(`/organizations/${organizationId}/edit`)}
         onInvite={() => setInvitationDialogOpen(true)}
-        onDelete={() => setDeleteOpen(true)}
+        onDelete={() => {
+          setDeleteError(null);
+          setDeleteOpen(true);
+        }}
       />
 
       <SocialAccountInvitationDialog
@@ -2430,7 +2561,25 @@ export default function OrganizationOverview() {
           PAGE LEVEL SUBSCRIPTION ERROR
       ====================================================== */}
 
-      {(subscriptionActionError || plansError) && (
+      {plansError && (
+        <ErrorState
+          title="Unable to load active plans"
+          message={plansError}
+          onRetry={plansLoading ? undefined : loadActivePlans}
+          variant="inline"
+          sx={{
+            position: "fixed",
+            top: { xs: 12, sm: 20 },
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 24px)",
+            maxWidth: 560,
+            zIndex: (theme) => theme.zIndex.modal + 1,
+          }}
+        />
+      )}
+
+      {subscriptionActionError && (
         <Alert
           severity="error"
           sx={{
@@ -2440,7 +2589,7 @@ export default function OrganizationOverview() {
             boxShadow: "0 6px 16px rgba(77,59,75,.08)",
           }}
         >
-          {subscriptionActionError || plansError}
+          {subscriptionActionError}
         </Alert>
       )}
 
@@ -2629,7 +2778,7 @@ export default function OrganizationOverview() {
         organization={organization}
         plans={activePlans}
         loading={subscriptionActionLoading || plansLoading}
-        error={subscriptionActionError || plansError}
+        error={subscriptionActionError}
         onClose={() => {
           if (!subscriptionActionLoading) {
             setChangePlanOpen(false);
@@ -2648,7 +2797,7 @@ export default function OrganizationOverview() {
         open={startSubscriptionOpen}
         plans={activePlans}
         loading={subscriptionActionLoading || plansLoading}
-        error={subscriptionActionError || plansError}
+        error={subscriptionActionError}
         onClose={() => {
           if (!subscriptionActionLoading) {
             setStartSubscriptionOpen(false);
@@ -2692,8 +2841,10 @@ export default function OrganizationOverview() {
           }
         }}
         subscriptions={history}
+        hasLoadedHistory={historyLoaded}
         loading={historyLoading}
         error={historyError}
+        onRetry={loadHistory}
       />
 
       {/* ======================================================

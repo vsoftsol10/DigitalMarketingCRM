@@ -108,19 +108,22 @@ import { useNavigate, useParams } from "react-router-dom";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Alert, Box, Divider, Paper } from "@mui/material";
+import { Alert, Divider, Paper } from "@mui/material";
 
 import EditContentIdeaHeader from "../../components/planner/edit/EditContentIdeaHeader";
 import IdeaDetailsForm from "../../components/planner/create/IdeaDetailsForm";
 import ContentDetailsForm from "../../components/planner/create/ContentDetailsForm";
 import EditContentIdeaFooter from "../../components/planner/edit/EditContentIdeaFooter";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
+import EmptyState from "../../components/ui/EmptyState";
 import { glassFormDividerSx, glassFormPaperSx } from "../../components/ui/form/glassFormSx";
 
 import { contentIdeaSchema } from "../../validation/contentIdea.schema";
 import { contentIdeaDefaultValues } from "../../constants/forms/contentIdeaDefaultValues";
 
 import contentPlannerService from "../../services/contentPlanner.service";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 export default function EditContentIdea() {
   const navigate = useNavigate();
@@ -137,6 +140,10 @@ export default function EditContentIdea() {
   const [loading, setLoading] = useState(true);
   const [loadingOrganizations, setLoadingOrganizations] = useState(true);
 
+  const [ideaLoadError, setIdeaLoadError] = useState(null);
+  const [organizationsLoadError, setOrganizationsLoadError] = useState(null);
+  const [ideaLoadedSuccessfully, setIdeaLoadedSuccessfully] = useState(false);
+  const [organizationsLoadedSuccessfully, setOrganizationsLoadedSuccessfully] = useState(false);
   const [error, setError] = useState(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -148,6 +155,7 @@ export default function EditContentIdea() {
   const loadOrganizations = useCallback(async () => {
     try {
       setLoadingOrganizations(true);
+      setOrganizationsLoadError(null);
 
       const response = await contentPlannerService.getContentPlanner();
 
@@ -155,21 +163,20 @@ export default function EditContentIdea() {
         throw new Error(response?.message || "Unable to load organizations.");
       }
 
-      const organizationList = Array.isArray(response?.data?.organizations)
-        ? response.data.organizations
-        : [];
+      if (!Array.isArray(response?.data?.organizations)) {
+        throw new Error("Organization data was not returned.");
+      }
+
+      const organizationList = response.data.organizations;
 
       setOrganizations(organizationList);
+      setOrganizationsLoadedSuccessfully(true);
     } catch (error) {
       console.error("Failed to load Content Planner organizations:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to load organizations.",
-      );
-
-      setOrganizations([]);
+      setOrganizationsLoadError(formatApiErrorMessage(error, {
+        fallback: "Unable to load organizations.",
+      }));
     } finally {
       setLoadingOrganizations(false);
     }
@@ -190,7 +197,7 @@ export default function EditContentIdea() {
 
     try {
       setLoading(true);
-      setError(null);
+      setIdeaLoadError(null);
 
       const response = await contentPlannerService.getIdea(ideaId);
 
@@ -219,6 +226,7 @@ export default function EditContentIdea() {
         content_type: idea.content_type || idea.type || "",
         description: idea.description || "",
       });
+      setIdeaLoadedSuccessfully(true);
     } catch (error) {
       console.error("Failed to load content idea:", error);
 
@@ -230,11 +238,9 @@ export default function EditContentIdea() {
         return;
       }
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to load content idea.",
-      );
+      setIdeaLoadError(formatApiErrorMessage(error, {
+        fallback: "Unable to load content idea.",
+      }));
     } finally {
       setLoading(false);
     }
@@ -245,8 +251,16 @@ export default function EditContentIdea() {
   // ============================================================
 
   useEffect(() => {
-    loadIdea();
-    loadOrganizations();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (!active) return;
+      loadIdea();
+      loadOrganizations();
+    });
+
+    return () => {
+      active = false;
+    };
   }, [loadIdea, loadOrganizations]);
 
   // ============================================================
@@ -272,11 +286,9 @@ export default function EditContentIdea() {
     } catch (error) {
       console.error("Failed to update content idea:", error);
 
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to update content idea.",
-      );
+      setError(formatApiErrorMessage(error, {
+        fallback: "Unable to update content idea.",
+      }));
     } finally {
       setSubmitting(false);
     }
@@ -286,7 +298,7 @@ export default function EditContentIdea() {
   // LOADING
   // ============================================================
 
-  if (loading || loadingOrganizations) {
+  if ((loading && !ideaLoadedSuccessfully) || (loadingOrganizations && !organizationsLoadedSuccessfully)) {
     return <LoadingState page="Edit Content Idea" />;
   }
 
@@ -294,17 +306,23 @@ export default function EditContentIdea() {
   // ERROR
   // ============================================================
 
-  if (error) {
+  if (ideaLoadError && !ideaLoadedSuccessfully) {
+    return <ErrorState message={ideaLoadError} onRetry={loadIdea} variant="page" />;
+  }
+
+  if (organizationsLoadError && !ideaLoadedSuccessfully) {
+    return <ErrorState message={organizationsLoadError} onRetry={loadOrganizations} variant="page" />;
+  }
+
+  if (!loading && !loadingOrganizations && !ideaLoadError && !organizationsLoadError && organizationsLoadedSuccessfully && organizations.length === 0) {
     return (
-      <Box
-        sx={{
-          maxWidth: 980,
-          mx: "auto",
-          p: 3,
-        }}
-      >
-        <Alert severity="error">{error}</Alert>
-      </Box>
+      <EmptyState
+        title="No organizations available"
+        description="An organization is required to edit this content idea."
+        actionLabel="Create organization"
+        onAction={() => navigate("/organizations/new")}
+        sx={{ minHeight: 320 }}
+      />
     );
   }
 
@@ -312,6 +330,16 @@ export default function EditContentIdea() {
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)}>
         <EditContentIdeaHeader />
+
+        {loading && <LoadingState label="UPDATING CONTENT IDEA..." variant="inline" />}
+        {loadingOrganizations && <LoadingState label="UPDATING ORGANIZATIONS..." variant="inline" />}
+        {ideaLoadError && (
+          <ErrorState message={ideaLoadError} onRetry={loadIdea} variant="inline" />
+        )}
+        {organizationsLoadError && (
+          <ErrorState message={organizationsLoadError} onRetry={loadOrganizations} variant="inline" />
+        )}
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
         <Paper
           elevation={0}

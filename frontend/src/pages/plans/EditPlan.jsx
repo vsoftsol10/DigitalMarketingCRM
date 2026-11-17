@@ -25,11 +25,13 @@ import LoadingState from "../../components/ui/LoadingState";
 import PlanLivePreview from "../../components/plans/create/PlanLivePreview";
 
 import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
+import ErrorState from "../../components/ui/ErrorState";
 
 import { planSchema } from "../../validation/plan.schema";
 import { planDefaultValues } from "../../constants/forms/planDefaultValues";
 
 import plansService from "../../services/plans.service";
+import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 import { planSectionSx } from "../../components/plans/plansGlassSx";
 
 export default function EditPlan() {
@@ -43,7 +45,10 @@ export default function EditPlan() {
 
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  const [error, setError] = useState(null);
+  const [updateError, setUpdateError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const methods = useForm({
     resolver: zodResolver(planSchema),
@@ -63,7 +68,7 @@ export default function EditPlan() {
     async function loadPlan() {
       try {
         setLoading(true);
-        setError(null);
+        setLoadError(null);
 
         const plan = await plansService.getPlan(planId);
 
@@ -111,11 +116,9 @@ export default function EditPlan() {
         console.error("Failed to load plan:", err);
 
         if (mounted) {
-          setError(
-            err?.response?.data?.message ||
-              err?.message ||
-              "Unable to load plan.",
-          );
+          setLoadError(formatApiErrorMessage(err, {
+            fallback: "Unable to load plan.",
+          }));
         }
       } finally {
         if (mounted) {
@@ -129,7 +132,7 @@ export default function EditPlan() {
     return () => {
       mounted = false;
     };
-  }, [planId, navigate, methods]);
+  }, [planId, navigate, methods, loadAttempt]);
 
   /* =========================================
      UPDATE PLAN
@@ -138,6 +141,7 @@ export default function EditPlan() {
   async function onSubmit(data) {
     try {
       setSubmitLoading(true);
+      setUpdateError(null);
 
       await plansService.updatePlan(planId, data);
 
@@ -145,11 +149,9 @@ export default function EditPlan() {
     } catch (err) {
       console.error("Failed to update plan:", err);
 
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to update plan.",
-      );
+      setUpdateError(formatApiErrorMessage(err, {
+        fallback: "Failed to update plan.",
+      }));
     } finally {
       setSubmitLoading(false);
     }
@@ -161,6 +163,8 @@ export default function EditPlan() {
 
   async function handleDeletePlan() {
     try {
+      setDeleteError(null);
+
       await plansService.deletePlan(planId);
 
       setDeleteDialogOpen(false);
@@ -169,11 +173,9 @@ export default function EditPlan() {
     } catch (err) {
       console.error("Failed to delete plan:", err);
 
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to delete plan.",
-      );
+      setDeleteError(formatApiErrorMessage(err, {
+        fallback: "Failed to delete plan.",
+      }));
 
       setDeleteDialogOpen(false);
     }
@@ -187,20 +189,8 @@ export default function EditPlan() {
     return <LoadingState page="Edit Plan" />;
   }
 
-  /* =========================================
-     ERROR
-  ========================================= */
-
-  if (error) {
-    return (
-      <Box
-        sx={{
-          width: "100%",
-        }}
-      >
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
+  if (loadError) {
+    return <ErrorState message={loadError} onRetry={() => setLoadAttempt((attempt) => attempt + 1)} variant="page" />;
   }
 
   /* =========================================
@@ -231,7 +221,15 @@ export default function EditPlan() {
       <FormProvider {...methods}>
         <Box
           component="form"
-          onSubmit={methods.handleSubmit(onSubmit)}
+          onSubmit={(event) => {
+            setUpdateError(null);
+            return methods.handleSubmit(onSubmit)(event);
+          }}
+          onChange={() => {
+            if (updateError) {
+              setUpdateError(null);
+            }
+          }}
           sx={{
             width: "100%",
             minWidth: 0,
@@ -239,6 +237,18 @@ export default function EditPlan() {
             boxSizing: "border-box",
           }}
         >
+          {updateError && (
+            <Alert severity="error" role="alert" sx={{ mb: 3, borderRadius: "12px" }}>
+              {updateError}
+            </Alert>
+          )}
+
+          {deleteError && (
+            <Alert severity="error" role="alert" sx={{ mb: 3, borderRadius: "12px" }}>
+              {deleteError}
+            </Alert>
+          )}
+
           <Box
             sx={{
               width: "100%",
@@ -313,7 +323,10 @@ export default function EditPlan() {
 
               <EditPlanFooter
                 onCancel={() => navigate("/plans")}
-                onDelete={() => setDeleteDialogOpen(true)}
+                onDelete={() => {
+                  setDeleteError(null);
+                  setDeleteDialogOpen(true);
+                }}
                 loading={submitLoading}
               />
             </Stack>

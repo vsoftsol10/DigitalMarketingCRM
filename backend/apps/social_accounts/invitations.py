@@ -1111,7 +1111,7 @@ def _persist_invitation_account_locked(acceptance, invitation, persist_account):
     ).first()
     if saved_account is None:
         raise InvitationError("The persisted account is outside the invitation scope.")
-    if not _has_active_provider_credential(saved_account):
+    if not _has_persisted_invitation_provider_credential(saved_account):
         raise InvitationError("The persisted account has no active provider credential.")
 
     SocialAccountInvitationAcceptanceAccount.objects.get_or_create(
@@ -1125,6 +1125,58 @@ def _persist_invitation_account_locked(acceptance, invitation, persist_account):
     return saved_account
 
 
+def _has_persisted_invitation_provider_credential(social_account):
+    """Validate credential persistence without requiring post-commit health data.
+
+    Facebook USER-token health metadata is populated by an ``on_commit``
+    callback. Invitation persistence checks run before their outer transaction
+    commits, so this check validates active records and their ownership links
+    while leaving provider-health eligibility to the existing token-use paths.
+    """
+    if social_account.platform == SocialPlatform.FACEBOOK:
+        from apps.integrations.meta.models import (
+            MetaAccountCredential,
+            MetaCredentialStatus,
+            MetaCredentialType,
+        )
+        from apps.social_accounts.models import (
+            SocialConnectionProvider,
+            SocialConnectionStatus,
+        )
+
+        connection = social_account.connection
+        if (
+            connection is None
+            or connection.organization_id != social_account.organization_id
+            or connection.provider != SocialConnectionProvider.META
+            or connection.status != SocialConnectionStatus.ACTIVE
+            or connection.is_deleted
+        ):
+            return False
+
+        page_credential_exists = MetaAccountCredential.objects.filter(
+            social_account=social_account,
+            social_connection__isnull=True,
+            credential_type=MetaCredentialType.PAGE,
+            status=MetaCredentialStatus.ACTIVE,
+            access_token__gt="",
+            is_deleted=False,
+        ).exists()
+        user_credential_exists = MetaAccountCredential.objects.filter(
+            social_connection=connection,
+            social_account__isnull=True,
+            credential_type=MetaCredentialType.USER,
+            status=MetaCredentialStatus.ACTIVE,
+            access_token__gt="",
+            is_deleted=False,
+        ).exists()
+        return page_credential_exists and user_credential_exists
+
+    # Instagram has no separate parent USER credential and its active-token
+    # check is already available synchronously after persistence.
+    return _has_active_provider_credential(social_account)
+
+
 def _has_active_provider_credential(social_account):
     now = timezone.now()
     if social_account.platform == SocialPlatform.FACEBOOK:
@@ -1132,6 +1184,9 @@ def _has_active_provider_credential(social_account):
             MetaAccountCredential,
             MetaCredentialStatus,
             MetaCredentialType,
+        )
+        from apps.integrations.meta.selectors import (
+            meta_user_credential_expiry_eligibility_q,
         )
         from apps.social_accounts.models import SocialConnectionProvider, SocialConnectionStatus
 
@@ -1153,16 +1208,7 @@ def _has_active_provider_credential(social_account):
             status=MetaCredentialStatus.ACTIVE,
             access_token__gt="",
             is_deleted=False,
-        ).filter(
-            models.Q(token_expires_at__isnull=True)
-            | models.Q(token_expires_at__gt=now),
-            models.Q(provider_is_valid__isnull=True)
-            | models.Q(provider_is_valid=True),
-            models.Q(provider_expires_at__isnull=True)
-            | models.Q(provider_expires_at__gt=now),
-            models.Q(data_access_expires_at__isnull=True)
-            | models.Q(data_access_expires_at__gt=now),
-        ).exists()
+        ).filter(meta_user_credential_expiry_eligibility_q(now)).exists()
         return (
             social_account.connection.provider == SocialConnectionProvider.META
             and social_account.connection.status == SocialConnectionStatus.ACTIVE

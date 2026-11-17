@@ -11,6 +11,7 @@ from rest_framework.test import APIClient
 from apps.accounts.models import User
 from apps.organizations.models import Organization
 from apps.social_accounts.invitations import (
+    InvitationError,
     InvalidInvitation,
     claim_invitation,
     complete_invitation_acceptance,
@@ -22,6 +23,8 @@ from apps.social_accounts.invitations import (
     prepare_email_invitation_delivery,
     resume_invitation_platform,
     consume_invitation_oauth_attempt,
+    _has_active_provider_credential,
+    _has_persisted_invitation_provider_credential,
 )
 from apps.social_accounts.models import (
     SocialAccount,
@@ -42,6 +45,7 @@ from .models import (
     MetaAccountCredential,
     MetaCredentialStatus,
     MetaCredentialType,
+    MetaProviderExpiryState,
 )
 from .services import MetaAccountData
 
@@ -665,23 +669,61 @@ class InvitationMetaOAuthTests(TestCase):
             platform_account_id="page-a",
         )
         self.assertEqual(account.status, SocialAccountStatus.CONNECTED)
-        self.assertTrue(
-            MetaAccountCredential.objects.filter(
-                social_account=account,
-                credential_type="page",
-            ).exists()
+        page_credential = MetaAccountCredential.objects.get(
+            social_account=account,
+            credential_type=MetaCredentialType.PAGE,
         )
-        self.assertTrue(
-            MetaAccountCredential.objects.filter(
-                social_connection=account.connection,
-                credential_type="user",
-            ).exists()
+        user_credential = MetaAccountCredential.objects.get(
+            social_connection=account.connection,
+            credential_type=MetaCredentialType.USER,
         )
+        self.assertEqual(page_credential.status, MetaCredentialStatus.ACTIVE)
+        self.assertTrue(page_credential.access_token)
+        self.assertIsNone(page_credential.social_connection_id)
+        self.assertEqual(user_credential.status, MetaCredentialStatus.ACTIVE)
+        self.assertTrue(user_credential.access_token)
+        self.assertIsNone(user_credential.social_account_id)
+        self.assertEqual(
+            user_credential.provider_expiry_state,
+            MetaProviderExpiryState.UNKNOWN,
+        )
+        self.assertIsNone(user_credential.provider_is_valid)
+        self.assertIsNone(user_credential.data_access_expires_at)
+        self.assertEqual(account.connection.status, SocialConnectionStatus.ACTIVE)
+        self.assertTrue(_has_persisted_invitation_provider_credential(account))
+        # Provider health remains strict for subsequent token-use paths; this
+        # test's transaction has not committed its on_commit health callback.
+        self.assertFalse(_has_active_provider_credential(account))
         self.assertTrue(
             SocialAccountInvitationAcceptanceAccount.objects.filter(
                 acceptance=self.acceptance,
                 social_account=account,
             ).exists()
+        )
+
+    def test_unexpected_invitation_validation_error_returns_client_error(self):
+        from unittest.mock import patch
+
+        _attempt, session = self.oauth_session("page-a")
+        with patch.object(
+            InvitationMetaOAuthService,
+            "add_page",
+            side_effect=InvitationError("synthetic persistence validation failure"),
+        ):
+            response = self.client.post(
+                reverse("meta-invitation-oauth-selection-add"),
+                {
+                    "selection_key": str(session.selection_key),
+                    "acceptance_token": self.acceptance_token,
+                    "page_id": "page-a",
+                },
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.data["detail"],
+            "This Facebook Page could not be added from this invitation.",
         )
 
     def test_selection_key_cannot_be_used_with_another_acceptance(self):

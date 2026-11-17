@@ -157,7 +157,6 @@
 
 import {
   Box,
-  Typography,
 } from "@mui/material";
 
 import SettingsHeader from "../../components/settings/SettingsHeader";
@@ -168,6 +167,7 @@ import SignOutSettings from "../../components/settings/SignOutSettings";
 import useSettings from "../../hooks/settings/useSettings";
 import { useLogout } from "../../hooks/useAuth";
 import LoadingState from "../../components/ui/LoadingState";
+import ErrorState from "../../components/ui/ErrorState";
 
 export default function Settings() {
   // ==========================================
@@ -194,6 +194,7 @@ export default function Settings() {
 
     updateProfile,
     changePassword,
+    refresh,
   } = useSettings();
 
   // ==========================================
@@ -209,39 +210,7 @@ export default function Settings() {
   // ==========================================
 
   if (profileError) {
-    return (
-      <Box
-        sx={{
-          width: "100%",
-          minHeight: 400,
-
-          display: "flex",
-          flexDirection: "column",
-
-          alignItems: "center",
-          justifyContent: "center",
-
-          gap: 1,
-        }}
-      >
-        <Typography
-          sx={{
-            fontWeight: 600,
-            color: "text.primary",
-          }}
-        >
-          Unable to load settings
-        </Typography>
-
-        <Typography
-          sx={{
-            color: "text.secondary",
-          }}
-        >
-          {profileError}
-        </Typography>
-      </Box>
-    );
+    return <ErrorState title="Unable to load settings" message={profileError} onRetry={refresh} variant="page" />;
   }
 
   // ==========================================

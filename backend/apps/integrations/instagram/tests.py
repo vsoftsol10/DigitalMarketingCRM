@@ -1,6 +1,7 @@
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from contextlib import nullcontext
 
 import requests
 from cryptography.fernet import Fernet
@@ -18,7 +19,9 @@ from .crypto import decrypt_token, encrypt_token
 from .exceptions import InstagramAPIError
 from .lifecycle import InstagramTokenLifecycleService
 from .models import InstagramAccountCredential, InstagramCredentialStatus
-from .services import InstagramOAuthService
+from .services import InstagramOAuthResult, InstagramOAuthService
+from apps.notifications.models import UserNotification, UserNotificationType
+from apps.notifications.services import record_social_credential_reconnect_required
 
 
 class InstagramAPIClientObservabilityTests(SimpleTestCase):
@@ -382,6 +385,11 @@ class InstagramTokenLifecycleServiceTests(TestCase):
         self.assertEqual(self.credential.status, InstagramCredentialStatus.ACTIVE)
         self.assertEqual(self.credential.encrypted_access_token, original_ciphertext)
         self.assertEqual(self.credential.token_expires_at, original_expiry)
+        self.assertFalse(
+            UserNotification.objects.filter(
+                event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED
+            ).exists()
+        )
 
         second_result = self.service.refresh_credential(self.credential.id)
 
@@ -389,6 +397,23 @@ class InstagramTokenLifecycleServiceTests(TestCase):
         self.assertEqual(
             self.service.client.refresh_long_lived_token.call_count,
             2,
+        )
+
+    def test_server_error_retries_without_reconnect_notification(self):
+        self.service.client.refresh_long_lived_token.side_effect = InstagramAPIError(
+            "Temporary Instagram API failure.",
+            status_code=503,
+        )
+
+        result = self.service.refresh_credential(self.credential.id)
+
+        self.assertEqual(result["status"], "retry")
+        self.credential.refresh_from_db()
+        self.assertEqual(self.credential.status, InstagramCredentialStatus.ACTIVE)
+        self.assertFalse(
+            UserNotification.objects.filter(
+                event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED
+            ).exists()
         )
 
     @patch("apps.integrations.instagram.client.requests.get")
@@ -423,6 +448,11 @@ class InstagramTokenLifecycleServiceTests(TestCase):
         self.assertEqual(self.credential.status, InstagramCredentialStatus.ACTIVE)
         self.assertEqual(self.credential.encrypted_access_token, original_ciphertext)
         self.assertEqual(self.credential.token_expires_at, original_expiry)
+        self.assertFalse(
+            UserNotification.objects.filter(
+                event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED
+            ).exists()
+        )
 
     def test_already_expired_credential_is_marked_expired_without_refresh(self):
         self.credential.token_expires_at = timezone.now() - timedelta(seconds=1)
@@ -437,6 +467,39 @@ class InstagramTokenLifecycleServiceTests(TestCase):
         self.assertEqual(self.credential.status, InstagramCredentialStatus.EXPIRED)
         self.assertEqual(self.social_account.status, SocialAccountStatus.EXPIRED)
         self.assertFalse(self.social_account.is_valid)
+        notice = UserNotification.objects.get(
+            event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED,
+        )
+        self.assertEqual(
+            notice.event_key,
+            f"social-reconnect:instagram:{self.social_account.pk}",
+        )
+        self.assertIn(self.social_account.username, notice.message)
+
+        self.service._mark_expired(self.credential)
+        self.assertEqual(
+            UserNotification.objects.filter(
+                event_type=UserNotificationType.SOCIAL_ACCOUNT_RECONNECT_REQUIRED
+            ).count(),
+            1,
+        )
+
+        result = InstagramOAuthResult(
+            instagram_user_id=self.social_account.platform_account_id,
+            username=self.social_account.username,
+            account_name=self.social_account.account_name,
+            profile_image="",
+            access_token="synthetic-reconnected-token",
+            token_expires_at=timezone.now() + timedelta(days=60),
+        )
+        InstagramOAuthService().persist_authorized_profile(
+            organization=self.organization,
+            result=result,
+        )
+        notice.refresh_from_db()
+        self.credential.refresh_from_db()
+        self.assertIsNotNone(notice.resolved_at)
+        self.assertEqual(self.credential.status, InstagramCredentialStatus.ACTIVE)
 
     def test_revoked_and_other_non_active_credentials_are_not_refreshed(self):
         for status, expected_result in (
@@ -534,4 +597,124 @@ class InstagramOAuthProfileImageLengthTests(TestCase):
                 platform_account_id="instagram-user-123",
             ).count(),
             1,
+        )
+
+
+class InstagramDisconnectDetectionUnitTests(SimpleTestCase):
+    """Database-independent checks for provider-reported invalid tokens."""
+
+    def test_invalid_provider_token_expires_account_deduplicates_notice_and_retains_ciphertext(self):
+        organization = SimpleNamespace(pk="org-ig-1")
+        account = SimpleNamespace(
+            pk="instagram-account-1",
+            organization=organization,
+            username="synthetic_ig_account",
+            account_name="Synthetic Instagram Account",
+            status=SocialAccountStatus.CONNECTED,
+            is_valid=True,
+            save=MagicMock(),
+        )
+        ciphertext = "synthetic-encrypted-instagram-token"
+        credential = SimpleNamespace(
+            id="instagram-credential-1",
+            status=InstagramCredentialStatus.ACTIVE,
+            encrypted_access_token=ciphertext,
+            social_account=account,
+            save=MagicMock(),
+        )
+        service = InstagramTokenLifecycleService.__new__(InstagramTokenLifecycleService)
+        service.client = MagicMock()
+        error = InstagramAPIError(
+            "Synthetic invalid access token",
+            status_code=400,
+            error_payload={"error": {"code": 190, "message": "Invalid access token"}},
+        )
+
+        queryset = MagicMock()
+        queryset.select_related.return_value.get.return_value = credential
+        with (
+            patch(
+                "apps.integrations.instagram.lifecycle.InstagramAccountCredential.objects.select_for_update",
+                return_value=queryset,
+            ),
+            patch("apps.integrations.instagram.lifecycle.transaction.atomic", return_value=nullcontext()),
+            patch("django.db.transaction.Atomic.__enter__", return_value=None),
+            patch("django.db.transaction.Atomic.__exit__", return_value=False),
+            patch("apps.notifications.services.record_social_credential_reconnect_required") as notify,
+        ):
+            first_result = service._handle_refresh_error(credential=credential, error=error)
+            second_result = service._handle_refresh_error(credential=credential, error=error)
+
+        self.assertEqual(first_result["status"], "expired")
+        self.assertEqual(second_result["status"], "expired")
+        self.assertEqual(credential.status, InstagramCredentialStatus.EXPIRED)
+        self.assertEqual(account.status, SocialAccountStatus.EXPIRED)
+        self.assertFalse(account.is_valid)
+        self.assertEqual(credential.encrypted_access_token, ciphertext)
+        notify.assert_called_once_with(
+            organization=organization,
+            scope="instagram",
+            subject_id=account.pk,
+            platform="instagram",
+            account_name=account.username,
+        )
+
+    def test_disconnect_orchestration_isolates_one_instagram_account(self):
+        from apps.social_accounts.lifecycle import disconnect_social_account_with_credentials
+
+        organization = SimpleNamespace(pk="org-ig-2")
+        target = SimpleNamespace(
+            pk="ig-target",
+            organization=organization,
+            platform=SocialPlatform.INSTAGRAM,
+            is_deleted=False,
+            status=SocialAccountStatus.CONNECTED,
+            is_valid=True,
+            save=MagicMock(),
+        )
+        other = SimpleNamespace(
+            pk="ig-other",
+            organization=organization,
+            platform=SocialPlatform.INSTAGRAM,
+            status=SocialAccountStatus.CONNECTED,
+            is_valid=True,
+        )
+        target_credential = SimpleNamespace(
+            encrypted_access_token="synthetic-target-ciphertext",
+            status=InstagramCredentialStatus.ACTIVE,
+            save=MagicMock(),
+        )
+        other_credential = SimpleNamespace(
+            encrypted_access_token="synthetic-other-ciphertext",
+            status=InstagramCredentialStatus.ACTIVE,
+        )
+        queryset = MagicMock()
+        queryset.filter.return_value.first.return_value = target
+        credential_queryset = MagicMock()
+        credential_queryset.filter.return_value.first.return_value = target_credential
+
+        with (
+            patch("apps.social_accounts.lifecycle.SocialAccount.objects.select_for_update", return_value=queryset),
+            patch("apps.social_accounts.lifecycle.transaction.atomic", return_value=nullcontext()),
+            patch("django.db.transaction.Atomic.__enter__", return_value=None),
+            patch("django.db.transaction.Atomic.__exit__", return_value=False),
+            patch(
+                "apps.integrations.instagram.services.InstagramAccountCredential.objects.select_for_update",
+                return_value=credential_queryset,
+            ),
+        ):
+            result = disconnect_social_account_with_credentials.__wrapped__(social_account=target)
+
+        self.assertIs(result, target)
+        self.assertEqual(target.status, SocialAccountStatus.DISCONNECTED)
+        self.assertFalse(target.is_valid)
+        self.assertEqual(target_credential.status, InstagramCredentialStatus.REVOKED)
+        self.assertEqual(target_credential.encrypted_access_token, "")
+        self.assertEqual(other.status, SocialAccountStatus.CONNECTED)
+        self.assertTrue(other.is_valid)
+        self.assertEqual(other_credential.status, InstagramCredentialStatus.ACTIVE)
+        self.assertEqual(other_credential.encrypted_access_token, "synthetic-other-ciphertext")
+        credential_queryset.filter.assert_called_once_with(
+            social_account=target,
+            is_deleted=False,
         )

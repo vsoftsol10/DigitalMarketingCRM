@@ -25,12 +25,6 @@ export function useLogin() {
 
       navigate("/");
     },
-
-    onError: (error) => {
-      const message = error.response?.data?.message || "Login failed";
-
-      toast.error(message);
-    },
   });
 }
 

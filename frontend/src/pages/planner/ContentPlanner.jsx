@@ -126,6 +126,7 @@ import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import EmptyState from "../../components/ui/EmptyState";
+import OrganizationRequiredEmptyState from "../../components/organization/OrganizationRequiredEmptyState";
 import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 import useDebounce from "../../hooks/common/useDebounce";
@@ -411,6 +412,17 @@ export default function ContentPlanner() {
   const statistics = planner?.statistics || {};
 
   const organizations = planner?.organizations || [];
+
+  if (
+    planner
+    && !initialLoading
+    && !tableLoading
+    && !loadError
+    && Array.isArray(planner.organizations)
+    && planner.organizations.length === 0
+  ) {
+    return <OrganizationRequiredEmptyState />;
+  }
 
   const ideas = planner?.ideas || [];
   const isPlannerLoading = (initialLoading && !planner) || tableLoading;

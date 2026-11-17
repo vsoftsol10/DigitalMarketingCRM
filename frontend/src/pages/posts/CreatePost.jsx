@@ -36,7 +36,7 @@ import { getPlatformStates } from "../../utils/post/platformCapability.utils";
 import { CREATE_POST } from "../../data/post";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
-import EmptyState from "../../components/ui/EmptyState";
+import OrganizationRequiredEmptyState from "../../components/organization/OrganizationRequiredEmptyState";
 
 export default function CreatePost() {
   const location = useLocation();
@@ -90,7 +90,6 @@ export default function CreatePost() {
 
   const {
     data: organizationsResponse,
-    isLoading: isLoadingOrganizations,
     isFetching: isFetchingOrganizations,
     error: organizationsError,
     refetch: refetchOrganizations,
@@ -466,6 +465,10 @@ export default function CreatePost() {
       : null
   );
 
+  if (isFetchingOrganizations) {
+    return <LoadingState page="Create Post" />;
+  }
+
   if (organizationLoadError && !hasValidOrganizationsResponse) {
     return (
       <ErrorState
@@ -475,24 +478,6 @@ export default function CreatePost() {
         variant="page"
       />
     );
-  }
-
-  if (uploadPolicyLoadError && !hasUploadPolicy) {
-    return (
-      <ErrorState
-        title="Unable to load upload settings"
-        message={uploadPolicyLoadError}
-        onRetry={isFetchingMediaUploadPolicy ? undefined : refetchMediaUploadPolicy}
-        variant="page"
-      />
-    );
-  }
-
-  if (
-    (isLoadingOrganizations && !hasValidOrganizationsResponse)
-    || (isLoadingMediaUploadPolicy && !hasUploadPolicy)
-  ) {
-    return <LoadingState page="Create Post" />;
   }
 
   if (!hasValidOrganizationsResponse) {
@@ -507,30 +492,33 @@ export default function CreatePost() {
   }
 
   if (organizations.length === 0) {
-    if (organizationLoadError || uploadPolicyLoadError) {
+    if (organizationLoadError) {
       return (
         <ErrorState
           title="Unable to load Create Post"
-          message={organizationLoadError || uploadPolicyLoadError}
-          onRetry={organizationLoadError
-            ? (isFetchingOrganizations ? undefined : refetchOrganizations)
-            : (isFetchingMediaUploadPolicy ? undefined : refetchMediaUploadPolicy)}
+          message={organizationLoadError}
+          onRetry={isFetchingOrganizations ? undefined : refetchOrganizations}
           variant="page"
         />
       );
     }
 
-    if (isFetchingOrganizations || isFetchingMediaUploadPolicy) {
-      return <LoadingState page="Create Post" label="UPDATING POST OPTIONS..." />;
-    }
+    return <OrganizationRequiredEmptyState />;
+  }
 
+  if (uploadPolicyLoadError && !hasUploadPolicy) {
     return (
-      <EmptyState
-        title="No organizations available"
-        description="Create an organization before preparing a post."
-        sx={{ minHeight: 320 }}
+      <ErrorState
+        title="Unable to load upload settings"
+        message={uploadPolicyLoadError}
+        onRetry={isFetchingMediaUploadPolicy ? undefined : refetchMediaUploadPolicy}
+        variant="page"
       />
     );
+  }
+
+  if (isLoadingMediaUploadPolicy && !hasUploadPolicy) {
+    return <LoadingState page="Create Post" />;
   }
 
   // ============================================================

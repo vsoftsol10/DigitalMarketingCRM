@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
+import { useAuthContext } from "../../context/AuthContext";
 
 import insightsService from "../../services/insights.service";
 import InsightsHeader from "../../components/insights/InsightsHeader";
@@ -12,6 +13,7 @@ import InsightsExportDialog from "../../components/reports/InsightsExportDialog"
 import { insightsGlassSurfaceSx } from "../../components/insights/insightsGlassSx";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
+import OrganizationRequiredEmptyState from "../../components/organization/OrganizationRequiredEmptyState";
 import formatApiErrorMessage from "../../utils/apiErrorMessage";
 
 const PERIOD_DAYS = { "7D": 7, "30D": 30, "28D": 28 };
@@ -75,6 +77,8 @@ function formatSnapshotRange(since, until) {
 
 export default function Insights() {
   const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+  const authenticatedUserId = user?.id;
   const [organizationId, setOrganizationId] = useState("");
   const [duration, setDuration] = useState("30D");
   const [platform, setPlatform] = useState("");
@@ -93,8 +97,9 @@ export default function Insights() {
   }, [duration]);
 
   const organizationsQuery = useQuery({
-    queryKey: ["insights-organizations"],
+    queryKey: ["insights-organizations", authenticatedUserId ?? null],
     queryFn: ({ signal }) => insightsService.getOrganizations({ signal }),
+    enabled: authenticatedUserId != null,
   });
 
   const accountsQuery = useQuery({
@@ -364,6 +369,18 @@ export default function Insights() {
     }
   }
 
+  if (authenticatedUserId == null || organizationsQuery.isFetching) {
+    return <LoadingState page="Insights" />;
+  }
+
+  if (
+    organizationsQuery.isSuccess
+    && hasValidOrganizationsResponse
+    && organizations.length === 0
+  ) {
+    return <OrganizationRequiredEmptyState />;
+  }
+
   return (
     <Stack
       spacing={2.5}
@@ -419,12 +436,6 @@ export default function Insights() {
       )}
       {organizationsResponseInvalid && (
         <Alert severity="error">The organizations response was not in the expected format. Please retry.</Alert>
-      )}
-      {organizationsQuery.isSuccess && hasValidOrganizationsResponse && !organizations.length && (
-        <EmptyState
-          title="No organizations available"
-          description="No accessible organizations are available for Insights."
-        />
       )}
       {organizationId && accountsQuery.isError && (
         <Alert

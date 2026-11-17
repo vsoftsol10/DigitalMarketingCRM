@@ -5,6 +5,7 @@ export default function EmptyState({
   icon,
   title = "Nothing here yet",
   description = "There is nothing to show right now.",
+  supportingText,
   actionLabel,
   onAction,
   sx = {},
@@ -72,6 +73,17 @@ export default function EmptyState({
               }}
             >
               {description}
+            </Typography>
+          )}
+          {supportingText && (
+            <Typography
+              sx={{
+                color: "#64748B",
+                fontSize: 13,
+                lineHeight: 1.5,
+              }}
+            >
+              {supportingText}
             </Typography>
           )}
           {actionLabel && typeof onAction === "function" && (

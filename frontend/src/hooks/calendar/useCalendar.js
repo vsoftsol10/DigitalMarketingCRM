@@ -208,7 +208,7 @@ export default function useCalendar({
   );
 
   const [filterOptionsLoading, setFilterOptionsLoading] =
-    useState(false);
+    useState(true);
 
   // ==========================================
   // ERROR

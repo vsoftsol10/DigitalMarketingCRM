@@ -326,6 +326,7 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import ErrorState from "../../components/ui/ErrorState";
 import formatApiErrorMessage from "../../utils/apiErrorMessage";
 import EmptyState from "../../components/ui/EmptyState";
+import OrganizationRequiredEmptyState from "../../components/organization/OrganizationRequiredEmptyState";
 import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
 
 import useCalendar from "../../hooks/calendar/useCalendar";
@@ -781,6 +782,18 @@ export default function Calendar() {
   // ==========================================
   // RENDER
   // ==========================================
+
+  if (filterOptionsLoading) {
+    return <LoadingState page="Calendar" />;
+  }
+
+  if (
+    !filterOptionsError
+    && Array.isArray(filterOptions.organizations)
+    && filterOptions.organizations.length === 0
+  ) {
+    return <OrganizationRequiredEmptyState />;
+  }
 
   return (
     <Box

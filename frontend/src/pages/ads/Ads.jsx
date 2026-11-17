@@ -12,8 +12,12 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import organizationService from "../../services/organization/organization.service";
+import OrganizationRequiredEmptyState from "../../components/organization/OrganizationRequiredEmptyState";
+import LoadingState from "../../components/ui/LoadingState";
 
 const AD_PLATFORMS = [
   {
@@ -157,6 +161,30 @@ function AdPlatformCard({ platform }) {
 }
 
 export default function Ads() {
+  const organizationsQuery = useQuery({
+    queryKey: ["organization-options", "ads-empty-state"],
+    queryFn: async () => {
+      const response = await organizationService.getOrganizationOptions();
+      const organizations = response?.data?.items;
+      if (response?.success !== true || !Array.isArray(organizations)) {
+        throw new Error("Organization data was not returned in the expected format.");
+      }
+      return organizations;
+    },
+  });
+
+  if (organizationsQuery.isFetching) {
+    return <LoadingState page="Ads" />;
+  }
+
+  if (
+    organizationsQuery.isSuccess
+    && Array.isArray(organizationsQuery.data)
+    && organizationsQuery.data.length === 0
+  ) {
+    return <OrganizationRequiredEmptyState />;
+  }
+
   return (
     <Box
       sx={{

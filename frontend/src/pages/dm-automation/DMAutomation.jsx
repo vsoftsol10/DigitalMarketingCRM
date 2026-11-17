@@ -147,18 +147,33 @@
 import { Box } from "@mui/material";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import dmAutomationService from "../../services/dmAutomation.service";
+import organizationService from "../../services/organization/organization.service";
 
 import DMAutomationHeader from "../../components/dm-automation/DMAutomationHeader";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
 import EmptyState from "../../components/ui/EmptyState";
+import OrganizationRequiredEmptyState from "../../components/organization/OrganizationRequiredEmptyState";
 import DMAutomationInfoBanner from "../../components/dm-automation/DMAutomationInfoBanner";
 import DMAutomationGrid from "../../components/dm-automation/DMAutomationGrid";
 import CreateAutomationDialog from "../../components/dm-automation/CreateAutomationDialog";
 
 export default function DMAutomation() {
+  const organizationsQuery = useQuery({
+    queryKey: ["organization-options", "dm-automation-empty-state"],
+    queryFn: async () => {
+      const response = await organizationService.getOrganizationOptions();
+      const organizations = response?.data?.items;
+      if (response?.success !== true || !Array.isArray(organizations)) {
+        throw new Error("Organization data was not returned in the expected format.");
+      }
+      return organizations;
+    },
+  });
+
   const [automations, setAutomations] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -317,6 +332,18 @@ export default function DMAutomation() {
       setMutationError(error);
     }
   }, []);
+
+  if (organizationsQuery.isFetching) {
+    return <LoadingState page="DM Automation" />;
+  }
+
+  if (
+    organizationsQuery.isSuccess
+    && Array.isArray(organizationsQuery.data)
+    && organizationsQuery.data.length === 0
+  ) {
+    return <OrganizationRequiredEmptyState />;
+  }
 
   if (loading && !hasLoadedAutomations) {
     return <LoadingState page="DM Automation" />;

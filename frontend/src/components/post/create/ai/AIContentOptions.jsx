@@ -86,9 +86,9 @@ export default function AIContentOptions() {
         px: 1.5,
         py: 1,
         border: "1px solid",
-        borderColor: "divider",
-        borderRadius: 2,
-        bgcolor: "background.paper",
+        borderColor: "#E1E6F0",
+        borderRadius: "12px",
+        bgcolor: "#F8FAFD",
       }}
     >
       <Stack

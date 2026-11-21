@@ -12,6 +12,7 @@ export default function ContentPlannerStatCard({
       value={value}
       label={label}
       tone={tone}
+      variant="dashboard"
     />
   );
 }

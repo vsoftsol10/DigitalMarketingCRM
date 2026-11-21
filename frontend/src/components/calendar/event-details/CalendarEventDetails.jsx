@@ -209,8 +209,8 @@ export default function CalendarEventDetails({
           maxHeight: "100dvh",
           display: "flex",
           flexDirection: "column",
-          background: "linear-gradient(155deg, rgba(250,253,255,0.99) 0%, rgba(231,241,255,0.98) 100%)",
-          boxShadow: "-18px 0 48px rgba(56,89,147,0.2), inset 1px 0 0 rgba(255,255,255,0.96)",
+          background: "#FFFFFF",
+          boxShadow: "-12px 0 32px rgba(54,76,132,0.12)",
           boxSizing: "border-box",
           overflowX: "hidden",
         },
@@ -234,8 +234,7 @@ export default function CalendarEventDetails({
         },
         backdrop: {
           sx: {
-            bgcolor: "rgba(58, 81, 119, 0.28)",
-            backdropFilter: "blur(4px)",
+            bgcolor: "rgba(24,38,70,0.24)",
           },
         },
       }}
@@ -251,12 +250,12 @@ export default function CalendarEventDetails({
         sx={{
           position: "relative",
           flexShrink: 0,
-          pl: { xs: 2.5, sm: 3 },
-          pr: { xs: 6.5, sm: 7 },
-          py: 1.75,
+          pl: { xs: 2, sm: 2.5 },
+          pr: { xs: 6, sm: 6.5 },
+          py: 1.5,
           borderBottom: "1px solid",
-          borderColor: "rgba(190,211,242,0.68)",
-          background: "linear-gradient(180deg, rgba(249,252,255,0.96), rgba(236,245,255,0.92))",
+          borderColor: "#E7EAF2",
+          background: "#FFFFFF",
         }}
       >
         <Stack
@@ -290,11 +289,13 @@ export default function CalendarEventDetails({
           sx={{
             position: "absolute",
             top: "50%",
-            right: { xs: 16, sm: 20 },
+            right: { xs: 12, sm: 16 },
             transform: "translateY(-50%)",
-            width: 34,
-            height: 34,
-            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            borderRadius: "11px",
+            border: "1px solid #E3E8F2",
+            background: "#F8FAFF",
             color: "text.secondary",
             "&:hover": {
               bgcolor: "action.hover",
@@ -318,7 +319,7 @@ export default function CalendarEventDetails({
           overflowY: "auto",
           overflowX: "hidden",
           overscrollBehavior: "contain",
-          px: { xs: 2.5, sm: 3 },
+          px: { xs: 2, sm: 2.5 },
           pb: 3,
           "&::-webkit-scrollbar": {
             width: 6,

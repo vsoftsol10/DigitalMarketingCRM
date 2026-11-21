@@ -1,6 +1,5 @@
 import { Card, CardContent, Typography, Box } from "@mui/material";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 
 import { TYPOGRAPHY } from "../../theme/typography";
 
@@ -16,28 +15,23 @@ export default function DashboardNotificationsCard({
       sx={{
         position: "relative",
         overflow: "hidden",
-        border: "1px solid rgba(255,255,255,.9)",
-        borderRadius: "24px",
-        height: { xs: 360, lg: 390 },
-        background: "linear-gradient(145deg, rgba(255,241,245,.98) 0%, rgba(255,225,233,.96) 100%)",
-        boxShadow: "0 16px 30px rgba(166, 90, 119, .14), 0 3px 8px rgba(180,92,124,.08), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 5px rgba(192,104,132,.08)",
+        border: "1px solid #DDE3F1",
+        borderRadius: "20px",
+        height: { xs: 400, lg: 450 },
+        background: "#FFFFFF",
+        boxShadow: "0 4px 12px rgba(41,55,103,.045)",
         "&::before": {
           content: "\"\"",
           position: "absolute",
           inset: 4,
           borderRadius: "20px",
-          border: "1px solid rgba(255,255,255,.72)",
+          border: "none",
           pointerEvents: "none",
         },
         "&::after": {
           content: "\"\"",
           position: "absolute",
-          width: 150,
-          height: 150,
-          top: -70,
-          right: -50,
-          borderRadius: "50%",
-          bgcolor: "rgba(226,98,134,.07)",
+          display: "none",
           pointerEvents: "none",
         },
 
@@ -89,22 +83,20 @@ export default function DashboardNotificationsCard({
               justifyContent: "center",
               alignItems: "center",
 
-              color: "#D84E73",
+              color: "#64748B",
 
               fontSize: 15,
               textAlign: "center",
             }}
           >
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5 }}>
-              <Box sx={{ position: "relative", width: 82, height: 82, borderRadius: "50%", display: "grid", placeItems: "center", background: "linear-gradient(145deg, rgba(255,236,243,.98), rgba(255,218,230,.94))", border: "3px solid rgba(255,255,255,.94)", boxShadow: "0 10px 21px rgba(219,87,126,.2), 0 2px 5px rgba(180,76,115,.12), inset 0 2px 3px rgba(255,255,255,.96), inset 0 -3px 5px rgba(216,90,129,.14)" }}>
-                <NotificationsActiveOutlinedIcon sx={{ fontSize: 34, color: "#E5557A" }} />
-                <AutoAwesomeRoundedIcon aria-hidden="true" sx={{ position: "absolute", top: 5, right: -24, fontSize: 16, color: "#E67C9A" }} />
-                <AutoAwesomeRoundedIcon aria-hidden="true" sx={{ position: "absolute", bottom: 8, left: -22, fontSize: 13, color: "#E67C9A", opacity: .75 }} />
+              <Box sx={{ position: "relative", width: 58, height: 58, borderRadius: "16px", display: "grid", placeItems: "center", bgcolor: "#FFF1F2", border: "1px solid #FFE4E6", boxShadow: "none" }}>
+                <NotificationsActiveOutlinedIcon sx={{ fontSize: 26, color: "#E11D48" }} />
               </Box>
-              <Typography sx={{ fontSize: 17, fontWeight: 700, color: "#263451" }}>
+              <Typography sx={{ fontSize: 16, fontWeight: 600, color: "#172554" }}>
                 Nothing needs attention
               </Typography>
-              <Typography sx={{ fontSize: 14, color: "#74819F" }}>
+              <Typography sx={{ fontSize: 14, color: "#64748B" }}>
                 No urgent items at the moment.
               </Typography>
             </Box>

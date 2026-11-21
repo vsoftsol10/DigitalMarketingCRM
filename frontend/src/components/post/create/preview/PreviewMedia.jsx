@@ -135,8 +135,7 @@ export default function PreviewMedia({
         sx={{
           height: 320,
 
-          background:
-            "linear-gradient(145deg, rgba(239,245,255,.92), rgba(225,236,255,.8))",
+          background: "#F8FAFD",
 
           display: "flex",
           flexDirection: "column",
@@ -147,14 +146,11 @@ export default function PreviewMedia({
           gap: 1,
         }}
       >
-        <ImageOutlinedIcon
-          sx={{
-            fontSize: 42,
-            color: "#94A3B8",
-          }}
-        />
+        <Box sx={{ width: 48, height: 48, display: "grid", placeItems: "center", borderRadius: "12px", bgcolor: "#F3F0FF", color: "#6941D9", border: "1px solid #E7E1FF" }}>
+          <ImageOutlinedIcon sx={{ fontSize: 26 }} />
+        </Box>
 
-        <Typography sx={TYPOGRAPHY.bodySmall}>
+        <Typography sx={{ ...TYPOGRAPHY.bodySmall, color: "#667792" }}>
           Upload media to preview
         </Typography>
       </Box>
@@ -171,8 +167,7 @@ export default function PreviewMedia({
         sx={{
           height: 320,
 
-          background:
-            "linear-gradient(145deg, rgba(239,245,255,.92), rgba(225,236,255,.8))",
+          background: "#F8FAFD",
 
           display: "flex",
           flexDirection: "column",
@@ -187,12 +182,9 @@ export default function PreviewMedia({
           textAlign: "center",
         }}
       >
-        <VideocamOutlinedIcon
-          sx={{
-            fontSize: 40,
-            color: "#94A3B8",
-          }}
-        />
+        <Box sx={{ width: 48, height: 48, display: "grid", placeItems: "center", borderRadius: "12px", bgcolor: "#F3F0FF", color: "#6941D9", border: "1px solid #E7E1FF" }}>
+          <VideocamOutlinedIcon sx={{ fontSize: 26 }} />
+        </Box>
 
         <Typography
           sx={{

@@ -4,7 +4,7 @@ import PreviewMedia from "./PreviewMedia";
 import PreviewHeader from "./PreviewHeader";
 import PreviewActions from "./PreviewActions";
 import PreviewCaption from "./PreviewCaption";
-import overviewGlassCardSx from "../../../organization/overview/overviewGlassCardSx";
+import { postCardSx } from "../postUiSx";
 
 export default function PreviewPostCard({
   organization,
@@ -17,11 +17,11 @@ export default function PreviewPostCard({
   return (
     <Box
       sx={{
-        maxWidth: 420,
+        maxWidth: 390,
 
         mx: "auto",
 
-        ...overviewGlassCardSx,
+        ...postCardSx,
         borderRadius: "20px",
         overflow: "hidden",
       }}

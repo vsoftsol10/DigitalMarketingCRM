@@ -92,12 +92,13 @@ import {
 } from "@mui/material";
 
 import ContentPlannerRow from "./ContentPlannerRow";
-import overviewGlassCardSx from "../organization/overview/overviewGlassCardSx";
-import LoadingState from "../ui/LoadingState";
+import { plannerCardSx } from "./plannerUiSx";
+import PlannerLoadingState from "./PlannerLoadingState";
 
 export default function ContentPlannerTable({
   ideas = [],
   onDelete,
+  onView,
   loading = false,
   hasActiveFilters = false,
 }) {
@@ -106,12 +107,78 @@ export default function ContentPlannerTable({
   return (
     <TableContainer
       sx={{
-        ...overviewGlassCardSx,
+        ...plannerCardSx,
         width: "100%",
         minHeight: loading && !hasIdeas ? 320 : undefined,
         position: "relative",
-        overflowX: "auto",
+        overflowX: { xs: "hidden", md: "auto" },
         overflowY: "hidden",
+        "& .MuiTable-root": {
+          tableLayout: "fixed",
+          width: "100%",
+          minWidth: { xs: 0, md: 960 },
+          background: "#FFFFFF",
+        },
+        "@media (max-width:899.95px)": {
+          "& .MuiTableHead-root": { display: "none" },
+          "& .MuiTableBody-root": {
+            display: "grid",
+            gap: 1.5,
+            p: 1.5,
+          },
+          "& .MuiTableBody-root .MuiTableRow-root": {
+            position: "relative",
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            border: "1px solid #E5E9F1",
+            borderRadius: "16px",
+            overflow: "hidden",
+            background: "#FFFFFF",
+            boxShadow: "0 2px 8px rgba(41,55,103,.04)",
+          },
+          "& .MuiTableBody-root .MuiTableCell-root": {
+            display: "block",
+            minWidth: 0,
+            px: 1.5,
+            py: 1.25,
+            border: 0,
+            background: "#FFFFFF",
+            boxShadow: "none",
+            whiteSpace: "normal",
+            overflowWrap: "anywhere",
+            "&::before": {
+              content: "attr(data-label)",
+              display: "block",
+              mb: 0.5,
+              color: "#94A3B8",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: ".06em",
+              lineHeight: 1.3,
+            },
+          },
+          "& .MuiTableBody-root .MuiTableCell-root:first-of-type": {
+            gridColumn: "1 / -1",
+            pr: 14,
+          },
+          "& .MuiTableBody-root .MuiTableCell-root:nth-of-type(3)": {
+            gridColumn: "1 / -1",
+          },
+          "& .MuiTableBody-root .MuiTableCell-root:last-of-type": {
+            position: "absolute",
+            top: 6,
+            right: 6,
+            width: "auto",
+            maxWidth: "calc(100% - 12px)",
+            p: 0.5,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            "&::before": { display: "none" },
+          },
+          "& .MuiTableBody-root .MuiTableRow-root:hover .MuiTableCell-root": {
+            background: "#FFFFFF",
+          },
+        },
         "&::-webkit-scrollbar": { height: 8 },
         "&::-webkit-scrollbar-track": { background: "transparent" },
         "&::-webkit-scrollbar-thumb": {
@@ -135,12 +202,12 @@ export default function ContentPlannerTable({
             zIndex: 2,
           }}
         >
-          <LoadingState page="Content Planner" variant="overlay" />
+          <PlannerLoadingState page="Content Planner" variant="overlay" />
         </Box>
       )}
 
       {loading && !hasIdeas ? (
-        <LoadingState
+        <PlannerLoadingState
           label="LOADING CONTENT IDEAS..."
           variant="container"
           minHeight={320}
@@ -171,7 +238,7 @@ export default function ContentPlannerTable({
 
             <TableCell sx={headerStyle()}>ORGANIZATION</TableCell>
 
-            <TableCell sx={headerStyle()}>PUBLISH ACCOUNTS</TableCell>
+            <TableCell sx={headerStyle()}>PLATFORM</TableCell>
 
             <TableCell sx={headerStyle()}>TYPE</TableCell>
 
@@ -186,7 +253,7 @@ export default function ContentPlannerTable({
             <TableCell
               align="center"
               sx={headerStyle({
-                width: 80,
+                width: 142,
               })}
             >
               ACTION
@@ -205,6 +272,7 @@ export default function ContentPlannerTable({
                 key={idea.id}
                 idea={idea}
                 onDelete={onDelete}
+                onView={onView}
               />
             ))
           ) : (
@@ -274,11 +342,11 @@ function headerStyle(extra = {}) {
 
     letterSpacing: "0.05em",
 
-    color: "#607493",
+    color: "#64748B",
 
-    backgroundColor: "rgba(224,235,251,.72)",
+    backgroundColor: "#FFFFFF",
 
-    borderBottom: "1px solid rgba(146,168,201,.26)",
+    borderBottom: "1px solid #E5E9F1",
 
     whiteSpace: "nowrap",
 

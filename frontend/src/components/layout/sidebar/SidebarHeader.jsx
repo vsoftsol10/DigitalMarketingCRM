@@ -6,10 +6,14 @@ export default function SidebarHeader() {
     <Box
       sx={{
         display: "flex",
+        height: 80,
+        minHeight: 80,
+        boxSizing: "border-box",
+        flexShrink: 0,
         alignItems: "center",
         gap: 1.5,
         px: 2.5,
-        py: 1.5,
+        py: 2.25,
         "@media (max-height: 700px)": { py: 1 },
         "@media (max-height: 600px)": { py: 0.5 },
         "@media (max-height: 520px)": { py: 0 },

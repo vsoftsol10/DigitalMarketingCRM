@@ -46,29 +46,22 @@ export default function PublishTypeSelector() {
                   cursor: "pointer",
 
                   border: "1px solid",
-                  borderColor: selected
-                    ? "rgba(131,145,226,.72)"
-                    : "rgba(255,255,255,.92)",
+                  borderColor: selected ? "#C8BDF5" : "#DDE3F1",
 
-                  borderRadius: "14px",
+                  borderRadius: "12px",
 
-                  background: selected
-                    ? "linear-gradient(145deg, rgba(238,241,255,.94), rgba(225,234,255,.82))"
-                    : "linear-gradient(145deg, rgba(250,252,255,.88), rgba(239,245,255,.76))",
-                  boxShadow: selected
-                    ? "0 5px 12px rgba(91,105,174,.12), inset 0 2px 0 rgba(255,255,255,.95)"
-                    : "inset 0 1px 0 rgba(255,255,255,.95)",
+                  background: selected ? "#F5F2FF" : "#FFFFFF",
+                  boxShadow: "none",
 
                   transition:
                     "border-color 0.2s ease, background-color 0.2s ease",
 
                   "&:hover": {
-                    borderColor:
-                      "rgba(131,145,226,.72)",
-                    bgcolor: "rgba(237,243,255,.9)",
+                    borderColor: "#B7A8EE",
+                    bgcolor: "#FAF9FF",
                   },
                   "&:focus-visible": {
-                    outline: "2px solid rgba(126,143,232,.72)",
+                    outline: "2px solid #7E8FE8",
                     outlineOffset: 2,
                   },
                 }}
@@ -80,6 +73,8 @@ export default function PublishTypeSelector() {
                   sx={{
                     p: 0,
                     mr: 1,
+                    color: "#9AA7BD",
+                    "&.Mui-checked": { color: "#6941D9" },
                   }}
                 />
 
@@ -93,15 +88,12 @@ export default function PublishTypeSelector() {
 
                     borderRadius: "11px",
 
-                    background: selected
-                      ? "linear-gradient(145deg, #8E78E8, #628BEA)"
-                      : "linear-gradient(145deg, rgba(255,255,255,.94), rgba(224,235,255,.82))",
+                    background: selected ? "linear-gradient(110deg,#8B4BF5,#3977F6)" : "#F1F5F9",
 
                     color: selected
                       ? "#FFFFFF"
                       : "#687FAD",
-                    boxShadow:
-                      "0 3px 7px rgba(82,101,159,.12), inset 0 1px 0 rgba(255,255,255,.88)",
+                    boxShadow: "none",
 
                     display: "flex",
                     alignItems: "center",

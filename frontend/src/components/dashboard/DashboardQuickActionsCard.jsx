@@ -12,9 +12,11 @@ export default function DashboardQuickActionsCard({
     <Card
       elevation={0}
       sx={{
-        border: "1px solid #E2E8F0",
-        borderRadius: "22px",
-        height: 520,
+        border: "1px solid #DDE3F1",
+        borderRadius: "20px",
+        height: { xs: 420, lg: 390 },
+        background: "#FFFFFF",
+        boxShadow: "0 4px 12px rgba(41,55,103,.045)",
 
         display: "flex",
         flexDirection: "column",

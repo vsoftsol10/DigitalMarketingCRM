@@ -2,7 +2,6 @@ import { Box, TextField, Typography } from "@mui/material";
 
 import { Controller, useFormContext } from "react-hook-form";
 
-import { TYPOGRAPHY } from "../../../theme/typography";
 import { planInputSx } from "../plansGlassSx";
 
 export default function PlanHighlightsForm() {
@@ -10,13 +9,17 @@ export default function PlanHighlightsForm() {
 
   return (
     <Box>
-      <Typography sx={TYPOGRAPHY.sectionTitle}>Plan Highlights</Typography>
+      <Typography sx={{ fontSize: 18, lineHeight: "24px", fontWeight: 700, color: "#1E293B" }}>
+        Plan Highlights
+      </Typography>
 
       <Typography
         sx={{
-          ...TYPOGRAPHY.sectionDescription,
-          mt: 0.25,
-          mb: 3,
+          mt: 0.35,
+          mb: 2,
+          fontSize: 14,
+          lineHeight: "21px",
+          color: "#64748B",
         }}
       >
         A short description of what this plan is best for.

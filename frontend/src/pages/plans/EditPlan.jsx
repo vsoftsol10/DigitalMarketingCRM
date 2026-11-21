@@ -202,6 +202,7 @@ export default function EditPlan() {
       sx={{
         width: "100%",
         minWidth: 0,
+        maxWidth: 1340,
 
         boxSizing: "border-box",
 
@@ -354,6 +355,7 @@ export default function EditPlan() {
       ===================================== */}
 
       <ConfirmDialog
+        crmStyle
         open={deleteDialogOpen}
         title="Delete Plan"
         message="Are you sure you want to delete this plan?"

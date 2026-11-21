@@ -11,6 +11,7 @@ import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import dayjs from "dayjs";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { postPickerPopupSx } from "../../post/create/postUiSx";
 
 export default function FormTimePicker({
   name,
@@ -18,6 +19,7 @@ export default function FormTimePicker({
   required = false,
   helperText,
   compact = false,
+  createPostStyle = false,
   ...props
 }) {
   const { control } = useFormContext();
@@ -121,8 +123,26 @@ export default function FormTimePicker({
                     ml: 0,
                     mt: 0.5,
                   },
+                  ...(createPostStyle ? {
+                    "& .MuiOutlinedInput-root": {
+                      minHeight: compact ? 46 : 52,
+                      borderRadius: "12px",
+                      bgcolor: "#FFFFFF",
+                      boxShadow: "none",
+                      "& fieldset": { borderColor: "#DCE2EF" },
+                      "&:hover fieldset": { borderColor: "#B8C3D8" },
+                      "&.Mui-focused fieldset": { borderColor: "#7B61E8", borderWidth: 1 },
+                      "&.Mui-error fieldset": { borderColor: "#DC2626" },
+                    },
+                    "& .MuiFormHelperText-root.Mui-error": { color: "#DC2626", overflowWrap: "anywhere" },
+                  } : {}),
                 },
               },
+              ...(createPostStyle ? {
+                popper: { sx: postPickerPopupSx },
+                desktopPaper: { sx: postPickerPopupSx },
+                mobilePaper: { sx: postPickerPopupSx },
+              } : {}),
             }}
           />
         </Stack>

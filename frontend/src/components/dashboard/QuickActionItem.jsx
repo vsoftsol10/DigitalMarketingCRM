@@ -19,13 +19,14 @@ export default function QuickActionItem({
         display: "flex",
         alignItems: "center",
 
-        gap: 2,
+        gap: 1.5,
 
-        p: 2,
+        p: 1.5,
 
         border: "1px solid #E2E8F0",
 
-        borderRadius: "16px",
+        borderRadius: "14px",
+        background: "#FFFFFF",
 
         cursor: "pointer",
 
@@ -33,7 +34,7 @@ export default function QuickActionItem({
 
         "&:hover": {
           bgcolor: "#F8FAFC",
-          borderColor: "#CBD5E1",
+          borderColor: "#C7D2FE",
         },
       }}
     >

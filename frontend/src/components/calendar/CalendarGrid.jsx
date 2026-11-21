@@ -98,11 +98,16 @@ export default function CalendarGrid({
         width: "100%",
 
         ...calendarGlassSurfaceSx,
-        borderRadius: 4,
+        borderRadius: { xs: "16px", sm: "18px" },
 
         overflow: "hidden",
+        overflowX: { xs: "auto", sm: "hidden" },
+        overflowY: "hidden",
+        "&::-webkit-scrollbar": { height: 6 },
+        "&::-webkit-scrollbar-thumb": { background: "#CCD5E5", borderRadius: 8 },
       }}
     >
+      <Box sx={{ minWidth: { xs: 680, md: 720, lg: 0 } }}>
       {/* =================================
           WEEK HEADER
       ================================= */}
@@ -116,17 +121,17 @@ export default function CalendarGrid({
 
           borderBottom: "1px solid",
 
-          borderColor: "rgba(194,214,246,0.7)",
-          background: "linear-gradient(180deg, rgba(233,243,255,0.9) 0%, rgba(249,252,255,0.94) 100%)",
+          borderColor: "#E3E8F2",
+          background: "#F8FAFF",
         }}
       >
         {WEEK_DAYS.map((day) => (
           <Box
             key={day}
             sx={{
-              minHeight: 44,
+              minHeight: { xs: 38, sm: 42 },
 
-              px: 1.5,
+              px: { xs: 0.5, sm: 1 },
 
               display: "flex",
 
@@ -136,7 +141,7 @@ export default function CalendarGrid({
 
               borderRight: "1px solid",
 
-              borderColor: "rgba(201,219,247,0.62)",
+              borderColor: "#E7EAF2",
 
               "&:last-child": {
                 borderRight: "none",
@@ -183,6 +188,7 @@ export default function CalendarGrid({
             }
           />
         ))}
+      </Box>
       </Box>
     </Box>
   );

@@ -13,21 +13,27 @@ import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
 import {
-  glassDialogSecondaryButtonSx,
-} from "../../ui/dialog/glassDialogSx";
-import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
+  calendarPrimaryButtonSx,
+  calendarSecondaryButtonSx,
+} from "../calendarGlassSx";
 
 const buttonSx = {
-  ...glassPrimaryButtonSx,
+  ...calendarPrimaryButtonSx,
   minHeight: 42,
-  px: 2,
+  px: { xs: 1.1, sm: 1.6 },
+  minWidth: 0,
+  flex: { xs: 1, sm: "0 1 auto" },
+  whiteSpace: "nowrap",
   ...TYPOGRAPHY.button,
 };
 
 const secondaryButtonSx = {
-  ...glassDialogSecondaryButtonSx,
+  ...calendarSecondaryButtonSx,
   minHeight: 42,
-  px: 2,
+  px: { xs: 1.1, sm: 1.6 },
+  minWidth: 0,
+  flex: { xs: 1, sm: "0 1 auto" },
+  whiteSpace: "nowrap",
   ...TYPOGRAPHY.button,
 };
 
@@ -57,18 +63,17 @@ export default function CalendarEventActions({
     <Box
       sx={{
         width: "100%",
-        px: { xs: 2.5, sm: 3 },
-        py: 1.5,
+        px: { xs: 1.5, sm: 2.5 },
+        py: 1.25,
         borderTop: "1px solid",
-        borderColor: "rgba(190,211,242,0.68)",
-        background: "linear-gradient(180deg, rgba(248,252,255,0.98), rgba(230,241,255,0.98))",
-        boxShadow: "0 -8px 22px rgba(72,105,157,0.08), inset 0 1px 0 rgba(255,255,255,0.96)",
+        borderColor: "#E7EAF2",
+        background: "#FFFFFF",
         flexShrink: 0,
       }}
     >
       <Stack
-        direction="row"
-        alignItems="center"
+        direction={{ xs: "column", sm: "row" }}
+        alignItems={{ xs: "stretch", sm: "center" }}
         spacing={1}
       >
         {/* Primary + secondary actions, grouped left */}
@@ -76,7 +81,7 @@ export default function CalendarEventActions({
         <Stack
           direction="row"
           spacing={1}
-          sx={{ flex: 1, minWidth: 0 }}
+          sx={{ flex: 1, minWidth: 0, width: "100%" }}
         >
           {status === "DRAFT" && (
             <>
@@ -144,7 +149,11 @@ export default function CalendarEventActions({
               startIcon={<ReplayRoundedIcon />}
               onClick={() => handleAction(onRetry)}
               disabled={loading}
-              sx={buttonSx}
+              sx={{
+                ...buttonSx,
+                background: "#DC2626",
+                "&:hover": { background: "#B91C1C", boxShadow: "0 6px 14px rgba(185,28,28,0.2)" },
+              }}
             >
               {loadingAction === "retry" ? "Retrying..." : "Retry"}
             </Button>
@@ -166,16 +175,15 @@ export default function CalendarEventActions({
                 flexShrink: 0,
                 borderRadius: 1.75,
                 border: "1px solid",
-                borderColor: "rgba(194,214,246,0.86)",
-                background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(232,242,255,0.9))",
-                boxShadow: "0 4px 10px rgba(70,106,172,0.08), inset 0 1px 0 #FFFFFF",
-                color: "text.secondary",
+                borderColor: "#F1C7CE",
+                background: "#FFFFFF",
+                boxShadow: "none",
+                color: "#C53030",
                 "&:hover": {
-                  bgcolor: "error.lighter",
-                  borderColor: "error.light",
-                  color: "error.dark",
-                background: "linear-gradient(145deg, rgba(255,244,246,.98), rgba(255,231,235,.94))",
-                boxShadow: "0 5px 12px rgba(176,54,79,.12), inset 0 1px 0 #fff",
+                  bgcolor: "#FFF5F5",
+                  borderColor: "#EAAAB4",
+                  color: "#B42318",
+                  boxShadow: "0 4px 10px rgba(176,54,79,.1)",
                 },
               }}
             >

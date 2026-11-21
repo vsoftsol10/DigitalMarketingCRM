@@ -78,7 +78,7 @@ export default function ContentPlannerFilters({
       <Box
         sx={{
           flex: 1,
-          minWidth: 320,
+          minWidth: { xs: "100%", md: 280 },
         }}
       >
         <SearchField
@@ -108,7 +108,8 @@ export default function ContentPlannerFilters({
           variant="text"
           onClick={onClearFilters}
           sx={{
-            height: 48,
+            minHeight: 44,
+            width: { xs: "100%", sm: "auto" },
 
             px: 2,
 
@@ -123,13 +124,14 @@ export default function ContentPlannerFilters({
 
             whiteSpace: "nowrap",
 
-            border: "1px solid rgba(255,255,255,.76)",
-
-            boxShadow: "0 4px 10px rgba(75,96,151,.07), inset 0 1px 0 rgba(255,255,255,.96)",
+          border: "1px solid #D8DEEA",
+          background: "#FFFFFF",
+          boxShadow: "none",
 
             "&:hover": {
-              background: "rgba(226,237,255,.62)",
-              color: "#355FBC",
+              background: "#F5F2FF",
+              borderColor: "#CFC5F8",
+              color: "#6941D9",
             },
 
             "&:focus-visible": {

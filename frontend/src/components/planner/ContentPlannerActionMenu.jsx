@@ -37,15 +37,13 @@ export default function ContentPlannerActionMenu({
         onClick={handleOpen}
         size="small"
         sx={{
-          color: "#647D9F",
-          border: "1px solid rgba(255,255,255,.82)",
-          background:
-            "linear-gradient(145deg, rgba(250,252,255,.94), rgba(231,240,255,.82))",
-          boxShadow:
-            "0 4px 10px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.96)",
+          color: "#64748B",
+          border: "1px solid #DDE3F1",
+          background: "#FFFFFF",
+          boxShadow: "none",
           "&:hover": {
-            color: "#355FBC",
-            background: "rgba(226,237,255,.8)",
+            color: "#6941D9",
+            background: "#F5F2FF",
           },
           "&.Mui-focusVisible": {
             outline: "2px solid rgba(111,145,211,.5)",
@@ -65,18 +63,16 @@ export default function ContentPlannerActionMenu({
             width: 220,
             borderRadius: "16px",
             mt: 1,
-            border: "1px solid rgba(255,255,255,.92)",
-            background:
-              "linear-gradient(145deg, rgba(250,252,255,.98), rgba(235,243,255,.96))",
-            boxShadow:
-              "0 14px 30px rgba(75,96,151,.16), 0 3px 8px rgba(79,99,154,.08), inset 0 1px 0 rgba(255,255,255,.98)",
+            border: "1px solid #DDE3F1",
+            background: "#FFFFFF",
+            boxShadow: "0 12px 28px rgba(31,41,80,.14)",
             "& .MuiMenuItem-root": {
               minHeight: 44,
               mx: 0.75,
               my: 0.25,
               borderRadius: "10px",
-              color: "#304563",
-              "&:hover": { background: "rgba(226,237,255,.68)" },
+              color: "#334155",
+              "&:hover": { background: "#F5F2FF" },
               "&.Mui-focusVisible": {
                 outline: "2px solid rgba(111,145,211,.42)",
                 outlineOffset: -2,
@@ -86,11 +82,11 @@ export default function ContentPlannerActionMenu({
               mb: 0.5,
             },
             "& .MuiListItemIcon-root": {
-              color: "#647D9F",
+              color: "#71809A",
               minWidth: 36,
             },
             "& .MuiDivider-root": {
-              borderColor: "rgba(146,168,201,.24)",
+              borderColor: "#E5E9F1",
               my: 0.5,
             },
           },

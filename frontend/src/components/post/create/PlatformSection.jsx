@@ -8,9 +8,10 @@ import { useFormContext } from "react-hook-form";
 
 import SectionCard from "./SectionCard";
 import SocialAccountCard from "./SocialAccountCard";
-import LoadingState from "../../ui/LoadingState";
-import ErrorState from "../../ui/ErrorState";
-import EmptyState from "../../ui/EmptyState";
+import PostLoadingState from "./PostLoadingState";
+import PostErrorState from "./PostErrorState";
+import PostEmptyState from "./PostEmptyState";
+import { postAlertSx } from "./postUiSx";
 
 import { PLATFORM_IDS } from "../../../constants/platforms/platformCapabilities";
 
@@ -395,10 +396,7 @@ export default function PlatformSection({
         <Alert
           severity="info"
           icon={<InfoOutlinedIcon />}
-          sx={{
-            borderRadius: 2,
-            fontSize: 13,
-          }}
+          sx={postAlertSx}
         >
           Select an organization to view its connected social accounts.
         </Alert>
@@ -412,7 +410,7 @@ export default function PlatformSection({
         title="Publishing Accounts"
         description="Choose the accounts where this post will be published."
       >
-        <LoadingState
+        <PostLoadingState
           label="LOADING CONNECTED ACCOUNTS..."
           variant="container"
           minHeight={120}
@@ -427,7 +425,7 @@ export default function PlatformSection({
         title="Publishing Accounts"
         description="Choose the accounts where this post will be published."
       >
-        <ErrorState
+        <PostErrorState
           title="Unable to load social accounts"
           message={accountsError}
           onRetry={onRetryAccounts}
@@ -443,7 +441,7 @@ export default function PlatformSection({
         title="Publishing Accounts"
         description="Choose the accounts where this post will be published."
       >
-        <ErrorState
+        <PostErrorState
           title="Unable to load social accounts"
           message="Social account data was not returned."
           onRetry={onRetryAccounts}
@@ -463,7 +461,7 @@ export default function PlatformSection({
         title="Publishing Accounts"
         description="Choose the accounts where this post will be published."
       >
-        <ErrorState
+        <PostErrorState
           title="Unable to refresh social accounts"
           message={accountsError}
           onRetry={onRetryAccounts}
@@ -479,7 +477,7 @@ export default function PlatformSection({
         title="Publishing Accounts"
         description="Choose the accounts where this post will be published."
       >
-        <LoadingState
+        <PostLoadingState
           label="UPDATING CONNECTED ACCOUNTS..."
           variant="container"
           minHeight={120}
@@ -494,7 +492,7 @@ export default function PlatformSection({
         title="Publishing Accounts"
         description="Choose the accounts where this post will be published."
       >
-        <EmptyState
+        <PostEmptyState
           title="No connected social accounts"
           description="Connect a social account to this organization before selecting a publishing destination."
           sx={{ py: 1 }}
@@ -531,7 +529,7 @@ export default function PlatformSection({
     >
       <Stack spacing={3}>
         {accountsError && (
-          <ErrorState
+          <PostErrorState
             title="Unable to refresh social accounts"
             message={accountsError}
             onRetry={onRetryAccounts}
@@ -539,7 +537,7 @@ export default function PlatformSection({
           />
         )}
         {accountsRefreshing && (
-          <LoadingState label="UPDATING CONNECTED ACCOUNTS..." variant="inline" />
+          <PostLoadingState label="UPDATING CONNECTED ACCOUNTS..." variant="inline" />
         )}
 
         {/* ====================================================
@@ -550,11 +548,7 @@ export default function PlatformSection({
           <Alert
             severity="info"
             icon={<InfoOutlinedIcon />}
-            sx={{
-              borderRadius: 2,
-              fontSize: 13,
-              py: 0.5,
-            }}
+            sx={{ ...postAlertSx, py: 0.5 }}
           >
             Upload media to choose publishing accounts.
           </Alert>
@@ -568,11 +562,7 @@ export default function PlatformSection({
           <Alert
             severity="info"
             icon={<InfoOutlinedIcon />}
-            sx={{
-              borderRadius: 2,
-              fontSize: 13,
-              py: 0.5,
-            }}
+            sx={{ ...postAlertSx, py: 0.5 }}
           >
             Selected media can't be published to{" "}
             {unsupportedPlatformMessages.join("; ")}.
@@ -671,6 +661,7 @@ export default function PlatformSection({
                         selected={selected}
                         disabled={disabled}
                         statusText=""
+                        plannerStyle
                         onChange={() => toggleAccount(account)}
                       />
                     </Grid>

@@ -7,6 +7,7 @@ export default function DashboardStatCard({
   tone = "violet",
   loading = false,
   supporting = null,
+  variant = "default",
 }) {
   const Icon = icon;
   const palettes = {
@@ -16,6 +17,7 @@ export default function DashboardStatCard({
     sky: { surface: "linear-gradient(145deg, #E9F6FF 0%, #D7EBFF 100%)", accent: "#2585CF", iconSurface: "#DCEFFF", halo: "rgba(61, 143, 207, .2)" },
   };
   const palette = palettes[tone] || palettes.violet;
+  const dashboardVariant = variant === "dashboard";
 
   return (
     <Card
@@ -23,13 +25,14 @@ export default function DashboardStatCard({
       sx={{
         position: "relative",
         overflow: "hidden",
-        border: "1px solid rgba(255,255,255,.88)",
+        border: dashboardVariant ? "1px solid #E1E5F0" : "1px solid rgba(255,255,255,.88)",
         borderRadius: "22px",
-        minHeight: 188,
+        minHeight: dashboardVariant ? 160 : 188,
         height: "100%",
-        background: palette.surface,
-        boxShadow: "0 15px 28px rgba(77,98,154,.16), 0 3px 8px rgba(80,99,151,.1), inset 0 2px 0 rgba(255,255,255,.95), inset 0 -2px 5px rgba(113,128,181,.09)",
+        background: dashboardVariant ? "#FFFFFF" : palette.surface,
+        boxShadow: dashboardVariant ? "0 4px 12px rgba(41,55,103,.045)" : "0 15px 28px rgba(77,98,154,.16), 0 3px 8px rgba(80,99,151,.1), inset 0 2px 0 rgba(255,255,255,.95), inset 0 -2px 5px rgba(113,128,181,.09)",
         "&::before": {
+          ...(dashboardVariant ? { display: "none" } : {}),
           content: "\"\"",
           position: "absolute",
           inset: 4,
@@ -39,6 +42,7 @@ export default function DashboardStatCard({
           zIndex: 1,
         },
         "&::after": {
+          ...(dashboardVariant ? { display: "none" } : {}),
           content: "\"\"",
           position: "absolute",
           width: 116,
@@ -63,38 +67,40 @@ export default function DashboardStatCard({
           },
         }}
       >
+        <Box sx={{ display: dashboardVariant ? "flex" : "block", alignItems: dashboardVariant ? "center" : undefined, mb: dashboardVariant ? 3.5 : 0 }}>
         {/* Icon */}
-
         <Box
           sx={{
-            width: 62,
-            height: 62,
-            borderRadius: "50%",
-            bgcolor: palette.iconSurface,
-            border: "2px solid rgba(255,255,255,.84)",
-            boxShadow: `0 8px 15px ${palette.halo}, 0 2px 5px rgba(77,98,154,.1), inset 0 2px 3px rgba(255,255,255,.82), inset 0 -2px 3px ${palette.halo}`,
+          width: dashboardVariant ? 34 : 62,
+          height: dashboardVariant ? 34 : 62,
+          borderRadius: dashboardVariant ? "10px" : "50%",
+          bgcolor: dashboardVariant ? "transparent" : palette.iconSurface,
+          border: dashboardVariant ? "none" : "2px solid rgba(255,255,255,.84)",
+          boxShadow: dashboardVariant ? "none" : `0 8px 15px ${palette.halo}, 0 2px 5px rgba(77,98,154,.1), inset 0 2px 3px rgba(255,255,255,.82), inset 0 -2px 3px ${palette.halo}`,
 
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
 
-            mb: 2.1,
+            mb: dashboardVariant ? 0 : 2.1,
           }}
         >
           <Icon
             sx={{
-              color: palette.accent,
-              fontSize: 27,
-              filter: "drop-shadow(0 1px 1px rgba(39,54,94,.14))",
+              color: dashboardVariant ? "#71809A" : palette.accent,
+              fontSize: dashboardVariant ? 21 : 27,
+              filter: dashboardVariant ? "none" : "drop-shadow(0 1px 1px rgba(39,54,94,.14))",
             }}
           />
+        </Box>
+        {dashboardVariant && <Typography sx={{ ml: 1, minWidth: 0, flex: 1, fontSize: 14, fontWeight: 500, color: "#64748B", lineHeight: 1.35 }}>{label}</Typography>}
         </Box>
 
         {/* Value */}
 
         <Typography
           sx={{
-            fontSize: 32,
+            fontSize: dashboardVariant ? 34 : 32,
             fontWeight: 700,
             color: "#0F172A",
             lineHeight: 1,
@@ -105,7 +111,7 @@ export default function DashboardStatCard({
 
         {/* Label */}
 
-        <Typography
+        {!dashboardVariant && <Typography
           sx={{
             mt: 0.8,
             fontSize: 14,
@@ -116,7 +122,7 @@ export default function DashboardStatCard({
           }}
         >
           {label}
-        </Typography>
+        </Typography>}
 
         {supporting && <Box sx={{ mt: 0.5 }}>{supporting}</Box>}
       </CardContent>

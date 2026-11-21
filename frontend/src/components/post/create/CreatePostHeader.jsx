@@ -3,51 +3,31 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { useNavigate } from "react-router-dom";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { postSecondaryButtonSx } from "./postUiSx";
 
-export default function CreatePostHeader() {
+export default function CreatePostHeader({ showBack = true }) {
   const navigate = useNavigate();
 
   return (
     <Box
       sx={{
-        mb: 5,
+        mb: 3,
       }}
     >
       {/* Back */}
 
-      <Button
+      {showBack && <Button
         variant="outlined"
         startIcon={<ArrowBackRoundedIcon />}
         onClick={() => navigate("/planner")}
-        sx={{
-          mb: 4,
-
-          height: 44,
-
-          px: 2.5,
-
-          borderRadius: "14px",
-
-          borderColor: "#CBD5E1",
-
-          color: "#334155",
-
-          bgcolor: "#FFFFFF",
-
-          ...TYPOGRAPHY.button,
-
-          "&:hover": {
-            borderColor: "#94A3B8",
-            bgcolor: "#F8FAFC",
-          },
-        }}
+        sx={{ ...postSecondaryButtonSx, mb: 2, minHeight: 40, ...TYPOGRAPHY.button }}
       >
         Content Planner
-      </Button>
+      </Button>}
 
       {/* Title */}
 
-      <Typography sx={TYPOGRAPHY.pageTitle}>
+      <Typography sx={{ ...TYPOGRAPHY.pageTitle, color: "#102347", fontSize: { xs: 28, sm: 32 } }}>
         Create Post
       </Typography>
 
@@ -57,6 +37,7 @@ export default function CreatePostHeader() {
         sx={{
           ...TYPOGRAPHY.pageDescription,
           mt: 1,
+          color: "#667792",
         }}
       >
         Create, preview, and publish content across multiple social platforms.

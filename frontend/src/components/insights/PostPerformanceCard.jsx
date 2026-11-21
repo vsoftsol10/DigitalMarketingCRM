@@ -26,7 +26,13 @@ import {
 import insightsService from "../../services/insights.service";
 import formatCompactNumber from "../../utils/formatters/formatCompactNumber";
 import formatApiErrorMessage from "../../utils/apiErrorMessage";
-import { insightsGlassControlSx, insightsGlassSurfaceSx } from "./insightsGlassSx";
+import {
+  insightsAlertSx,
+  insightsGlassControlSx,
+  insightsGlassSurfaceSx,
+  insightsMenuPaperSx,
+  insightsSecondaryButtonSx,
+} from "./insightsGlassSx";
 
 const PAGE_FETCH_CONCURRENCY = 3;
 const PAGE_CACHE_STALE_TIME = 60_000;
@@ -239,7 +245,7 @@ function DailyMetricTooltip({ active, payload, metricKey, platform }) {
     || TOOLTIP_METRICS_BY_PLATFORM.instagram;
 
   return (
-    <Box sx={{ minWidth: 210, px: 1.75, py: 1.35, ...insightsGlassSurfaceSx, borderRadius: 2.5, boxShadow: "0 12px 26px rgba(50,82,139,0.2), inset 0 1px 0 #FFFFFF" }}>
+    <Box sx={{ minWidth: 210, px: 1.75, py: 1.35, ...insightsGlassSurfaceSx, borderRadius: "12px", boxShadow: "0 10px 24px rgba(31,41,80,.14)" }}>
       <Typography sx={{ color: "#26354B", fontSize: 12.5, fontWeight: 700, mb: 0.8 }}>
         {dayjs(point.date).format("dddd, MMM D")}
       </Typography>
@@ -262,7 +268,7 @@ function TooltipMetricRow({ label, value, selected = false }) {
   return (
     <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
       <Typography sx={{ color: "#8292AA", fontSize: 12, whiteSpace: "nowrap" }}>{label}</Typography>
-      <Typography sx={{ color: selected && value != null ? "#3563F5" : "#4B5563", fontSize: 12, fontWeight: selected ? 700 : 600, textAlign: "right" }}>
+      <Typography sx={{ color: selected && value != null ? "#6941D9" : "#4B5563", fontSize: 12, fontWeight: selected ? 700 : 600, textAlign: "right" }}>
         {value == null ? "Unavailable" : formatCompactNumber(value)}
         </Typography>
     </Box>
@@ -272,7 +278,7 @@ function TooltipMetricRow({ label, value, selected = false }) {
 function ChartMessage({ children, action }) {
   return (
     <Box sx={{ height: { xs: 260, sm: 320 }, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", px: 2 }}>
-      <Box sx={{ px: 3, py: 2, border: "1px solid rgba(205,222,248,0.82)", borderRadius: 3, background: "linear-gradient(145deg, rgba(255,255,255,0.78), rgba(231,242,255,0.72))", boxShadow: "inset 0 2px 5px rgba(83,116,171,0.06), 0 1px 0 rgba(255,255,255,0.92)" }}>
+      <Box sx={{ px: 3, py: 2, border: "1px solid #E5E9F1", borderRadius: "12px", background: "#F8FAFC", boxShadow: "none" }}>
         <Typography sx={{ color: "#52647C", fontSize: 14, fontWeight: 600 }}>{children}</Typography>
         {action}
       </Box>
@@ -342,7 +348,7 @@ export default function PostPerformanceCard({
   const hasAvailableMetric = chartData.some((point) => point.posts > 0 && typeof point.value === "number");
 
   return (
-    <Card elevation={0} sx={{ width: "100%", minWidth: 0, ...insightsGlassSurfaceSx, borderRadius: "22px" }}>
+    <Card elevation={0} sx={{ width: "100%", minWidth: 0, ...insightsGlassSurfaceSx, borderRadius: "20px" }}>
       <CardContent sx={{ p: { xs: 2, sm: 2.5, lg: 3 }, "&:last-child": { pb: { xs: 2, sm: 2.5, lg: 3 } } }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 1.5 }}>
           <Box sx={{ minWidth: 0 }}>
@@ -359,7 +365,8 @@ export default function PostPerformanceCard({
                 metricKey: event.target.value,
               })}
               inputProps={{ "aria-label": "Post performance metric" }}
-              sx={{ height: 46, ...insightsGlassControlSx, borderRadius: 999, color: "#203965", fontSize: 14, "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#79A8F6", borderWidth: 1 } }}
+              MenuProps={{ PaperProps: { sx: insightsMenuPaperSx } }}
+              sx={{ height: 42, ...insightsGlassControlSx, borderRadius: "12px", color: "#334155", fontSize: 14, "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#B8C3D8" }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#7B61E8", borderWidth: 1 } }}
             >
               {metrics.map((metric) => <MenuItem key={metric.key} value={metric.key}>{metric.label}</MenuItem>)}
             </Select>
@@ -374,7 +381,7 @@ export default function PostPerformanceCard({
                 Retry
               </Button>
             )}
-            sx={{ mb: 1.5 }}
+            sx={{ ...insightsAlertSx, mb: 1.5 }}
           >
             Could not refresh post performance. Previously loaded chart data remains visible. {formatApiErrorMessage(contentQuery.error, { fallback: "Please try again." })}
           </Alert>
@@ -386,7 +393,7 @@ export default function PostPerformanceCard({
           </Box>
         ) : contentQuery.isError && !contentQuery.data ? (
           <ChartMessage action={(
-            <Button size="small" onClick={() => contentQuery.refetch()} sx={{ mt: 1, textTransform: "none" }}>
+            <Button size="small" onClick={() => contentQuery.refetch()} sx={{ ...insightsSecondaryButtonSx, mt: 1 }}>
               Retry chart data
             </Button>
           )}>
@@ -399,7 +406,7 @@ export default function PostPerformanceCard({
         ) : !hasAvailableMetric ? (
           <ChartMessage>{selectedMetric.label} data is unavailable for the posts in this published snapshot.</ChartMessage>
         ) : (
-          <Box sx={{ width: "100%", height: { xs: 260, sm: 320 }, minWidth: 0, p: { xs: 0.5, sm: 1 }, border: "1px solid rgba(208,224,247,0.84)", borderRadius: 3, background: "linear-gradient(180deg, rgba(240,247,255,0.64), rgba(255,255,255,0.52))", boxShadow: "inset 0 2px 6px rgba(83,116,171,0.06), 0 1px 0 rgba(255,255,255,0.92)" }}>
+          <Box sx={{ width: "100%", height: { xs: 260, sm: 320 }, minWidth: 0, p: { xs: 0.5, sm: 1 }, border: "1px solid #E5E9F1", borderRadius: "14px", background: "#FFFFFF", boxShadow: "none" }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 20, right: 14, left: -12, bottom: 8 }}>
                 <defs>

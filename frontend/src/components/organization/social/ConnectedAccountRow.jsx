@@ -868,10 +868,10 @@ function ConnectedAccountRow({
           sm: 2.5,
         },
         py: 2,
-        border: "1px solid rgba(255,255,255,.96)",
+        border: "1px solid #E5E9F1",
         borderRadius: "18px",
-        background: "linear-gradient(145deg, rgba(250,252,255,.97), rgba(235,243,255,.9))",
-        boxShadow: "0 6px 15px rgba(75,96,151,.09), inset 0 0 0 1px rgba(177,196,227,.12), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -1px 3px rgba(112,127,177,.05)",
+        background: "#FFFFFF",
+        boxShadow: "0 2px 8px rgba(41,55,103,.04)",
         display: "flex",
         justifyContent: "space-between",
         alignItems: {
@@ -885,8 +885,8 @@ function ConnectedAccountRow({
         },
         transition: "border-color .2s ease, box-shadow .2s ease",
         "&:hover": {
-          borderColor: "rgba(155,179,215,.64)",
-          boxShadow: "0 9px 19px rgba(75,96,151,.13), inset 0 2px 0 rgba(255,255,255,.98)",
+          borderColor: "#C8D1E1",
+          boxShadow: "0 5px 12px rgba(41,55,103,.08)",
         },
       }}
     >
@@ -912,10 +912,10 @@ function ConnectedAccountRow({
           sx={{
             width: 50,
             height: 50,
-            bgcolor: "rgba(255,255,255,.82)",
+            bgcolor: "#F8FAFC",
             color: "#111827",
-            border: "1px solid rgba(255,255,255,.96)",
-            boxShadow: "0 4px 10px rgba(75,96,151,.09), inset 0 1px 0 rgba(255,255,255,.98)",
+            border: "1px solid #E5E9F1",
+            boxShadow: "none",
             flexShrink: 0,
           }}
         >

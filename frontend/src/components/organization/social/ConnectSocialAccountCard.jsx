@@ -5,7 +5,7 @@ import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
-import overviewGlassCardSx from "../overview/overviewGlassCardSx";
+import { organizationCardSx } from "../organizationUiSx";
 
 // ============================================================
 // PLATFORM ICONS
@@ -135,10 +135,10 @@ export default function ConnectSocialAccountCard({
 
         borderRadius: "16px",
 
-        border: "1px solid rgba(255,255,255,.95)",
+        border: "1px solid #DDE3F1",
 
-        background: "linear-gradient(145deg, rgba(250,252,255,.96), rgba(235,243,255,.88))",
-        boxShadow: "0 7px 16px rgba(75,96,151,.1), inset 0 0 0 1px rgba(177,196,227,.12), inset 0 2px 0 rgba(255,255,255,.98)",
+        background: "#FFFFFF",
+        boxShadow: "0 2px 8px rgba(41,55,103,.04)",
 
         display: "flex",
 
@@ -155,15 +155,15 @@ export default function ConnectSocialAccountCard({
 
         opacity: disabled ? 0.55 : 1,
 
-        ...(overviewStyle ? overviewGlassCardSx : {}),
+        ...(overviewStyle ? organizationCardSx : {}),
 
         "&:hover": disabled
           ? {}
           : {
-              borderColor: "rgba(140,166,211,.7)",
-              background: "linear-gradient(145deg, rgba(240,247,255,.98), rgba(228,239,255,.94))",
+              borderColor: "#C8D1E1",
+              background: "#FFFFFF",
               transform: "translateY(-2px)",
-              boxShadow: "0 10px 20px rgba(75,96,151,.15), inset 0 2px 0 rgba(255,255,255,.98)",
+              boxShadow: "0 5px 12px rgba(41,55,103,.08)",
             },
       }}
     >
@@ -178,8 +178,8 @@ export default function ConnectSocialAccountCard({
           borderRadius: "12px",
 
           bgcolor: platformBackgroundColor,
-          border: "1px solid rgba(255,255,255,.94)",
-          boxShadow: "0 4px 10px rgba(75,96,151,.08), inset 0 2px 2px rgba(255,255,255,.82)",
+          border: "1px solid #E5E9F1",
+          boxShadow: "none",
 
           display: "flex",
           alignItems: "center",
@@ -265,13 +265,13 @@ export default function ConnectSocialAccountCard({
 
           fontWeight: 600,
 
-          boxShadow: "0 3px 8px rgba(75,96,151,.07), inset 0 1px 0 rgba(255,255,255,.98)",
+          boxShadow: "none",
 
           "&:hover": {
-            borderColor: "rgba(116,150,208,.72)",
-            color: "#2563EB",
-            background: "linear-gradient(145deg, rgba(240,247,255,.98), rgba(228,239,255,.94))",
-            boxShadow: "0 5px 10px rgba(75,96,151,.1), inset 0 1px 0 rgba(255,255,255,.98)",
+            borderColor: "#CFC5F8",
+            color: "#6941D9",
+            background: "#F5F2FF",
+            boxShadow: "none",
           },
 
           "&.Mui-disabled": {

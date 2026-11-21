@@ -15,7 +15,7 @@ export default function PlanLivePreview() {
 
   const values = watch();
 
-  const tone = planTone(values.type);
+  const tone = planTone();
 
   /*
    * ==========================================
@@ -65,7 +65,7 @@ export default function PlanLivePreview() {
         alignItems="center"
         spacing={0.6}
         sx={{
-          mb: 2,
+          mb: 1.25,
           pl: 0.25,
         }}
       >
@@ -95,16 +95,14 @@ export default function PlanLivePreview() {
           width: "100%",
           boxSizing: "border-box",
 
-          p: "26px 26px 22px",
+          p: { xs: 2, sm: 2.25 },
 
-          borderRadius: "20px",
+          borderRadius: "18px",
 
           border: `1px solid ${tone.border}`,
 
           background: tone.surface,
-          backdropFilter: "blur(16px)",
-
-          boxShadow: "0 16px 30px rgba(73,95,157,0.14), inset 0 1px 0 rgba(255,255,255,0.98)",
+          boxShadow: "0 8px 20px rgba(54,76,132,0.07)",
         }}
       >
         {/* ====================================
@@ -113,9 +111,9 @@ export default function PlanLivePreview() {
 
         <Typography
           sx={{
-            fontSize: "14px",
-            fontWeight: 500,
-            lineHeight: "20px",
+            fontSize: "12px",
+            fontWeight: 600,
+            lineHeight: "18px",
 
             color: "#94A3B8",
 
@@ -133,11 +131,11 @@ export default function PlanLivePreview() {
 
         <Typography
           sx={{
-            mt: 0.5,
+            mt: 0.35,
 
-            fontSize: "30px",
+            fontSize: "24px",
             fontWeight: 700,
-            lineHeight: "38px",
+            lineHeight: "30px",
 
             letterSpacing: "-0.025em",
 
@@ -161,11 +159,11 @@ export default function PlanLivePreview() {
           sx={{
             mt: 0.4,
 
-            minHeight: 44,
+            minHeight: 42,
 
-            fontSize: "16px",
+            fontSize: "14px",
             fontWeight: 400,
-            lineHeight: "24px",
+            lineHeight: "21px",
 
             color: "#64748B",
 
@@ -185,19 +183,25 @@ export default function PlanLivePreview() {
         ==================================== */}
         <Box
           sx={{
-            mt: 2.5,
-            mb: 3,
+            mt: 1.5,
+            mb: 1.5,
 
-            display: "flex",
-            justifyContent: "center",
-            gap: 3,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 1.5,
+            p: 1.25,
+            borderRadius: "12px",
+            border: "1px solid #E6EAF4",
+            background: tone.tint,
+            "& > :nth-of-type(2)": { borderLeft: "1px solid #E0E5F0", pl: 1.5 },
           }}
         >
           <Box>
             <Typography
               sx={{
-                fontSize: "24px",
+                fontSize: "20px",
                 fontWeight: 700,
+                lineHeight: "26px",
                 color: tone.accent,
                 textAlign: "center",
               }}
@@ -219,8 +223,9 @@ export default function PlanLivePreview() {
           <Box>
             <Typography
               sx={{
-                fontSize: "24px",
+                fontSize: "20px",
                 fontWeight: 700,
+                lineHeight: "26px",
                 color: tone.accent,
                 textAlign: "center",
               }}
@@ -251,7 +256,7 @@ export default function PlanLivePreview() {
 
             backgroundColor: "#E2E8F0",
 
-            mb: 2.25,
+            mb: 1.5,
           }}
         />
 
@@ -260,7 +265,7 @@ export default function PlanLivePreview() {
         ==================================== */}
 
         <Stack
-          spacing={1.05}
+          spacing={0.75}
           sx={{
             width: "100%",
           }}
@@ -276,7 +281,7 @@ export default function PlanLivePreview() {
                 sx={{
                   fontSize: 17,
 
-                  color: "#10B981",
+                  color: tone.accent,
 
                   flexShrink: 0,
                 }}
@@ -284,9 +289,9 @@ export default function PlanLivePreview() {
 
               <Typography
                 sx={{
-                  fontSize: "16px",
+                  fontSize: "14px",
                   fontWeight: 400,
-                  lineHeight: "24px",
+                  lineHeight: "21px",
 
                   color: "#475569",
                 }}
@@ -308,8 +313,8 @@ export default function PlanLivePreview() {
 
             backgroundColor: "#E2E8F0",
 
-            mt: 2.25,
-            mb: 1.75,
+            mt: 1.5,
+            mb: 1.25,
           }}
         />
 
@@ -337,7 +342,7 @@ export default function PlanLivePreview() {
             />
           }
           sx={{
-            height: 32,
+            height: 28,
 
             alignSelf: "flex-start",
 
@@ -352,7 +357,7 @@ export default function PlanLivePreview() {
 
             color: values.status === "inactive" ? "#64748B" : "#059669",
 
-            fontSize: "14px",
+            fontSize: "13px",
             fontWeight: 500,
 
             "& .MuiChip-icon": {
@@ -368,8 +373,8 @@ export default function PlanLivePreview() {
         {features.length > 0 && (
           <Box
             sx={{
-              mt: 2.25,
-              pt: 2,
+              mt: 1.5,
+              pt: 1.25,
               borderTop: "1px solid rgba(145,166,202,0.24)",
             }}
           >

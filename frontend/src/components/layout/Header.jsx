@@ -63,10 +63,9 @@ export default function Header() {
       elevation={0}
       color="inherit"
       sx={{
-        bgcolor: "rgba(239, 244, 255, 0.82)",
-        backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.86)",
-        boxShadow: "0 7px 22px rgba(81,101,158,.07), inset 0 1px 0 rgba(255,255,255,.9)",
+        bgcolor: "#FFFFFF",
+        borderBottom: "1px solid #DDE3F1",
+        boxShadow: "none",
       }}
     >
       <Toolbar
@@ -106,13 +105,16 @@ export default function Header() {
         {/* Right */}
         <Box
           sx={{
+            position: "relative",
             display: "flex",
             alignItems: "center",
             gap: 2.5,
+            width: "100%",
+            justifyContent: "flex-end",
           }}
         >
           <ClickAwayListener onClickAway={() => setSearchOpen(false)}>
-            <Box sx={{ position: "relative", width: { xs: 220, sm: 300, md: 380 }, maxWidth: "42vw", zIndex: (theme) => theme.zIndex.modal }}>
+            <Box sx={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: { xs: 220, sm: 300, md: 448 }, maxWidth: "42vw", zIndex: (theme) => theme.zIndex.modal }}>
               <TextField
                 inputRef={searchInputRef}
                 fullWidth
@@ -137,10 +139,10 @@ export default function Header() {
 
                   "& .MuiOutlinedInput-root": {
                     height: 48,
-                    borderRadius: "999px",
-                    background: "linear-gradient(180deg, rgba(235,241,253,.96), rgba(244,247,255,.94))",
-                    border: "1px solid rgba(255,255,255,.95)",
-                    boxShadow: "0 7px 16px rgba(79,99,157,.12), 0 1px 3px rgba(73,93,146,.08), inset 0 2px 4px rgba(94,111,159,.09), inset 0 1px 0 rgba(255,255,255,.98), inset 0 -1px 2px rgba(94,111,159,.07)",
+                    borderRadius: "14px",
+                    background: "#F7F8FC",
+                    border: "1px solid #DCE2EF",
+                    boxShadow: "none",
                     transition: "border-color .18s ease, box-shadow .18s ease",
 
                     "& fieldset": {
@@ -198,8 +200,8 @@ export default function Header() {
                     overflowY: "auto",
                     border: "1px solid rgba(255,255,255,.94)",
                     borderRadius: "16px",
-                    background: "linear-gradient(145deg, rgba(248,251,255,.98), rgba(235,242,255,.96))",
-                    boxShadow: "0 16px 32px rgba(67,86,142,.18), 0 4px 10px rgba(67,86,142,.08), inset 0 1px 0 rgba(255,255,255,.98)",
+                    background: "#FFFFFF",
+                    boxShadow: "0 12px 28px rgba(31,41,80,.14)",
                     backdropFilter: "blur(18px)",
                     scrollbarWidth: "thin",
                     scrollbarColor: "rgba(122,143,190,.45) transparent",
@@ -259,12 +261,12 @@ export default function Header() {
             sx={{
               width: 44,
               height: 44,
-              bgcolor: "#DDE8FF",
-              color: "#4967B2",
+              bgcolor: "#8247F5",
+              color: "#FFFFFF",
               fontSize: 16,
               fontWeight: 700,
-              border: "2px solid rgba(255,255,255,.9)",
-              boxShadow: "0 7px 16px rgba(73, 96, 158, .2), 0 2px 4px rgba(72,94,157,.12), inset 0 2px 2px rgba(255,255,255,.9)",
+              border: "2px solid #FFFFFF",
+              boxShadow: "0 3px 8px rgba(31,41,80,.12)",
               cursor: "pointer",
             }}
           >

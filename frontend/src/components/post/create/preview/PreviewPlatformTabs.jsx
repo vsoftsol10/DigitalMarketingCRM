@@ -21,8 +21,8 @@ export default function PreviewPlatformTabs({
       sx={{
         display: "flex",
         gap: 1,
-        px: 3,
-        py: 2,
+        px: { xs: 2, sm: 2.5 },
+        py: 1.5,
         overflowX: "auto",
         borderBottom: `1px solid ${theme.palette.divider}`,
 

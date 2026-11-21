@@ -3,6 +3,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { useNavigate } from "react-router-dom";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { organizationSecondaryButtonSx } from "../organizationUiSx";
 
 export default function CreateHeader() {
   const navigate = useNavigate();
@@ -18,13 +19,11 @@ export default function CreateHeader() {
           alignItems: "center",
           gap: 0.5,
           cursor: "pointer",
-          color: "#64748B",
+          ...organizationSecondaryButtonSx,
+          minHeight: 36,
           px: 1.25,
-          py: 0.7,
-          borderRadius: "999px",
-          background: "linear-gradient(145deg, rgba(255,255,255,.78), rgba(232,241,255,.68))",
-          border: "1px solid rgba(255,255,255,.88)",
-          boxShadow: "0 3px 9px rgba(76, 102, 148, .08), inset 0 1px 0 #fff",
+          py: 0.5,
+          color: "#64748B",
           transition: "0.2s",
 
           "&:hover": {

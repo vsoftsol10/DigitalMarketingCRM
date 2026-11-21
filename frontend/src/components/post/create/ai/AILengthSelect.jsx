@@ -16,6 +16,7 @@
 import FormSelect from "../../../ui/form/FormSelect";
 
 import { AI_LENGTH_OPTIONS } from "../../../../constants/ai/aiOptions";
+import { postMenuPaperSx } from "../postUiSx";
 
 export default function AILengthSelect() {
   return (
@@ -24,6 +25,7 @@ export default function AILengthSelect() {
       label="Caption Length"
       options={AI_LENGTH_OPTIONS}
       helperText="Choose the caption length."
+      MenuProps={{ PaperProps: { sx: postMenuPaperSx } }}
     />
   );
 }

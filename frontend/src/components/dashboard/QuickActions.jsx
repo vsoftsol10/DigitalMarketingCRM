@@ -21,19 +21,20 @@ export default function QuickActions() {
       sx={{
         position: "relative",
         overflow: "hidden",
-        border: "1px solid rgba(255,255,255,.9)",
-        borderRadius: "24px",
-        height: { xs: 390, lg: 370 },
+        border: "1px solid #DDE3F1",
+        borderRadius: "20px",
+        height: "auto",
+        minHeight: { xs: 390, lg: 390 },
         display: "flex",
         flexDirection: "column",
-        background: "linear-gradient(145deg, rgba(250,252,255,.98), rgba(241,246,255,.95))",
-        boxShadow: "0 14px 28px rgba(75,96,151,.12), 0 3px 8px rgba(79,99,154,.07), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 5px rgba(112,127,177,.06)",
+        background: "#FFFFFF",
+        boxShadow: "0 4px 12px rgba(41,55,103,.045)",
         "&::before": {
           content: "\"\"",
           position: "absolute",
           inset: 4,
           borderRadius: "20px",
-          border: "1px solid rgba(255,255,255,.8)",
+          border: "none",
           pointerEvents: "none",
         },
       }}
@@ -51,7 +52,7 @@ export default function QuickActions() {
       >
         <Typography sx={TYPOGRAPHY.sectionTitle}>Quick Actions</Typography>
         <Typography sx={{ ...TYPOGRAPHY.sectionDescription, mt: 0.5, mb: 3 }}>Jump to a common task</Typography>
-        <Stack spacing={2}>
+        <Stack spacing={1.25}>
           {ACTIONS.map((action) => (
             <Box
               key={action.id}
@@ -62,19 +63,20 @@ export default function QuickActions() {
                 width: "100%",
                 display: "flex",
                 alignItems: "center",
-                gap: 2,
-                p: 1.7,
-                border: "1px solid rgba(255,255,255,.92)",
-                borderRadius: "16px",
-                background: "linear-gradient(115deg, rgba(235,242,255,.84), rgba(255,255,255,.72))",
-                boxShadow: "0 5px 12px rgba(76,98,154,.09), inset 0 1px 0 rgba(255,255,255,.98), inset 0 -1px 2px rgba(94,111,159,.06)",
+                gap: 1.5,
+                minHeight: 60,
+                p: 1.25,
+                border: "1px solid #E2E8F0",
+                borderRadius: "14px",
+                background: "#FFFFFF",
+                boxShadow: "none",
                 textAlign: "left",
                 cursor: "pointer",
                 transition: "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
                 "&:hover": {
-                  background: "linear-gradient(115deg, rgba(229,238,255,.96), rgba(250,252,255,.9))",
-                  borderColor: "rgba(126,148,202,.3)",
-                  boxShadow: "0 7px 15px rgba(76,98,154,.13), inset 0 1px 0 rgba(255,255,255,.98)",
+                  background: "#F8FAFC",
+                  borderColor: "#C7D2FE",
+                  boxShadow: "0 3px 8px rgba(31,41,80,.06)",
                 },
                 "&:focus-visible": { outline: "2px solid #2563EB", outlineOffset: "2px" },
               }}

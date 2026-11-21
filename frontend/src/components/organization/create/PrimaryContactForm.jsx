@@ -2,13 +2,13 @@ import { Box, Grid } from "@mui/material";
 
 import FormSection from "../../ui/form/FormSection";
 import FormTextField from "../../ui/form/FormTextField";
-import { glassFormSectionSx } from "../../ui/form/glassFormSx";
+import { organizationFormSectionSx } from "../organizationUiSx";
 
 export default function PrimaryContactForm() {
   return (
     <Box
       sx={{
-        ...glassFormSectionSx,
+        ...organizationFormSectionSx,
       }}
     >
       <FormSection

@@ -27,14 +27,14 @@ export default function MediaPreviewItem({
         width: "100%",
         aspectRatio: "1 / 1",
 
-        borderRadius: "14px",
+        borderRadius: "12px",
 
         overflow: "hidden",
 
-        bgcolor: "#E9EDF3",
+        bgcolor: "#F1F5F9",
 
         border: "1px solid",
-        borderColor: "#DCE2EB",
+        borderColor: "#DDE3F1",
       }}
     >
       {/* =====================================================
@@ -168,7 +168,7 @@ export default function MediaPreviewItem({
             <LinearProgress
               variant="determinate"
               value={progress}
-              sx={{ height: 3, borderRadius: 2 }}
+              sx={{ height: 3, borderRadius: 2, "& .MuiLinearProgress-bar": { background: "linear-gradient(90deg,#8B4BF5,#3977F6)" } }}
             />
           )}
           {media.status === "FAILED" && (

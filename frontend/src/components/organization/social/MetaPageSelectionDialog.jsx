@@ -1,6 +1,7 @@
 import {
   Alert,
   Avatar,
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -12,17 +13,21 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
 import LoadingState from "../../ui/LoadingState";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 
-import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 import {
-  glassDialogActionsSx,
-  glassDialogContentSx,
-  glassDialogPaperSx,
-  glassDialogSecondaryButtonSx,
-  glassDialogTitleSx,
-} from "../../ui/dialog/glassDialogSx";
+  socialDialogActionsSx,
+  socialDialogFacebookIconTileSx,
+  socialDialogPaperSx,
+  socialDialogPrimaryButtonSx,
+  socialDialogSecondaryButtonSx,
+  socialDialogTitleSx,
+  socialDialogContentSx,
+  socialPageConnectedButtonSx,
+  socialPageRowSx,
+} from "./socialDialogUiSx";
 
 export default function MetaPageSelectionDialog({
   open,
@@ -50,19 +55,26 @@ export default function MetaPageSelectionDialog({
       }}
       fullWidth
       maxWidth="sm"
-      PaperProps={{ sx: glassDialogPaperSx }}
+      PaperProps={{ sx: socialDialogPaperSx }}
       aria-labelledby="facebook-page-selection-dialog-title"
     >
-      <DialogTitle id="facebook-page-selection-dialog-title" sx={glassDialogTitleSx}>
-        Select a Facebook Page
+      <DialogTitle id="facebook-page-selection-dialog-title" sx={socialDialogTitleSx}>
+        <Box aria-hidden="true" sx={socialDialogFacebookIconTileSx}>
+          <FacebookRoundedIcon />
+        </Box>
+        <Typography component="span" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
+          Select a Facebook Page
+        </Typography>
       </DialogTitle>
 
-      <DialogContent dividers sx={glassDialogContentSx}>
+      <DialogContent dividers sx={socialDialogContentSx}>
         <Typography
           variant="body2"
           color="text.secondary"
           sx={{
-            mb: 2,
+            mb: 2.25,
+            color: "#64748B",
+            lineHeight: 1.55,
           }}
         >
           Add the Facebook Pages you want connected to this organization. You can
@@ -74,6 +86,7 @@ export default function MetaPageSelectionDialog({
             label="LOADING FACEBOOK PAGES..."
             variant="container"
             minHeight={180}
+            sx={{ py: 1 }}
           />
         )}
 
@@ -103,7 +116,7 @@ export default function MetaPageSelectionDialog({
             sx={{
               display: "flex",
               flexDirection: "column",
-              gap: 1,
+              gap: 1.25,
             }}
           >
             {pages.map((page) => {
@@ -116,18 +129,7 @@ export default function MetaPageSelectionDialog({
               return (
                 <ListItem
                   key={pageId}
-                  sx={{
-                    border: "1px solid",
-                    borderColor: isConnected ? "rgba(58,142,98,.45)" : "rgba(202,220,248,.84)",
-                    borderRadius: "15px",
-                    alignItems: "center",
-                    gap: 1.5,
-                    px: { xs: 1.25, sm: 2 },
-                    py: 1.5,
-                    background: "linear-gradient(145deg, rgba(255,255,255,.9), rgba(238,245,255,.76))",
-                    boxShadow: "0 3px 8px rgba(73,99,153,.05), inset 0 1px 0 #fff",
-                    flexWrap: { xs: "wrap", sm: "nowrap" },
-                  }}
+                  sx={socialPageRowSx(isConnected)}
                 >
                   <Avatar
                     src={page?.profile_image || undefined}
@@ -135,6 +137,10 @@ export default function MetaPageSelectionDialog({
                     sx={{
                       width: 42,
                       height: 42,
+                      flex: "0 0 auto",
+                      bgcolor: "#EFF6FF",
+                      color: "#1877F2",
+                      border: "1px solid #D7E7FF",
                     }}
                   >
                     {pageName.charAt(0).toUpperCase()}
@@ -143,11 +149,11 @@ export default function MetaPageSelectionDialog({
                   <ListItemText
                     sx={{ minWidth: 0, flex: 1 }}
                     primary={
-                      <Typography variant="subtitle1" fontWeight={600}>
+                      <Typography variant="subtitle1" fontWeight={600} sx={{ color: "#172554", overflowWrap: "anywhere" }}>
                         {pageName}
                       </Typography>
                     }
-                    secondary={`Facebook Page ID: ${pageId}`}
+                    secondary={<Typography component="span" sx={{ color: "#64748B", fontSize: 12, lineHeight: 1.45, overflowWrap: "anywhere" }}>{`Facebook Page ID: ${pageId}`}</Typography>}
                   />
                   <Button
                     variant={isConnected ? "outlined" : "contained"}
@@ -164,13 +170,13 @@ export default function MetaPageSelectionDialog({
                     sx={{
                       minWidth: { xs: "100%", sm: 112 },
                       ml: { xs: 0, sm: 1 },
-                      ...(!isConnected ? glassPrimaryButtonSx : {}),
+                      ...(isConnected ? socialPageConnectedButtonSx : socialDialogPrimaryButtonSx),
                     }}
                   >
                     {isConnected ? "Connected" : isAdding ? "Adding..." : "+ Add"}
                   </Button>
                   {pageError && (
-                    <Alert severity="error" role="alert" sx={{ width: "100%", mt: 0.5 }}>
+                    <Alert severity="error" role="alert" sx={{ width: "100%", mt: 0.5, borderRadius: "12px", boxShadow: "none" }}>
                       {pageError}
                     </Alert>
                   )}
@@ -181,9 +187,9 @@ export default function MetaPageSelectionDialog({
         )}
       </DialogContent>
 
-      <DialogActions sx={glassDialogActionsSx}>
+      <DialogActions sx={socialDialogActionsSx}>
         {(error || (!loading && pages.length === 0)) && (
-          <Button onClick={onReconnect} disabled={busy}>
+          <Button variant="outlined" onClick={onReconnect} disabled={busy} sx={socialDialogSecondaryButtonSx}>
             Connect Facebook again
           </Button>
         )}
@@ -191,14 +197,14 @@ export default function MetaPageSelectionDialog({
           onClick={onDismiss}
           disabled={busy}
           aria-label="Close Facebook Page selection"
-          sx={glassDialogSecondaryButtonSx}
+          sx={socialDialogSecondaryButtonSx}
         >
           Close
         </Button>
         <Button
           onClick={onFinish}
           disabled={busy || sessionInvalid}
-          sx={{ minWidth: 150, ...glassDialogSecondaryButtonSx }}
+          sx={{ minWidth: { sm: 150 }, ...socialDialogSecondaryButtonSx }}
         >
           {finishing ? "Finishing..." : "I'm done adding"}
         </Button>

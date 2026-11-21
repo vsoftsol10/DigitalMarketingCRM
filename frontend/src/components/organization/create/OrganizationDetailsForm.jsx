@@ -3,13 +3,13 @@ import { Box, Grid } from "@mui/material";
 import FormSection from "../../ui/form/FormSection";
 import FormTextField from "../../ui/form/FormTextField";
 import FormTextArea from "../../ui/form/FormTextArea";
-import { glassFormSectionSx } from "../../ui/form/glassFormSx";
+import { organizationFormSectionSx } from "../organizationUiSx";
 
 export default function OrganizationDetailsForm() {
   return (
     <Box
       sx={{
-        ...glassFormSectionSx,
+        ...organizationFormSectionSx,
       }}
     >
       <FormSection

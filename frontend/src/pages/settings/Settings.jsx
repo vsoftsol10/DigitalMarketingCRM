@@ -168,6 +168,7 @@ import useSettings from "../../hooks/settings/useSettings";
 import { useLogout } from "../../hooks/useAuth";
 import LoadingState from "../../components/ui/LoadingState";
 import ErrorState from "../../components/ui/ErrorState";
+import { settingsGlassCardSx, settingsPrimaryButtonSx } from "../../components/settings/settingsGlassSx";
 
 export default function Settings() {
   // ==========================================
@@ -202,7 +203,7 @@ export default function Settings() {
   // ==========================================
 
   if (profileLoading) {
-    return <LoadingState page="Settings" />;
+    return <LoadingState page="Settings" sx={{ "& p": { color: "#667792" } }} />;
   }
 
   // ==========================================
@@ -210,7 +211,18 @@ export default function Settings() {
   // ==========================================
 
   if (profileError) {
-    return <ErrorState title="Unable to load settings" message={profileError} onRetry={refresh} variant="page" />;
+    return (
+      <ErrorState
+        title="Unable to load settings"
+        message={profileError}
+        onRetry={refresh}
+        variant="page"
+        sx={{
+          "& > .MuiPaper-root": settingsGlassCardSx,
+          "& .MuiButton-contained": settingsPrimaryButtonSx,
+        }}
+      />
+    );
   }
 
   // ==========================================
@@ -243,20 +255,20 @@ export default function Settings() {
           width: "100%",
           minWidth: 0,
 
-          maxWidth: 1200,
+          maxWidth: 960,
 
           mx: "auto",
 
           mt: {
             xs: 3,
-            sm: 4,
+            sm: 3,
           },
 
           display: "flex",
 
           flexDirection: "column",
 
-          gap: 3,
+          gap: { xs: 2, sm: 3 },
         }}
       >
         {/* ====================================

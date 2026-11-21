@@ -1,4 +1,5 @@
 import { Box, Card, CardContent, Typography } from "@mui/material";
+import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 
 import { TYPOGRAPHY } from "../../theme/typography";
 
@@ -14,17 +15,17 @@ export default function DashboardRecentActivityCard({
       sx={{
         position: "relative",
         overflow: "hidden",
-        border: "1px solid rgba(255,255,255,.9)",
-        borderRadius: "24px",
-        height: { xs: 390, lg: 370 },
-        background: "linear-gradient(145deg, rgba(250,252,255,.98) 0%, rgba(242,247,255,.95) 100%)",
-        boxShadow: "0 14px 28px rgba(75,96,151,.12), 0 3px 8px rgba(79,99,154,.07), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 5px rgba(112,127,177,.06)",
+        border: "1px solid #DDE3F1",
+        borderRadius: "20px",
+        height: { xs: 390, lg: 390 },
+        background: "#FFFFFF",
+        boxShadow: "0 4px 12px rgba(41,55,103,.045)",
         "&::before": {
           content: "\"\"",
           position: "absolute",
           inset: 4,
           borderRadius: "20px",
-          border: "1px solid rgba(255,255,255,.8)",
+          border: "none",
           pointerEvents: "none",
         },
 
@@ -83,7 +84,13 @@ export default function DashboardRecentActivityCard({
               fontSize: 15,
             }}
           >
-            No recent activity
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5 }}>
+              <Box sx={{ width: 58, height: 58, borderRadius: "16px", display: "grid", placeItems: "center", bgcolor: "#F1F5F9", color: "#8292AE" }}>
+                <CheckCircleOutlineRoundedIcon sx={{ fontSize: 26 }} />
+              </Box>
+              <Typography sx={{ fontSize: 16, fontWeight: 600, color: "#172554" }}>No recent activity</Typography>
+              <Typography sx={{ fontSize: 14, color: "#64748B" }}>Latest actions across your accounts will appear here.</Typography>
+            </Box>
           </Box>
         ) : (
           <Box

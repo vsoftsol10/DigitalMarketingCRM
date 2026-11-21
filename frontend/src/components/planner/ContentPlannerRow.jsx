@@ -1,7 +1,11 @@
-import { Box, Chip, TableCell, TableRow, Typography } from "@mui/material";
+import { Box, Button, Chip, TableCell, TableRow, Tooltip, Typography } from "@mui/material";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
 import ContentPlannerActionMenu from "./ContentPlannerActionMenu";
 import { Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { PLATFORM_ICONS } from "../../constants/platforms/platformIcons";
+import { PLATFORM_COLORS } from "../../constants/platforms/platformColors";
 
 function formatTargetDateTime(date, time) {
   if (!date) {
@@ -13,24 +17,27 @@ function formatTargetDateTime(date, time) {
   return time ? `${formattedDate} • ${time.slice(0, 5)}` : formattedDate;
 }
 
-export default function ContentPlannerRow({ idea, onDelete }) {
+export default function ContentPlannerRow({ idea, onDelete, onView }) {
   const navigate = useNavigate();
+  const platforms = [...new Map(
+    (idea.selected_social_accounts || [])
+      .filter((account) => typeof account?.platform === "string" && account.platform.trim())
+      .map((account) => [account.platform.trim().toLowerCase(), account.platform.trim()]),
+  ).entries()];
+
   return (
     <TableRow
       hover
       sx={{
         "& td": {
-          borderBottom: "1px solid rgba(146,168,201,.22)",
+          borderBottom: "1px solid #E5E9F1",
           py: 2.5,
-          background:
-            "linear-gradient(145deg, rgba(250,252,255,.82), rgba(237,245,255,.68))",
-          boxShadow:
-            "inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 2px rgba(112,127,177,.05)",
+          background: "#FFFFFF",
+          boxShadow: "none",
         },
 
         "&:hover td": {
-          background:
-            "linear-gradient(145deg, rgba(242,247,255,.96), rgba(228,239,255,.82))",
+          background: "#F8FAFC",
         },
 
         "&:last-child td": {
@@ -40,20 +47,19 @@ export default function ContentPlannerRow({ idea, onDelete }) {
     >
       {/* Caption */}
 
-      <TableCell>
-        <Box
-            sx={{
-              minWidth: 0,
-            }}
-          >
+      <TableCell data-label="Caption">
+        <Box sx={{ minWidth: 0, maxWidth: "100%" }}>
             <Typography
               sx={{
                 fontSize: 15,
                 fontWeight: 600,
-                color: "#17294F",
+                color: "#172554",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
-              {idea.caption}
+              {idea.caption || "—"}
             </Typography>
 
             <Typography
@@ -64,70 +70,80 @@ export default function ContentPlannerRow({ idea, onDelete }) {
 
                 color: "#657899",
 
-                whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-
-                maxWidth: 320,
+                whiteSpace: "nowrap",
+                maxWidth: "100%",
+                display: "block",
               }}
             >
-              {idea.description}
+              {idea.description || ""}
             </Typography>
         </Box>
       </TableCell>
 
       {/* Organization */}
 
-      <TableCell>
+      <TableCell data-label="Organization">
         <Typography
           sx={{
             fontSize: 14,
             fontWeight: 500,
-            color: "#304563",
+            color: "#475569",
+            overflowWrap: "anywhere",
           }}
         >
           {idea.organization}
         </Typography>
       </TableCell>
 
-      {/* Publish accounts */}
+      {/* Platforms */}
 
-      <TableCell>
-        <Stack spacing={0.5}>
-          {(idea.selected_social_accounts || []).map((account) => (
-            <Typography key={account.id} noWrap sx={{ fontSize: 13, color: "#536A8A" }}>
-              {account.display_name} · {String(account.platform || "").toLowerCase()}
-            </Typography>
-          ))}
-          {!idea.selected_social_accounts?.length && (
-            <Typography sx={{ fontSize: 13, color: "#8294B4" }}>No accounts selected</Typography>
+      <TableCell data-label="Platform">
+        <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minHeight: 28 }}>
+          {platforms.length ? platforms.map(([key, label]) => {
+            const PlatformIcon = PLATFORM_ICONS[key] || LanguageOutlinedIcon;
+            const iconColor = PLATFORM_COLORS[key]?.iconColor || "#667995";
+            return (
+              <Tooltip key={key} title={label}>
+                <Box
+                  component="span"
+                  aria-label={label}
+                  sx={{ display: "inline-flex", alignItems: "center", color: iconColor }}
+                >
+                  <PlatformIcon sx={{ fontSize: 19 }} />
+                </Box>
+              </Tooltip>
+            );
+          }) : (
+            <Typography sx={{ fontSize: 13, color: "#94A3B8" }}>—</Typography>
           )}
         </Stack>
       </TableCell>
 
       {/* Type */}
 
-      <TableCell>
+      <TableCell data-label="Type">
         <Chip
           label={idea.content_type || idea.type}
           size="small"
           sx={{
-            background: "linear-gradient(145deg, rgba(238,245,255,.96), rgba(222,234,252,.86))",
-            color: "#536A8A",
+            background: "#F5F2FF",
+            color: "#6941D9",
             fontWeight: 600,
             borderRadius: "8px",
-            border: "1px solid rgba(255,255,255,.86)",
+            border: "1px solid #E5DDFC",
           }}
         />
       </TableCell>
 
       {/* Target date and time */}
 
-      <TableCell>
+      <TableCell data-label="Target date & time">
         <Typography
           sx={{
             fontSize: 14,
-            color: "#657899",
+            color: "#64748B",
             width: 160,
             whiteSpace: "nowrap",
           }}
@@ -138,27 +154,52 @@ export default function ContentPlannerRow({ idea, onDelete }) {
 
       {/* Action */}
 
-      <TableCell align="center">
-        <ContentPlannerActionMenu
-          onEdit={() => navigate(`/planner/${idea.id}/edit`)}
-          onDelete={() => onDelete(idea)}
-          onCreatePost={() =>
-            navigate("/posts", {
-              state: {
-                plannerPrefill: {
-                  organization: idea.organization_code,
-                  socialAccountIds: (idea.selected_social_accounts || []).map(
-                    (account) => account.id,
-                  ),
-                  contentType: idea.content_type || idea.type,
-                  caption: idea.caption || "",
-                  publishDate: idea.target_publish_date || "",
-                  publishTime: idea.target_publish_time || "",
+      <TableCell align="center" data-label="Actions">
+        <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
+          <Button
+            type="button"
+            size="small"
+            startIcon={<VisibilityOutlinedIcon sx={{ fontSize: 18 }} />}
+            onClick={() => onView?.(idea)}
+            aria-label={`View ${idea.caption || "content idea"}`}
+            sx={{
+              minWidth: 0,
+              px: 0.75,
+              py: 0.5,
+              borderRadius: "9px",
+              color: "#475569",
+              textTransform: "none",
+              fontSize: 13,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              "& .MuiButton-startIcon": { mr: 0.5 },
+              "&:hover": { color: "#6941D9", background: "#F5F2FF" },
+              "&:focus-visible": { outline: "2px solid rgba(111,145,211,.48)", outlineOffset: 2 },
+            }}
+          >
+            View
+          </Button>
+          <ContentPlannerActionMenu
+            onEdit={() => navigate(`/planner/${idea.id}/edit`)}
+            onDelete={() => onDelete(idea)}
+            onCreatePost={() =>
+              navigate("/posts", {
+                state: {
+                  plannerPrefill: {
+                    organization: idea.organization_code,
+                    socialAccountIds: (idea.selected_social_accounts || []).map(
+                      (account) => account.id,
+                    ),
+                    contentType: idea.content_type || idea.type,
+                    caption: idea.caption || "",
+                    publishDate: idea.target_publish_date || "",
+                    publishTime: idea.target_publish_time || "",
+                  },
                 },
-              },
-            })
-          }
-        />
+              })
+            }
+          />
+        </Stack>
       </TableCell>
     </TableRow>
   );

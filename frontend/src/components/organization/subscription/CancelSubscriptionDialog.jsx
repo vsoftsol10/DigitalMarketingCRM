@@ -9,14 +9,14 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  glassDialogActionsSx,
-  glassDialogCardSx,
-  glassDialogContentSx,
-  glassDialogDangerButtonSx,
-  glassDialogPaperSx,
-  glassDialogSecondaryButtonSx,
-  glassDialogTitleSx,
-} from "../../ui/dialog/glassDialogSx";
+  subscriptionDialogActionsSx,
+  subscriptionDialogCardSx,
+  subscriptionDialogContentSx,
+  subscriptionDialogDangerButtonSx,
+  subscriptionDialogPaperSx,
+  subscriptionDialogSecondaryButtonSx,
+  subscriptionDialogTitleSx,
+} from "../organizationUiSx";
 
 export default function CancelSubscriptionDialog({
   open,
@@ -36,13 +36,13 @@ export default function CancelSubscriptionDialog({
       onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="sm"
-      PaperProps={{ sx: glassDialogPaperSx }}
+      PaperProps={{ sx: subscriptionDialogPaperSx }}
     >
-      <DialogTitle sx={glassDialogTitleSx}>
+      <DialogTitle sx={subscriptionDialogTitleSx}>
         Cancel Subscription
       </DialogTitle>
 
-      <DialogContent dividers sx={glassDialogContentSx}>
+      <DialogContent dividers sx={subscriptionDialogContentSx}>
         <Typography
           sx={{
             fontSize: 15,
@@ -57,10 +57,12 @@ export default function CancelSubscriptionDialog({
           severity="warning"
           sx={{
             mt: 2.5,
-            borderRadius: "14px",
-            border: "1px solid rgba(246,202,134,.56)",
-            background: "linear-gradient(145deg, rgba(255,250,235,.9), rgba(255,255,255,.76))",
-            boxShadow: "0 4px 10px rgba(154,112,49,.06), inset 0 1px 0 #fff",
+            borderRadius: "12px",
+            border: "1px solid #F5D5D5",
+            background: "#FFFBFB",
+            color: "#7F1D1D",
+            boxShadow: "none",
+            "& .MuiAlert-icon": { color: "#D64545" },
           }}
         >
           The current subscription will be cancelled immediately and preserved
@@ -68,7 +70,7 @@ export default function CancelSubscriptionDialog({
           be cancelled and will not be activated.
         </Alert>
 
-        <Box sx={{ mt: 2.5, ...glassDialogCardSx }}>
+        <Box sx={{ mt: 2.5, ...subscriptionDialogCardSx }}>
           <Typography
             sx={{
               fontSize: 12,
@@ -115,12 +117,12 @@ export default function CancelSubscriptionDialog({
         )}
       </DialogContent>
 
-      <DialogActions sx={glassDialogActionsSx}>
+      <DialogActions sx={subscriptionDialogActionsSx}>
         <Button
           onClick={onClose}
           disabled={loading}
           color="inherit"
-          sx={glassDialogSecondaryButtonSx}
+          sx={subscriptionDialogSecondaryButtonSx}
         >
           Keep Subscription
         </Button>
@@ -130,7 +132,7 @@ export default function CancelSubscriptionDialog({
           color="error"
           onClick={onConfirm}
           disabled={loading}
-          sx={{ minWidth: 150, ...glassDialogDangerButtonSx }}
+          sx={{ minWidth: { sm: 150 }, ...subscriptionDialogDangerButtonSx }}
         >
           {loading ? "Cancelling..." : "Cancel Subscription"}
         </Button>

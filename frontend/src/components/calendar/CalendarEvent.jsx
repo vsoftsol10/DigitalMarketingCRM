@@ -428,24 +428,25 @@ export default function CalendarEvent({
       sx={{
         width: "100%",
         minWidth: 0,
-        border: "1px solid rgba(255,255,255,0.96)",
+        border: "1px solid #E4E9F3",
         borderLeft: "3px solid",
         borderLeftColor: tint.border,
-        borderRadius: 2.25,
-        background: tint.background,
-        px: 1.15,
-        py: 1,
+        borderRadius: "10px",
+        background: "#FFFFFF",
+        px: { xs: 0.5, sm: 0.75 },
+        py: { xs: 0.55, sm: 0.7 },
         textAlign: "left",
         cursor: "pointer",
         overflow: "hidden",
         boxSizing: "border-box",
         transition:
-          "background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease",
-        boxShadow: "0 4px 10px rgba(67,100,151,0.11), inset 0 1px 0 rgba(255,255,255,0.98), inset 0 -1px 0 rgba(179,202,236,0.35)",
+          "border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease",
+        boxShadow: "0 1px 3px rgba(54,76,132,0.05)",
 
         "&:hover": {
-          background: "linear-gradient(135deg, #FFFFFF 0%, #E8F2FF 100%)",
-          boxShadow: "0 8px 16px rgba(67,100,151,0.18), inset 0 1px 0 #FFFFFF",
+          background: "#FCFBFF",
+          borderColor: tint.border,
+          boxShadow: "0 4px 10px rgba(54,76,132,0.1)",
         },
 
         "&:active": {
@@ -454,7 +455,7 @@ export default function CalendarEvent({
 
         "&:focus-visible": {
           outline: "2px solid",
-          outlineColor: "primary.main",
+          outlineColor: "#7C3AED",
           outlineOffset: 1,
         },
       }}
@@ -511,7 +512,7 @@ export default function CalendarEvent({
           >
             <PlatformIcon
               sx={{
-                fontSize: 14,
+                fontSize: { xs: 12, sm: 14 },
                 color:
                   platformConfig.color ||
                   "text.secondary",
@@ -546,7 +547,7 @@ export default function CalendarEvent({
             ...TYPOGRAPHY.caption,
             fontWeight: 700,
             color: "text.primary",
-            mt: 0.65,
+            mt: 0.4,
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
@@ -565,7 +566,7 @@ export default function CalendarEvent({
           alignItems="center"
           spacing={0.5}
           sx={{
-            mt: 0.5,
+          mt: 0.35,
             minWidth: 0,
             overflow: "hidden",
           }}

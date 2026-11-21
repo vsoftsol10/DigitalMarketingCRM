@@ -22,7 +22,7 @@ export default function CalendarEventStatusTrack({ status }) {
     <Stack
       direction="row"
       alignItems="center"
-      sx={{ width: "100%" }}
+      sx={{ width: "100%", minWidth: 0, overflow: "hidden" }}
     >
       {STATUS_ORDER.map((stageKey, index) => {
         const isFailedStage =
@@ -63,8 +63,8 @@ export default function CalendarEventStatusTrack({ status }) {
             >
               <Box
                 sx={{
-                  width: isCurrent ? 12 : 9,
-                  height: isCurrent ? 12 : 9,
+                  width: isCurrent ? 11 : 8,
+                  height: isCurrent ? 11 : 8,
                   borderRadius: "50%",
                   bgcolor: nodeColor,
                   boxShadow:
@@ -109,8 +109,8 @@ export default function CalendarEventStatusTrack({ status }) {
                 sx={{
                   height: 2,
                   flex: 1,
-                  mx: 1,
-                  mb: 2,
+                  mx: { xs: 0.5, sm: 0.75 },
+                  mb: 1.75,
                   borderRadius: 1,
                   bgcolor:
                     index < activeIndex

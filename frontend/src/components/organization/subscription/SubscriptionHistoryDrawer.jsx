@@ -48,15 +48,9 @@ export default function SubscriptionHistoryDrawer({
 
           borderRadius: 0,
 
-          borderLeft: "1px solid rgba(255,255,255,.9)",
-
-          background:
-            "linear-gradient(145deg, rgba(250,252,255,.98) 0%, rgba(242,247,255,.96) 58%, rgba(237,244,255,.92) 100%)",
-
-          boxShadow:
-            "-10px 0 30px rgba(75,96,151,.14), -2px 0 8px rgba(79,99,154,.09), inset 1px 0 0 rgba(255,255,255,.78)",
-
-          backdropFilter: "blur(16px)",
+          borderLeft: "1px solid #DDE3F1",
+          background: "#FFFFFF",
+          boxShadow: "-8px 0 24px rgba(31,41,80,.1)",
 
           display: "flex",
           flexDirection: "column",
@@ -72,12 +66,9 @@ export default function SubscriptionHistoryDrawer({
           px: 3,
           py: 2.5,
 
-          borderBottom: "1px solid rgba(146,168,201,.24)",
-
-          background:
-            "linear-gradient(145deg, rgba(250,252,255,.98) 0%, rgba(242,247,255,.96) 100%)",
-
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,.98)",
+          borderBottom: "1px solid #E5E9F1",
+          background: "#FFFFFF",
+          boxShadow: "none",
 
           flexShrink: 0,
 
@@ -107,15 +98,10 @@ export default function SubscriptionHistoryDrawer({
 
                 borderRadius: "11px",
 
-                background:
-                  "linear-gradient(145deg, rgba(238,245,255,.98), rgba(222,234,252,.95))",
-
-                color: "#4B70C7",
-
-                border: "1px solid rgba(255,255,255,.9)",
-
-                boxShadow:
-                  "0 5px 12px rgba(75,96,151,.1), inset 0 2px 0 rgba(255,255,255,.98)",
+                background: "#F1F5F9",
+                color: "#64748B",
+                border: "1px solid #E5E9F1",
+                boxShadow: "none",
 
                 display: "flex",
                 alignItems: "center",
@@ -170,18 +156,16 @@ export default function SubscriptionHistoryDrawer({
               width: 40,
               height: 40,
 
-              color: "#657899",
+              color: "#64748B",
 
               borderRadius: "12px",
 
-              border: "1px solid rgba(255,255,255,.82)",
-
-              boxShadow:
-                "0 4px 10px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.98)",
+              border: "1px solid #E1E5F0",
+              boxShadow: "none",
 
               "&:hover": {
-                background: "rgba(231,240,255,.76)",
-                color: "#17294F",
+                background: "#F8FAFC",
+                color: "#172554",
               },
             }}
           >

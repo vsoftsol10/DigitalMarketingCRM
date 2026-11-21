@@ -46,7 +46,7 @@ export default function DashboardStats({ statistics }) {
             lg: 3,
           }}
         >
-          <DashboardStatCard {...item} />
+          <DashboardStatCard {...item} variant="dashboard" />
         </Grid>
       ))}
     </Grid>

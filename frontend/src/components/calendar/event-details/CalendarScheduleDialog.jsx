@@ -14,14 +14,22 @@ import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
-import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 import {
-  glassDialogActionsSx,
-  glassDialogContentSx,
-  glassDialogPaperSx,
-  glassDialogSecondaryButtonSx,
-  glassDialogTitleSx,
-} from "../../ui/dialog/glassDialogSx";
+  calendarPrimaryButtonSx,
+  calendarSecondaryButtonSx,
+} from "../calendarGlassSx";
+
+const scheduleFieldSx = {
+  "& .MuiOutlinedInput-root": {
+    minHeight: 46,
+    borderRadius: "12px",
+    background: "#FFFFFF",
+    "& fieldset": { borderColor: "#D7DFF0" },
+    "&:hover fieldset": { borderColor: "#B8C7E7" },
+    "&.Mui-focused fieldset": { borderColor: "#8A72E6" },
+    "&.Mui-focused": { boxShadow: "0 0 0 3px rgba(111,93,236,0.11)" },
+  },
+};
 
 function toTimeValue(value) {
   const match = String(value || "").match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -92,19 +100,43 @@ export default function CalendarScheduleDialog({
     <Dialog
       open={open}
       onClose={loading ? undefined : onClose}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: glassDialogPaperSx }}
+      PaperProps={{
+        sx: {
+          width: "calc(100% - 32px)",
+          maxWidth: 480,
+          maxHeight: "calc(100dvh - 32px)",
+          m: { xs: 2, sm: 3 },
+          border: "1px solid #DCE3F1",
+          borderRadius: "18px",
+          background: "#FFFFFF",
+          boxShadow: "0 14px 36px rgba(36,52,94,0.14)",
+        },
+      }}
     >
       <DialogTitle
-        sx={{ ...TYPOGRAPHY.sectionTitle, ...glassDialogTitleSx }}
+        sx={{
+          ...TYPOGRAPHY.sectionTitle,
+          color: "#142D59",
+          px: { xs: 2.25, sm: 3 },
+          py: 2.25,
+          background: "#FFFFFF",
+        }}
       >
         {isReschedule ? "Reschedule post" : "Schedule post"}
       </DialogTitle>
 
-      <Divider sx={{ borderColor: "rgba(146,168,201,.22)" }} />
+      <Divider sx={{ borderColor: "#E7EAF2" }} />
 
-      <DialogContent sx={glassDialogContentSx}>
+      <DialogContent
+        sx={{
+          px: { xs: 2.25, sm: 3 },
+          py: 2.5,
+          overflowY: "auto",
+          background: "#FFFFFF",
+        }}
+      >
         <Stack component="form" id="calendar-schedule-form" spacing={2} onSubmit={handleSubmit}>
           <TextField
             label="Publish date"
@@ -114,6 +146,7 @@ export default function CalendarScheduleDialog({
             InputLabelProps={{ shrink: true }}
             required
             fullWidth
+            sx={scheduleFieldSx}
           />
           <TextField
             label="Publish time"
@@ -123,6 +156,7 @@ export default function CalendarScheduleDialog({
             InputLabelProps={{ shrink: true }}
             required
             fullWidth
+            sx={scheduleFieldSx}
           />
           <TextField
             label="Timezone"
@@ -130,14 +164,24 @@ export default function CalendarScheduleDialog({
             onChange={handleChange("timezone")}
             required
             fullWidth
+            sx={scheduleFieldSx}
           />
         </Stack>
       </DialogContent>
 
-      <Divider sx={{ borderColor: "rgba(146,168,201,.22)" }} />
+      <Divider sx={{ borderColor: "#E7EAF2" }} />
 
-      <DialogActions sx={glassDialogActionsSx}>
-        <Button disabled={loading} variant="outlined" onClick={onClose} sx={glassDialogSecondaryButtonSx}>
+      <DialogActions
+        sx={{
+          px: { xs: 2.25, sm: 3 },
+          py: 2,
+          gap: 1,
+          flexWrap: "wrap",
+          justifyContent: "flex-end",
+          background: "#FFFFFF",
+        }}
+      >
+        <Button disabled={loading} variant="outlined" onClick={onClose} sx={{ ...calendarSecondaryButtonSx, minHeight: 42, borderRadius: "11px", flex: { xs: "1 1 120px", sm: "0 0 auto" } }}>
           Cancel
         </Button>
         <Button
@@ -145,7 +189,7 @@ export default function CalendarScheduleDialog({
           variant="contained"
           form="calendar-schedule-form"
           type="submit"
-          sx={glassPrimaryButtonSx}
+          sx={{ ...calendarPrimaryButtonSx, minHeight: 42, borderRadius: "11px", flex: { xs: "1 1 150px", sm: "0 0 auto" } }}
         >
           {loading
             ? loadingAction === "reschedule" ? "Rescheduling..." : "Scheduling..."

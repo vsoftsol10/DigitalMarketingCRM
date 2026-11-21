@@ -39,18 +39,18 @@ export default function PreviewPlatformChip({
         cursor: "pointer",
 
         border: selected
-          ? "1px solid #2563EB"
-          : "1px solid #E2E8F0",
+          ? "1px solid #C8BDF5"
+          : "1px solid #DDE3F1",
 
         bgcolor: selected
-          ? "#EFF6FF"
+          ? "#F5F2FF"
           : "#FFFFFF",
 
         transition: ".2s",
 
         "&:hover": {
-          borderColor: "#2563EB",
-          bgcolor: "#F8FAFC",
+          borderColor: "#B7A8EE",
+          bgcolor: "#FAF9FF",
         },
       }}
     >

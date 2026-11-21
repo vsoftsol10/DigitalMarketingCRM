@@ -6,8 +6,9 @@ import { useQuery } from "@tanstack/react-query";
 import SocialAccountCard from "../../post/create/SocialAccountCard";
 import socialAccountService from "../../../services/social/socialAccount.service";
 import { TYPOGRAPHY } from "../../../theme/typography";
-import LoadingState from "../../ui/LoadingState";
+import PlannerLoadingState from "../PlannerLoadingState";
 import formatApiErrorMessage from "../../../utils/apiErrorMessage";
+import { plannerAlertSx } from "../plannerUiSx";
 
 export default function PublishAccountsField({ organizations = [] }) {
   const { control, setValue, formState: { errors } } = useFormContext();
@@ -53,6 +54,12 @@ export default function PublishAccountsField({ organizations = [] }) {
       size="small"
       disabled={isFetching}
       onClick={() => { void refetch(); }}
+      sx={{
+        color: "#6941D9",
+        textTransform: "none",
+        fontWeight: 600,
+        "&:hover": { background: "#F5F2FF" },
+      }}
     >
       Retry
     </Button>
@@ -72,34 +79,34 @@ export default function PublishAccountsField({ organizations = [] }) {
         minWidth: 0,
         p: { xs: 1.5, sm: 2 },
         borderRadius: "16px",
-        background: "linear-gradient(145deg, rgba(235,243,255,.7), rgba(255,255,255,.7))",
-        border: "1px solid rgba(255,255,255,.94)",
-        boxShadow: "0 5px 14px rgba(73,99,153,.08), inset 0 1px 0 rgba(255,255,255,.98)",
+        background: "#F8FAFC",
+        border: "1px solid #E5E9F1",
+        boxShadow: "none",
       }}
     >
       <Typography sx={TYPOGRAPHY.inputLabel}>Publish Accounts<Typography component="span" sx={{ color: "#EF4444", ml: 0.5 }}>*</Typography></Typography>
       {!organizationId ? (
-        <Alert severity="info" sx={{ borderRadius: "12px" }}>Select an organization to load its connected publish accounts.</Alert>
+        <Alert severity="info" sx={plannerAlertSx}>Select an organization to load its connected publish accounts.</Alert>
       ) : !organizationCode ? (
-        <Alert severity="error" sx={{ borderRadius: "12px" }}>
+        <Alert severity="error" sx={plannerAlertSx}>
           The selected organization could not be matched to its publish accounts.
         </Alert>
       ) : isLoading && !hasLoadedAccounts ? (
-        <LoadingState label="LOADING PUBLISH ACCOUNTS..." variant="container" minHeight={72} />
+        <PlannerLoadingState label="LOADING PUBLISH ACCOUNTS..." variant="container" minHeight={72} />
       ) : error && !hasLoadedAccounts ? (
         <Alert
           severity="error"
-          sx={{ borderRadius: "12px" }}
+          sx={plannerAlertSx}
           action={retryButton}
         >
           {formatApiErrorMessage(error, { fallback: "Unable to load publish accounts." })}
         </Alert>
       ) : isSuccess && !hasLoadedAccounts ? (
-        <Alert severity="error" sx={{ borderRadius: "12px" }} action={retryButton}>
+        <Alert severity="error" sx={plannerAlertSx} action={retryButton}>
           Publish account data was not returned in the expected format.
         </Alert>
       ) : !hasLoadedAccounts ? (
-        <Alert severity="error" sx={{ borderRadius: "12px" }}>
+        <Alert severity="error" sx={plannerAlertSx}>
           Publish account data is unavailable until the selected organization can be verified.
         </Alert>
       ) : (
@@ -107,19 +114,19 @@ export default function PublishAccountsField({ organizations = [] }) {
           {error && (
             <Alert
               severity="error"
-              sx={{ borderRadius: "12px" }}
+              sx={plannerAlertSx}
               action={retryButton}
             >
               Could not refresh publish accounts. Previously loaded accounts remain available. {formatApiErrorMessage(error, { fallback: "Please try again." })}
             </Alert>
           )}
           {accounts.length === 0 ? (
-            <Alert severity="warning" sx={{ borderRadius: "12px" }}>This organization has no connected, valid publish accounts.</Alert>
+            <Alert severity="warning" sx={plannerAlertSx}>This organization has no connected, valid publish accounts.</Alert>
           ) : (
             <Grid container spacing={1.5}>
               {accounts.map((account) => (
                 <Grid key={account.id} size={{ xs: 12, sm: 6 }}>
-                  <SocialAccountCard account={{ ...account, platform: String(account.platform).toUpperCase(), accountName: account.pageName }} selected={selectedAccountIds.includes(account.id)} onChange={toggleAccount} />
+                  <SocialAccountCard account={{ ...account, platform: String(account.platform).toUpperCase(), accountName: account.pageName }} selected={selectedAccountIds.includes(account.id)} onChange={toggleAccount} plannerStyle />
                 </Grid>
               ))}
             </Grid>

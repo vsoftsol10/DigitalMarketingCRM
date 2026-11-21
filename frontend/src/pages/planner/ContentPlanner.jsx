@@ -115,6 +115,7 @@ import { Alert, Box } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
+import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
 
 import contentPlannerService from "../../services/contentPlanner.service";
 
@@ -122,11 +123,12 @@ import ContentPlannerHeader from "../../components/planner/ContentPlannerHeader"
 import ContentPlannerStats from "../../components/planner/ContentPlannerStats";
 import ContentPlannerFilters from "../../components/planner/ContentPlannerFilters";
 import ContentPlannerTable from "../../components/planner/ContentPlannerTable";
-import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
-import LoadingState from "../../components/ui/LoadingState";
-import ErrorState from "../../components/ui/ErrorState";
-import EmptyState from "../../components/ui/EmptyState";
+import ContentPlannerPostDetailsDialog from "../../components/planner/ContentPlannerPostDetailsDialog";
 import OrganizationRequiredEmptyState from "../../components/organization/OrganizationRequiredEmptyState";
+import ConfirmDialog from "../../components/ui/dialog/ConfirmDialog";
+import PlannerLoadingState from "../../components/planner/PlannerLoadingState";
+import PlannerErrorState from "../../components/planner/PlannerErrorState";
+import PlannerEmptyState from "../../components/planner/PlannerEmptyState";
 import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
 
 import useDebounce from "../../hooks/common/useDebounce";
@@ -180,6 +182,8 @@ export default function ContentPlanner() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [selectedIdea, setSelectedIdea] = useState(null);
+
+  const [selectedViewItem, setSelectedViewItem] = useState(null);
 
   // ============================================================
   // LOAD CONTENT PLANNER
@@ -328,6 +332,10 @@ export default function ContentPlanner() {
     setDeleteDialogOpen(true);
   }, []);
 
+  const handleViewIdea = useCallback((idea) => {
+    setSelectedViewItem(idea);
+  }, []);
+
   const handleCloseDeleteDialog = useCallback(() => {
     if (deleteLoading) {
       return;
@@ -394,11 +402,11 @@ export default function ContentPlanner() {
   // ============================================================
 
   if (initialLoading && !planner) {
-    return <LoadingState page="Content Planner" />;
+    return <PlannerLoadingState page="Content Planner" />;
   }
 
   if (loadError && !planner) {
-    return <ErrorState message={loadError} onRetry={() => loadPlanner({
+    return <PlannerErrorState message={loadError} onRetry={() => loadPlanner({
       search: debouncedSearch.trim(),
       organization: filters.organization,
       initial: true,
@@ -421,7 +429,7 @@ export default function ContentPlanner() {
     && Array.isArray(planner.organizations)
     && planner.organizations.length === 0
   ) {
-    return <OrganizationRequiredEmptyState />;
+    return <OrganizationRequiredEmptyState onAction={() => navigate("/organizations/new")} />;
   }
 
   const ideas = planner?.ideas || [];
@@ -437,7 +445,7 @@ export default function ContentPlanner() {
       ======================================================= */}
 
       {loadError && (
-        <ErrorState
+        <PlannerErrorState
           message={loadError}
           onRetry={() => loadPlanner({
             search: debouncedSearch.trim(),
@@ -447,7 +455,7 @@ export default function ContentPlanner() {
           variant="inline"
         />
       )}
-      {actionError && <Alert severity="error" sx={{ mb: 3 }}>{actionError}</Alert>}
+      {actionError && <Alert severity="error" sx={{ mb: 3, borderRadius: "12px", border: "1px solid #FECACA" }}>{actionError}</Alert>}
 
       {/* =======================================================
           HEADER
@@ -490,11 +498,13 @@ export default function ContentPlanner() {
           <ContentPlannerTable
             ideas={ideas}
             onDelete={handleOpenDeleteDialog}
+            onView={handleViewIdea}
             loading
             hasActiveFilters={hasActiveFilters}
           />
         ) : !loadError && ideas.length === 0 ? (
-          <EmptyState
+          <PlannerEmptyState
+            icon={<LightbulbOutlinedIcon />}
             title={hasActiveFilters ? "No matching content ideas" : "No content ideas yet"}
             description={hasActiveFilters
               ? "Try changing your search or organization filter."
@@ -507,6 +517,7 @@ export default function ContentPlanner() {
           <ContentPlannerTable
             ideas={ideas}
             onDelete={handleOpenDeleteDialog}
+            onView={handleViewIdea}
             loading={false}
             hasActiveFilters={hasActiveFilters}
           />
@@ -518,7 +529,7 @@ export default function ContentPlanner() {
       ======================================================= */}
 
       <ConfirmDialog
-        glass
+        crmStyle
         open={deleteDialogOpen}
         title="Delete Content Idea"
         message="Are you sure you want to delete"
@@ -528,6 +539,12 @@ export default function ContentPlanner() {
         loading={deleteLoading}
         onClose={handleCloseDeleteDialog}
         onConfirm={handleDeleteIdea}
+      />
+
+      <ContentPlannerPostDetailsDialog
+        open={Boolean(selectedViewItem)}
+        idea={selectedViewItem}
+        onClose={() => setSelectedViewItem(null)}
       />
     </>
   );

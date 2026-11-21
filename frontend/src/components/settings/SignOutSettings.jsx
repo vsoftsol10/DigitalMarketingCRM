@@ -11,7 +11,7 @@ export default function SignOutSettings({ onLogout, loading = false }) {
       elevation={0}
       sx={{
         ...settingsGlassCardSx,
-        borderColor: "rgba(240,185,204,0.75)",
+        borderColor: "#FAD5D6",
         overflow: "hidden",
 
         boxSizing: "border-box",
@@ -20,13 +20,13 @@ export default function SignOutSettings({ onLogout, loading = false }) {
       <Box
         sx={{
           px: {
-            xs: 2.5,
-            sm: 3,
+            xs: 2,
+            sm: 2.5,
           },
 
           py: {
-            xs: 2.5,
-            sm: 3,
+            xs: 2,
+            sm: 2.5,
           },
         }}
       >
@@ -160,7 +160,7 @@ export default function SignOutSettings({ onLogout, loading = false }) {
 
               px: 2.5,
 
-              borderRadius: 2,
+              borderRadius: "12px",
 
               flexShrink: 0,
 

@@ -14,7 +14,7 @@ import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
 import FiberManualRecordRoundedIcon from "@mui/icons-material/FiberManualRecordRounded";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
-import overviewGlassCardSx from "../overview/overviewGlassCardSx";
+import { organizationCardSx } from "../organizationUiSx";
 
 export default function OrganizationCard({ organization, onClick }) {
   const {
@@ -111,15 +111,15 @@ export default function OrganizationCard({ organization, onClick }) {
       elevation={0}
       onClick={onClick}
       sx={{
-        ...overviewGlassCardSx,
+        ...organizationCardSx,
         height: "100%",
         p: 3,
         cursor: "pointer",
         transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease",
 
         "&:hover": {
-          borderColor: "rgba(255,255,255,1)",
-          boxShadow: "0 13px 27px rgba(69,96,145,.17), 0 3px 8px rgba(74,99,145,.07), inset 0 0 0 1px rgba(171,194,229,.25), inset 0 2px 0 rgba(255,255,255,1), inset 0 -2px 4px rgba(113,136,179,.07)",
+          borderColor: "#C9D2E3",
+          boxShadow: "0 8px 18px rgba(41,55,103,.08)",
           transform: "translateY(-2px)",
         },
       }}
@@ -146,15 +146,15 @@ export default function OrganizationCard({ organization, onClick }) {
         >
           <Avatar
             sx={{
-              width: 54,
-              height: 54,
+              width: 48,
+              height: 48,
               flexShrink: 0,
               bgcolor: logo_color || "#2563EB",
-              background: `linear-gradient(145deg, ${logo_color || "#2563EB"}, rgba(122, 99, 228, .94))`,
+              background: logo_color || "#64748B",
               fontWeight: 700,
-              fontSize: 22,
-              border: "2px solid rgba(255,255,255,.9)",
-              boxShadow: "0 5px 12px rgba(73, 100, 148, .18), inset 0 1px 0 rgba(255,255,255,.5)",
+              fontSize: 18,
+              border: "none",
+              boxShadow: "none",
             }}
           >
             {initials}

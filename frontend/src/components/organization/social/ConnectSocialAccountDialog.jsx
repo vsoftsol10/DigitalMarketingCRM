@@ -1,4 +1,6 @@
 import PropTypes from "prop-types";
+import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
+import InstagramIcon from "@mui/icons-material/Instagram";
 
 import {
   Box,
@@ -9,15 +11,20 @@ import {
   DialogTitle,
   Typography,
 } from "@mui/material";
-import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 import {
-  glassDialogActionsSx,
-  glassDialogCardSx,
-  glassDialogContentSx,
-  glassDialogPaperSx,
-  glassDialogSecondaryButtonSx,
-  glassDialogTitleSx,
-} from "../../ui/dialog/glassDialogSx";
+  socialDialogActionsSx,
+  socialDialogFacebookIconTileSx,
+  socialDialogInfoSx,
+  socialDialogInstagramIconTileSx,
+  socialDialogNumberSx,
+  socialDialogPaperSx,
+  socialDialogPrimaryButtonSx,
+  socialDialogReconnectInfoSx,
+  socialDialogRequirementCardSx,
+  socialDialogSecondaryButtonSx,
+  socialDialogTitleSx,
+  socialDialogContentSx,
+} from "./socialDialogUiSx";
 
 // ============================================================
 // PLATFORM CONFIGURATION
@@ -260,6 +267,10 @@ const ConnectSocialAccountDialog = ({
   const platformConfig = PLATFORM_CONFIG[platform];
 
   const config = platformConfig?.[mode];
+  const PlatformIcon = platform === "facebook" ? FacebookRoundedIcon : InstagramIcon;
+  const platformIconTileSx = platform === "facebook"
+    ? socialDialogFacebookIconTileSx
+    : socialDialogInstagramIconTileSx;
 
   // ==========================================================
   // INVALID / CLOSED STATE
@@ -303,7 +314,7 @@ const ConnectSocialAccountDialog = ({
       onClose={handleClose}
       fullWidth
       maxWidth="sm"
-      PaperProps={{ sx: glassDialogPaperSx }}
+      PaperProps={{ sx: socialDialogPaperSx }}
       aria-labelledby="social-account-dialog-title"
       aria-describedby="social-account-dialog-description"
     >
@@ -313,9 +324,14 @@ const ConnectSocialAccountDialog = ({
 
       <DialogTitle
         id="social-account-dialog-title"
-        sx={glassDialogTitleSx}
+        sx={socialDialogTitleSx}
       >
-        {config.title}
+        <Box aria-hidden="true" sx={platformIconTileSx}>
+          <PlatformIcon />
+        </Box>
+        <Typography component="span" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
+          {config.title}
+        </Typography>
       </DialogTitle>
 
       {/* ======================================================
@@ -324,7 +340,7 @@ const ConnectSocialAccountDialog = ({
 
       <DialogContent
         id="social-account-dialog-description"
-        sx={glassDialogContentSx}
+        sx={socialDialogContentSx}
       >
         {/* ====================================================
             INTRO
@@ -333,8 +349,8 @@ const ConnectSocialAccountDialog = ({
         <Typography
           variant="body2"
           sx={{
-            mb: 2.5,
-            color: "#657899",
+            mb: 2,
+            color: "#64748B",
             fontSize: "0.875rem",
             fontWeight: 600,
           }}
@@ -350,40 +366,20 @@ const ConnectSocialAccountDialog = ({
           sx={{
             display: "flex",
             flexDirection: "column",
-            gap: 2.5,
+            gap: 1.5,
           }}
         >
           {config.requirements.map((requirement, index) => (
             <Box
               key={requirement.title}
-              sx={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 1.5,
-                p: 1.5,
-                borderRadius: "15px",
-                ...glassDialogCardSx,
-              }}
+              sx={socialDialogRequirementCardSx}
             >
               {/* ==================================================
                   NUMBER
               ================================================== */}
 
               <Box
-                sx={{
-                  width: 28,
-                  height: 28,
-                  minWidth: 28,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "linear-gradient(145deg, #B78AF0, #6684E7)",
-                  color: "#fff",
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  boxShadow: "0 4px 10px rgba(91,103,197,.24), inset 0 1px 0 rgba(255,255,255,.42)",
-                }}
+                sx={socialDialogNumberSx}
               >
                 {index + 1}
               </Box>
@@ -432,17 +428,7 @@ const ConnectSocialAccountDialog = ({
 
         <Box
           sx={{
-            mt: 3,
-            px: 2,
-            py: 1.5,
-            borderRadius: "15px",
-            background: mode === "reconnect"
-              ? "linear-gradient(145deg, rgba(255,248,229,.94), rgba(255,255,255,.78))"
-              : "linear-gradient(145deg, rgba(229,241,255,.88), rgba(255,255,255,.78))",
-            border: mode === "reconnect"
-              ? "1px solid rgba(246,202,134,.62)"
-              : "1px solid rgba(193,216,248,.74)",
-            boxShadow: "0 4px 10px rgba(73,99,153,.06), inset 0 1px 0 rgba(255,255,255,.96)",
+            ...(mode === "reconnect" ? socialDialogReconnectInfoSx : socialDialogInfoSx),
           }}
         >
           <Typography
@@ -450,7 +436,7 @@ const ConnectSocialAccountDialog = ({
             sx={{
               fontSize: "0.8125rem",
               lineHeight: 1.6,
-              color: mode === "reconnect" ? "#865B20" : "#52698B",
+              color: mode === "reconnect" ? "#7C5B27" : "#475569",
             }}
           >
             {config.message}
@@ -463,7 +449,7 @@ const ConnectSocialAccountDialog = ({
       ====================================================== */}
 
       <DialogActions
-        sx={glassDialogActionsSx}
+        sx={socialDialogActionsSx}
       >
         {/* ====================================================
             CANCEL
@@ -474,7 +460,7 @@ const ConnectSocialAccountDialog = ({
           variant="outlined"
           onClick={handleClose}
           disabled={isLoading}
-          sx={{ minWidth: 90, ...glassDialogSecondaryButtonSx }}
+          sx={socialDialogSecondaryButtonSx}
         >
           Cancel
         </Button>
@@ -488,7 +474,7 @@ const ConnectSocialAccountDialog = ({
           variant="contained"
           onClick={handleContinue}
           disabled={isLoading}
-          sx={{ minWidth: 180, ...glassPrimaryButtonSx }}
+          sx={{ minWidth: { sm: 180 }, ...socialDialogPrimaryButtonSx }}
         >
           {isLoading ? config.loadingLabel : config.continueLabel}
         </Button>

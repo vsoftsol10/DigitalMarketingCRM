@@ -38,31 +38,31 @@ export default function CalendarSearch({
       sx={{
         width: {
           xs: "100%",
-          md: 250,
+          md: 240,
           lg: 280,
         },
 
         "& .MuiOutlinedInput-root": {
-          height: 48,
+          height: 42,
 
-          borderRadius: 999,
+          borderRadius: "12px",
 
           ...calendarGlassControlSx,
 
           "& fieldset": {
-            borderColor: "transparent",
+            borderColor: "#D7DFF0",
           },
 
           "&:hover fieldset": {
             borderColor:
-              "rgba(174,198,237,0.95)",
+              "#B8C7E7",
           },
 
           "&.Mui-focused fieldset": {
             borderColor:
-              "#79A8F6",
+              "#8A72E6",
             borderWidth: 1,
-            boxShadow: "0 0 0 3px rgba(91,143,236,0.12), inset 0 1px 0 #FFFFFF",
+            boxShadow: "0 0 0 3px rgba(111,93,236,0.11)",
           },
         },
 

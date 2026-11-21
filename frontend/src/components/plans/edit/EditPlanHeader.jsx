@@ -4,6 +4,7 @@ import { Box, Button, Stack, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { planSecondaryButtonSx } from "../plansGlassSx";
 
 export default function EditPlanHeader({ onBack }) {
   return (
@@ -27,9 +28,10 @@ export default function EditPlanHeader({ onBack }) {
       }}
     >
       <Stack
-        direction="row"
-        alignItems="flex-start"
+        direction={{ xs: "column", sm: "row" }}
+        alignItems={{ xs: "stretch", sm: "flex-start" }}
         justifyContent="space-between"
+        spacing={{ xs: 1.5, sm: 0 }}
         sx={{
           width: "100%",
           minWidth: 0,
@@ -49,15 +51,15 @@ export default function EditPlanHeader({ onBack }) {
               ...TYPOGRAPHY.pageTitle,
 
               fontSize: {
-                xs: "28px",
-                sm: "30px",
-                md: "32px",
+                xs: "25px",
+                sm: "28px",
+                md: "30px",
               },
 
               lineHeight: {
-                xs: "36px",
-                sm: "38px",
-                md: "40px",
+                xs: "32px",
+                sm: "36px",
+                md: "38px",
               },
 
               fontWeight: 700,
@@ -107,43 +109,12 @@ export default function EditPlanHeader({ onBack }) {
           }
           onClick={onBack}
           sx={{
+            ...planSecondaryButtonSx,
             flexShrink: 0,
-
-            height: 52,
-
-            minWidth: 112,
-
-            px: 2.25,
-
-            ml: 3,
-
+            minHeight: 46,
+            minWidth: { xs: "100%", sm: 112 },
+            ml: { xs: 0, sm: 3 },
             mt: 0.25,
-
-            borderRadius: 999,
-
-            borderColor: "rgba(255,255,255,0.95)",
-
-            color: "#203965",
-
-            background: "linear-gradient(145deg, rgba(255,255,255,0.9), rgba(233,243,255,0.82))",
-
-            fontSize: "15px",
-
-            fontWeight: 500,
-
-            lineHeight: "20px",
-
-            textTransform: "none",
-
-            boxShadow: "0 7px 16px rgba(70,106,172,0.1), inset 0 1px 0 #FFFFFF",
-
-            "&:hover": {
-              borderColor: "#B9CEF0",
-
-              background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)",
-
-              boxShadow: "0 8px 18px rgba(70,106,172,0.14), inset 0 1px 0 #FFFFFF",
-            },
           }}
         >
           Back

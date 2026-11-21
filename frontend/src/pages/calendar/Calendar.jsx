@@ -335,6 +335,17 @@ import postService from "../../services/post.service";
 
 import { DEFAULT_CALENDAR_FILTERS } from "../../constants/calendar/calendar.constants";
 
+const calendarStateSurfaceSx = {
+  border: "1px solid #DCE3F1",
+  background: "#FFFFFF",
+  boxShadow: "0 8px 20px rgba(54,76,132,0.07)",
+  "& > .MuiPaper-root": {
+    borderColor: "#DCE3F1",
+    borderRadius: "16px",
+    boxShadow: "none",
+  },
+};
+
 export default function Calendar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -784,7 +795,12 @@ export default function Calendar() {
   // ==========================================
 
   if (filterOptionsLoading) {
-    return <LoadingState page="Calendar" />;
+    return (
+      <LoadingState
+        page="Calendar"
+        sx={{ background: "linear-gradient(135deg, #F4F6FF 0%, #F3EEFF 100%)" }}
+      />
+    );
   }
 
   if (
@@ -799,6 +815,7 @@ export default function Calendar() {
     <Box
       sx={{
         width: "100%",
+        minWidth: 0,
       }}
     >
       {/* ========================================
@@ -809,17 +826,26 @@ export default function Calendar() {
 
       <Box
         sx={{
-          minHeight: 20,
+          minHeight: 24,
           display: "flex",
           justifyContent: "flex-end",
           alignItems: "center",
+          mb: 0.5,
         }}
       >
         {isBackgroundSyncing && (
           <Typography
             role="status"
             aria-live="polite"
-            sx={{ fontSize: 12, color: "text.secondary" }}
+            sx={{
+              px: 1.25,
+              py: 0.35,
+              borderRadius: "999px",
+              background: "#F1EBFF",
+              color: "#6741D9",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
           >
             Syncing...
           </Typography>
@@ -845,8 +871,8 @@ export default function Calendar() {
 
       <Box
         sx={{
-          mt: 1.5,
-          minHeight: 36,
+          mt: 1,
+          minHeight: 32,
           display: "flex",
           alignItems: "center",
         }}
@@ -857,6 +883,18 @@ export default function Calendar() {
             message={filterOptionsError}
             onRetry={filterOptionsLoading ? undefined : refreshFilterOptions}
             variant="inline"
+            sx={{
+              justifyContent: "flex-start",
+              py: 0.5,
+              "& > .MuiPaper-root": {
+                maxWidth: "none",
+                p: 1.25,
+                borderRadius: "12px",
+                borderColor: "#F3D6D6",
+                boxShadow: "none",
+                textAlign: "left",
+              },
+            }}
           />
         ) : filterOptionsLoading && hasLoadedEvents && !isInitialLoading && !isRefreshing ? (
           <LoadingSpinner size={16} ariaLabel="Loading calendar filters" />
@@ -869,7 +907,7 @@ export default function Calendar() {
 
       <Box
         sx={{
-          mt: 2,
+          mt: 1.5,
           position: "relative",
         }}
       >
@@ -878,7 +916,15 @@ export default function Calendar() {
         ====================================== */}
 
         {isInitialLoading && (
-          <LoadingState page="Calendar" variant="container" minHeight={300} />
+          <LoadingState
+            page="Calendar"
+            variant="container"
+            minHeight={300}
+            sx={{
+              ...calendarStateSurfaceSx,
+              borderRadius: { xs: "16px", sm: "18px" },
+            }}
+          />
         )}
 
         {/* ======================================
@@ -891,7 +937,11 @@ export default function Calendar() {
             message={error}
             onRetry={loading || isBackgroundSyncing ? undefined : refresh}
             variant="container"
-            sx={{ minHeight: 300 }}
+            sx={{
+              minHeight: 300,
+              ...calendarStateSurfaceSx,
+              borderRadius: { xs: "16px", sm: "18px" },
+            }}
           />
         )}
 
@@ -901,6 +951,16 @@ export default function Calendar() {
             message={error}
             onRetry={loading || isBackgroundSyncing ? undefined : refresh}
             variant="inline"
+            sx={{
+              justifyContent: "flex-start",
+              py: 1,
+              "& > .MuiPaper-root": {
+                maxWidth: "none",
+                p: 1.5,
+                borderRadius: "12px",
+                boxShadow: "none",
+              },
+            }}
           />
         )}
 
@@ -908,7 +968,11 @@ export default function Calendar() {
           <EmptyState
             title="No calendar events"
             description="There are no events to show for this month and these filters."
-            sx={{ minHeight: 300 }}
+            sx={{
+              minHeight: 300,
+              ...calendarStateSurfaceSx,
+              borderRadius: { xs: "16px", sm: "18px" },
+            }}
           />
         )}
 
@@ -929,6 +993,10 @@ export default function Calendar() {
           <LoadingState
             label="UPDATING CALENDAR..."
             variant="overlay"
+            sx={{
+              background: "rgba(248,250,255,0.72)",
+              backdropFilter: "blur(3px)",
+            }}
           />
         )}
       </Box>
@@ -976,7 +1044,7 @@ export default function Calendar() {
       />
 
       <ConfirmDialog
-        glass
+        crmStyle
         destructive={confirmation?.type === "delete"}
         open={Boolean(confirmation)}
         title={

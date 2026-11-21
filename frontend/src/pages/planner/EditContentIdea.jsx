@@ -109,15 +109,16 @@ import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Alert, Divider, Paper } from "@mui/material";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 
 import EditContentIdeaHeader from "../../components/planner/edit/EditContentIdeaHeader";
 import IdeaDetailsForm from "../../components/planner/create/IdeaDetailsForm";
 import ContentDetailsForm from "../../components/planner/create/ContentDetailsForm";
 import EditContentIdeaFooter from "../../components/planner/edit/EditContentIdeaFooter";
-import LoadingState from "../../components/ui/LoadingState";
-import ErrorState from "../../components/ui/ErrorState";
-import EmptyState from "../../components/ui/EmptyState";
-import { glassFormDividerSx, glassFormPaperSx } from "../../components/ui/form/glassFormSx";
+import PlannerLoadingState from "../../components/planner/PlannerLoadingState";
+import PlannerErrorState from "../../components/planner/PlannerErrorState";
+import PlannerEmptyState from "../../components/planner/PlannerEmptyState";
+import { plannerFormDividerSx, plannerFormPaperSx } from "../../components/planner/plannerUiSx";
 
 import { contentIdeaSchema } from "../../validation/contentIdea.schema";
 import { contentIdeaDefaultValues } from "../../constants/forms/contentIdeaDefaultValues";
@@ -299,7 +300,7 @@ export default function EditContentIdea() {
   // ============================================================
 
   if ((loading && !ideaLoadedSuccessfully) || (loadingOrganizations && !organizationsLoadedSuccessfully)) {
-    return <LoadingState page="Edit Content Idea" />;
+    return <PlannerLoadingState page="Edit Content Idea" />;
   }
 
   // ============================================================
@@ -307,16 +308,17 @@ export default function EditContentIdea() {
   // ============================================================
 
   if (ideaLoadError && !ideaLoadedSuccessfully) {
-    return <ErrorState message={ideaLoadError} onRetry={loadIdea} variant="page" />;
+    return <PlannerErrorState message={ideaLoadError} onRetry={loadIdea} variant="page" />;
   }
 
   if (organizationsLoadError && !ideaLoadedSuccessfully) {
-    return <ErrorState message={organizationsLoadError} onRetry={loadOrganizations} variant="page" />;
+    return <PlannerErrorState message={organizationsLoadError} onRetry={loadOrganizations} variant="page" />;
   }
 
   if (!loading && !loadingOrganizations && !ideaLoadError && !organizationsLoadError && organizationsLoadedSuccessfully && organizations.length === 0) {
     return (
-      <EmptyState
+      <PlannerEmptyState
+        icon={<BusinessOutlinedIcon />}
         title="No organizations available"
         description="An organization is required to edit this content idea."
         actionLabel="Create organization"
@@ -331,26 +333,26 @@ export default function EditContentIdea() {
       <form onSubmit={methods.handleSubmit(onSubmit)}>
         <EditContentIdeaHeader />
 
-        {loading && <LoadingState label="UPDATING CONTENT IDEA..." variant="inline" />}
-        {loadingOrganizations && <LoadingState label="UPDATING ORGANIZATIONS..." variant="inline" />}
+        {loading && <PlannerLoadingState label="UPDATING CONTENT IDEA..." variant="inline" />}
+        {loadingOrganizations && <PlannerLoadingState label="UPDATING ORGANIZATIONS..." variant="inline" />}
         {ideaLoadError && (
-          <ErrorState message={ideaLoadError} onRetry={loadIdea} variant="inline" />
+          <PlannerErrorState message={ideaLoadError} onRetry={loadIdea} variant="inline" />
         )}
         {organizationsLoadError && (
-          <ErrorState message={organizationsLoadError} onRetry={loadOrganizations} variant="inline" />
+          <PlannerErrorState message={organizationsLoadError} onRetry={loadOrganizations} variant="inline" />
         )}
-        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 3, borderRadius: "12px", border: "1px solid #FECACA" }}>{error}</Alert>}
 
         <Paper
           elevation={0}
           sx={{
-            ...glassFormPaperSx,
+            ...plannerFormPaperSx,
             maxWidth: "980px",
           }}
         >
           <IdeaDetailsForm organizations={organizations} />
 
-          <Divider sx={glassFormDividerSx} />
+          <Divider sx={plannerFormDividerSx} />
 
           <ContentDetailsForm />
 

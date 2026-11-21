@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box, Button, Menu, MenuItem, Typography } from "@mui/material";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import InsightsFilters from "./InsightsFilters";
-import { insightsGlassControlSx } from "./insightsGlassSx";
+import { insightsMenuPaperSx, insightsSecondaryButtonSx } from "./insightsGlassSx";
 
 export default function InsightsHeader({
   organizations,
@@ -34,19 +34,19 @@ export default function InsightsHeader({
           xl: "minmax(390px, 1fr) minmax(740px, max-content)",
         },
         alignItems: { xs: "stretch", lg: "center" },
-        gap: { xs: 1.5, xl: 0.5 },
+        gap: { xs: 1.5, xl: 1.5 },
       }}
     >
       <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: 32, fontWeight: 750, color: "#12264D", lineHeight: 1.15, letterSpacing: "-0.03em" }}>
+        <Typography sx={{ fontSize: { xs: 28, sm: 32 }, fontWeight: 700, color: "#102347", lineHeight: 1.15, letterSpacing: "-0.03em" }}>
           Insights
         </Typography>
-        <Typography sx={{ mt: 0.65, color: "#647A9B", fontSize: 14.5, lineHeight: 1.5, whiteSpace: { xs: "normal", xl: "nowrap" }, overflowWrap: { xs: "break-word", xl: "normal" } }}>
+        <Typography sx={{ mt: 0.65, color: "#667792", fontSize: 14, lineHeight: 1.5, whiteSpace: { xs: "normal", xl: "nowrap" }, overflowWrap: { xs: "break-word", xl: "normal" } }}>
           Track your social media performance and engagement.
         </Typography>
       </Box>
 
-      <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, xl: 0.5 }, width: { xs: "100%", xl: "auto" }, minWidth: 0, justifyContent: { xs: "flex-start", xl: "flex-end" }, flexWrap: { xs: "wrap", xl: "nowrap" } }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: { xs: "100%", xl: "auto" }, minWidth: 0, justifyContent: { xs: "flex-start", xl: "flex-end" }, flexWrap: { xs: "wrap", xl: "nowrap" } }}>
       <InsightsFilters
         organizations={organizations}
         organizationId={organizationId}
@@ -71,15 +71,13 @@ export default function InsightsHeader({
             flex: "0 0 auto",
             whiteSpace: "nowrap",
             px: 1.5,
-            ...insightsGlassControlSx,
-            borderRadius: 999,
-            color: "#203965",
+            ...insightsSecondaryButtonSx,
+            color: "#475569",
             fontSize: 13,
             fontWeight: 650,
             textTransform: "none",
-            "& .MuiButton-startIcon": { color: "#607AA5" },
-            "&:hover": { borderColor: "#AFC8F0", background: "linear-gradient(145deg, #FFFFFF 0%, #DFECFF 100%)", boxShadow: "0 8px 16px rgba(70,106,172,0.17)" },
-            "&.Mui-disabled": { borderColor: "rgba(255,255,255,0.9)", background: "rgba(237,244,254,0.75)", color: "#94A3B8" },
+            "& .MuiButton-startIcon": { color: "#64748B" },
+            "&.Mui-disabled": { background: "#F8FAFC" },
             "&.Mui-disabled .MuiButton-startIcon": { color: "#A8B5C6" },
           }}
         >
@@ -91,11 +89,7 @@ export default function InsightsHeader({
           onClose={() => setExportAnchor(null)}
           sx={{
             "& .MuiPaper-root": {
-              mt: 0.7,
-              border: "1px solid rgba(255,255,255,0.96)",
-              borderRadius: 2.5,
-              background: "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(233,243,255,0.98))",
-              boxShadow: "0 14px 30px rgba(58,94,155,0.18), inset 0 1px 0 #FFFFFF",
+              ...insightsMenuPaperSx,
             },
           }}
         >

@@ -31,7 +31,7 @@ export default function MetricAvailability({
         component="span"
         sx={{
           display: "inline-block",
-          color: status === "provider_error" ? "error.main" : "text.secondary",
+          color: status === "provider_error" ? "error.main" : "#64748B",
           fontSize: compact ? 12 : 13,
           fontWeight: 500,
           lineHeight: 1.4,
@@ -43,7 +43,7 @@ export default function MetricAvailability({
       {detail && (
         <Typography
           component="span"
-          sx={{ display: "block", mt: 0.25, color: "text.secondary", fontSize: 11 }}
+          sx={{ display: "block", mt: 0.25, color: "#7B8798", fontSize: 11 }}
         >
           {detail}
         </Typography>

@@ -12,6 +12,7 @@ import PlatformContentTypeRow from "./PlatformContentTypeRow";
 import { getPlatformStates } from "../../../utils/post/platformCapability.utils";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { postAlertSx } from "./postUiSx";
 
 export default function ContentTypeSection({ platforms = [] }) {
   const {
@@ -109,10 +110,7 @@ export default function ContentTypeSection({ platforms = [] }) {
         <Alert
           severity="info"
           icon={<InfoOutlinedIcon />}
-          sx={{
-            borderRadius: 2,
-            fontSize: 13,
-          }}
+          sx={postAlertSx}
         >
           Upload media first to see the content types available for each
           selected platform.

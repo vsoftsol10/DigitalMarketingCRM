@@ -14,7 +14,12 @@ import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ReportDocument from "./ReportDocument";
 import reportsService from "../../services/reports.service";
-import { insightsGlassControlSx, insightsGlassSurfaceSx } from "../insights/insightsGlassSx";
+import {
+  insightsAlertSx,
+  insightsGlassSurfaceSx,
+  insightsPrimaryButtonSx,
+  insightsSecondaryButtonSx,
+} from "../insights/insightsGlassSx";
 
 const REPORT_WIDTH = 1200;
 const REPORT_HEIGHT = 760;
@@ -191,63 +196,63 @@ export default function InsightsExportDialog({ open, mode, scope, organization, 
       maxWidth="md"
       sx={{
         "& .MuiDialog-paper": {
-          width: "calc(100% - 64px)",
+          width: { xs: "calc(100% - 24px)", sm: "calc(100% - 48px)" },
           maxWidth: 540,
           maxHeight: "min(90vh, 900px)",
           ...insightsGlassSurfaceSx,
-          borderRadius: 0,
-          boxShadow: "0 24px 56px rgba(43,72,124,0.24), inset 0 1px 0 #FFFFFF",
+          borderRadius: "20px",
+          boxShadow: "0 16px 36px rgba(31,41,80,.16)",
           overflow: "hidden",
         },
       }}
     >
-      <DialogTitle sx={{ px: { xs: 2, sm: 3 }, py: 2.5, pr: 7, color: "#18385f", background: "linear-gradient(120deg, rgba(237,229,255,0.96) 0%, rgba(231,242,255,0.98) 100%)", borderBottom: "1px solid rgba(190,211,242,0.72)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.96)" }}>
+      <DialogTitle sx={{ px: { xs: 2, sm: 3 }, py: 2.25, pr: 7, color: "#172554", background: "#FFFFFF", borderBottom: "1px solid #E5E9F1" }}>
         <Stack direction="row" spacing={1.5} alignItems="flex-start">
-          <Box sx={{ width: 42, height: 42, flex: "0 0 auto", borderRadius: "50%", display: "grid", placeItems: "center", background: "linear-gradient(145deg, #F0E9FF, #DFE8FF)", color: "#6E5BD1", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 5px 12px rgba(95,105,190,0.16), inset 0 1px 0 #FFFFFF" }}>
+          <Box sx={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: "11px", display: "grid", placeItems: "center", background: "#F3F0FF", color: "#6941D9", border: "1px solid #E7E1FF" }}>
             <DownloadOutlinedIcon sx={{ fontSize: 23 }} />
           </Box>
           <Box sx={{ minWidth: 0, pt: 0.1 }}>
-            <Typography component="div" sx={{ color: "#203765", fontSize: { xs: 18, sm: 20 }, fontWeight: 750, lineHeight: 1.3 }}>
+            <Typography component="div" sx={{ color: "#172554", fontSize: { xs: 18, sm: 20 }, fontWeight: 700, lineHeight: 1.3 }}>
               {mode === "add_ads" ? "Add Data & Export" : "Export Current Data"}
             </Typography>
-            <Typography sx={{ mt: 0.75, color: "#6b809a", fontSize: 14, lineHeight: 1.55, fontWeight: 400 }}>
+            <Typography sx={{ mt: 0.75, color: "#667792", fontSize: 14, lineHeight: 1.55, fontWeight: 400 }}>
               Export currently available CRM data for {organizationLabel}, {accountLabel} ({platformLabel}), and {durationLabel}.
             </Typography>
           </Box>
         </Stack>
-        <IconButton aria-label="Close export dialog" onClick={() => { setAdsRows([]); onClose(); }} disabled={generating} sx={{ position: "absolute", right: 12, top: 12, width: 38, height: 38, color: "#5b6f89", border: "1px solid rgba(194,214,246,0.74)", background: "rgba(255,255,255,0.58)", "&:hover": { background: "rgba(219,235,255,0.86)" } }}><CloseIcon /></IconButton>
+        <IconButton aria-label="Close export dialog" onClick={() => { setAdsRows([]); onClose(); }} disabled={generating} sx={{ position: "absolute", right: 12, top: 12, width: 38, height: 38, color: "#64748B", border: "1px solid #D8DEEA", borderRadius: "10px", background: "#FFFFFF", "&:hover": { background: "#F8FAFC" } }}><CloseIcon /></IconButton>
       </DialogTitle>
-      <DialogContent dividers sx={{ px: { xs: 2, sm: 3 }, py: 2.25, borderColor: "rgba(190,211,242,0.72)", background: "linear-gradient(180deg, rgba(248,252,255,0.97), rgba(232,242,255,0.94))", overflowY: "auto", overflowX: "hidden" }}>
+      <DialogContent dividers sx={{ px: { xs: 2, sm: 3 }, py: 2.25, borderColor: "#E5E9F1", background: "#FFFFFF", overflowY: "auto", overflowX: "hidden" }}>
         <Stack spacing={2}>
-          <Box sx={{ minHeight: 132, px: 2, py: 1.75, border: "1px solid rgba(255,255,255,0.92)", borderRadius: 3, background: "linear-gradient(145deg, rgba(255,255,255,0.88), rgba(230,241,255,0.82))", boxShadow: "0 6px 14px rgba(70,106,172,0.1), inset 0 1px 0 #FFFFFF", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-            <Box sx={{ width: 48, height: 48, mb: 0.75, borderRadius: "50%", display: "grid", placeItems: "center", background: "linear-gradient(145deg, #DFF9F0, #CFF2E6)", color: "#079C7D", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 5px 12px rgba(24,167,135,.16), inset 0 1px 0 #FFFFFF" }}>
+          <Box sx={{ minHeight: 132, px: 2, py: 1.75, border: "1px solid #E5E9F1", borderRadius: "14px", background: "#F8FAFC", boxShadow: "none", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+            <Box sx={{ width: 44, height: 44, mb: 0.75, borderRadius: "11px", display: "grid", placeItems: "center", background: "#ECFDF3", color: "#039855", border: "1px solid #D1FADF" }}>
               <CheckRoundedIcon sx={{ fontSize: 32 }} />
             </Box>
-            <Typography sx={{ color: "#244366", fontSize: 14, lineHeight: 1.5, fontWeight: 700 }}>
+            <Typography sx={{ color: "#172B4D", fontSize: 14, lineHeight: 1.5, fontWeight: 700 }}>
               {exportComplete ? "Completed" : "Exporting..."}
             </Typography>
-            <Typography sx={{ mt: 0.25, color: "#8093aa", fontSize: 12.5, lineHeight: 1.5 }}>
+            <Typography sx={{ mt: 0.25, color: "#667792", fontSize: 12.5, lineHeight: 1.5 }}>
               {exportComplete ? "Your report is ready to generate." : "Your file will be downloaded shortly."}
             </Typography>
           </Box>
 
           <Box>
             <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 0.75 }}>
-              <Box sx={{ width: 24, height: 24, flex: "0 0 auto", borderRadius: "50%", display: "grid", placeItems: "center", background: "linear-gradient(145deg, #A46AF5, #5B83F4)", color: "#fff", boxShadow: "0 4px 9px rgba(91,116,228,.22)" }}>
+              <Box sx={{ width: 24, height: 24, flex: "0 0 auto", borderRadius: "8px", display: "grid", placeItems: "center", background: "#F3F0FF", color: "#6941D9", border: "1px solid #E7E1FF" }}>
                 <InfoOutlinedIcon sx={{ fontSize: 14 }} />
               </Box>
-              <Typography sx={{ color: "#244366", fontSize: 14, fontWeight: 700 }}>This report includes</Typography>
+              <Typography sx={{ color: "#172B4D", fontSize: 14, fontWeight: 700 }}>This report includes</Typography>
             </Stack>
-            <Box component="ul" sx={{ m: 0, pl: 5.5, color: "#647A9B", fontSize: 13, lineHeight: 1.75, "& li::marker": { color: "#7297D2" } }}>
+            <Box component="ul" sx={{ m: 0, pl: 5.5, color: "#667792", fontSize: 13, lineHeight: 1.75, "& li::marker": { color: "#7B61E8" } }}>
               {includedItems.map((item) => <Box component="li" key={item} sx={{ pl: 0.25 }}>{item}</Box>)}
             </Box>
           </Box>
 
-          {error && <Alert severity="error" sx={{ borderRadius: 2.5, border: "1px solid rgba(255,255,255,0.9)", backgroundImage: "linear-gradient(145deg, rgba(255,255,255,0.45), rgba(232,242,255,0.38))", boxShadow: "0 5px 12px rgba(70,106,172,0.08)" }}>{error}</Alert>}
+          {error && <Alert severity="error" sx={insightsAlertSx}>{error}</Alert>}
 
-          {mode === "add_ads" && <Box sx={{ pt: 1.5, borderTop: "1px solid rgba(190,211,242,0.72)" }}>
-            <Typography variant="subtitle2" fontWeight={700} mb={1} sx={{ color: "#19385f" }}>Meta Ads (optional, up to 5 rows)</Typography>
-            <Box sx={{ width: "100%", overflowX: "hidden", border: "1px solid rgba(205,222,248,0.86)", borderRadius: 2.5, overflow: "hidden", background: "linear-gradient(145deg, rgba(255,255,255,0.92), rgba(236,245,255,0.86))", boxShadow: "0 4px 10px rgba(70,106,172,0.08), inset 0 1px 0 #FFFFFF" }}>
+          {mode === "add_ads" && <Box sx={{ pt: 1.5, borderTop: "1px solid #E5E9F1" }}>
+            <Typography variant="subtitle2" fontWeight={700} mb={1} sx={{ color: "#172B4D" }}>Meta Ads (optional, up to 5 rows)</Typography>
+            <Box sx={{ width: "100%", overflowX: "hidden", border: "1px solid #E1E6F0", borderRadius: "12px", overflow: "hidden", background: "#FFFFFF", boxShadow: "none" }}>
               <Table
                 size="small"
                 sx={{
@@ -256,10 +261,10 @@ export default function InsightsExportDialog({ open, mode, scope, organization, 
                   borderCollapse: "separate",
                   borderSpacing: 0,
                   m: 0,
-                  "& .MuiTableCell-root": { px: { xs: 0.5, sm: 1 }, borderBottom: "1px solid rgba(190,211,242,0.58)", borderRight: "1px solid rgba(190,211,242,0.42)" },
+                  "& .MuiTableCell-root": { px: { xs: 0.5, sm: 1 }, borderBottom: "1px solid #E5E9F1", borderRight: "1px solid #EEF1F6" },
                   "& .MuiTableCell-root:last-child": { borderRight: 0 },
-                  "& .MuiTableHead .MuiTableCell-root": { py: 0.9, color: "#435b78", background: "linear-gradient(180deg, rgba(225,238,255,0.9), rgba(239,247,255,0.92))", fontSize: 12, lineHeight: 1.4, fontWeight: 700 },
-                  "& .MuiTableBody .MuiTableCell-root": { py: 0.65, verticalAlign: "middle", bgcolor: "rgba(255,255,255,0.52)" },
+                  "& .MuiTableHead .MuiTableCell-root": { py: 0.9, color: "#475569", background: "#F8FAFC", fontSize: 12, lineHeight: 1.4, fontWeight: 700 },
+                  "& .MuiTableBody .MuiTableCell-root": { py: 0.65, verticalAlign: "middle", bgcolor: "#FFFFFF" },
                   "& .MuiTableBody .MuiTableRow:last-child .MuiTableCell-root": { borderBottom: 0 },
                 }}
               >
@@ -283,8 +288,8 @@ export default function InsightsExportDialog({ open, mode, scope, organization, 
                       inputProps={{ "aria-label": `Meta Ads date ${index + 1}` }}
                       sx={{
                         minWidth: 0,
-                        "& .MuiOutlinedInput-root": { height: 34, borderRadius: 0, bgcolor: "transparent", px: 0.25, boxShadow: "none", "& fieldset": { border: 0 }, "&.Mui-focused": { boxShadow: "inset 0 -1px #2f6feb" }, "&.Mui-error": { boxShadow: "inset 0 -1px #d32f2f" } },
-                        "& .MuiInputBase-input": { minWidth: 0, px: 0.75, fontSize: 12, color: "#344b68" },
+                        "& .MuiOutlinedInput-root": { height: 34, borderRadius: 0, bgcolor: "transparent", px: 0.25, boxShadow: "none", "& fieldset": { border: 0 }, "&.Mui-focused": { boxShadow: "inset 0 -1px #7B61E8" }, "&.Mui-error": { boxShadow: "inset 0 -1px #DC2626" } },
+                        "& .MuiInputBase-input": { minWidth: 0, px: 0.75, fontSize: 12, color: "#334155" },
                         "& .MuiFormHelperText-root": { minHeight: 18, mx: 0, mt: 0.5, lineHeight: "18px", whiteSpace: "nowrap", fontSize: 10.5 },
                       }}
                     />
@@ -301,25 +306,25 @@ export default function InsightsExportDialog({ open, mode, scope, organization, 
                       inputProps={{ min: 0, step: "any", "aria-label": `Total leads ${index + 1}` }}
                       sx={{
                         minWidth: 0,
-                        "& .MuiOutlinedInput-root": { height: 34, borderRadius: 0, bgcolor: "transparent", px: 0.25, boxShadow: "none", "& fieldset": { border: 0 }, "&.Mui-focused": { boxShadow: "inset 0 -1px #2f6feb" }, "&.Mui-error": { boxShadow: "inset 0 -1px #d32f2f" } },
-                        "& .MuiInputBase-input": { minWidth: 0, px: 0.75, fontSize: 12, color: "#344b68" },
+                        "& .MuiOutlinedInput-root": { height: 34, borderRadius: 0, bgcolor: "transparent", px: 0.25, boxShadow: "none", "& fieldset": { border: 0 }, "&.Mui-focused": { boxShadow: "inset 0 -1px #7B61E8" }, "&.Mui-error": { boxShadow: "inset 0 -1px #DC2626" } },
+                        "& .MuiInputBase-input": { minWidth: 0, px: 0.75, fontSize: 12, color: "#334155" },
                         "& .MuiFormHelperText-root": { minHeight: 18, mx: 0, mt: 0.5, lineHeight: "18px", whiteSpace: "nowrap", fontSize: 10.5 },
                       }}
                     />
                   </TableCell>
                   <TableCell align="center" sx={{ px: 0.25 }}>
-                    <IconButton aria-label={`Remove Meta Ads row ${index + 1}`} onClick={() => setAdsRows((rows) => rows.filter((_, rowIndex) => rowIndex !== index))} sx={{ mt: 0.25, color: "#71839a" }}><DeleteOutlinedIcon /></IconButton>
+                    <IconButton aria-label={`Remove Meta Ads row ${index + 1}`} onClick={() => setAdsRows((rows) => rows.filter((_, rowIndex) => rowIndex !== index))} sx={{ mt: 0.25, color: "#64748B", borderRadius: "9px", "&:hover": { color: "#C93248", background: "#FFF7F8" } }}><DeleteOutlinedIcon /></IconButton>
                   </TableCell>
                 </TableRow>)}</TableBody>
               </Table>
             </Box>
-            {adsRows.length < 5 && <Button startIcon={<AddCircleOutlinedIcon />} onClick={() => setAdsRows((rows) => [...rows, { date: "", total_leads: "" }])} sx={{ mt: 0.5, textTransform: "none" }}>Add More Data</Button>}
+            {adsRows.length < 5 && <Button startIcon={<AddCircleOutlinedIcon />} onClick={() => setAdsRows((rows) => [...rows, { date: "", total_leads: "" }])} sx={{ ...insightsSecondaryButtonSx, mt: 0.75 }}>Add More Data</Button>}
           </Box>}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.75, borderTop: "1px solid rgba(190,211,242,0.72)", background: "linear-gradient(180deg, rgba(248,252,255,0.98), rgba(230,241,255,0.96))", gap: 1 }}>
-        <Button onClick={() => { setAdsRows([]); onClose(); }} disabled={generating} sx={{ textTransform: "none", color: "#526780", border: "1px solid rgba(194,214,246,0.86)", borderRadius: 999, px: 2, background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)", boxShadow: "0 4px 10px rgba(70,106,172,0.08)" }}>Cancel</Button>
-        <Button variant="contained" onClick={generateReport} disabled={!exportComplete || !adsValid} sx={{ minHeight: 42, border: "1px solid rgba(255,255,255,0.74)", borderRadius: 999, px: 2.25, py: 1, background: "linear-gradient(105deg, #9872ED 0%, #5D86EA 60%, #39AFE0 100%)", boxShadow: "0 7px 16px rgba(78,112,207,0.25), inset 0 1px 0 rgba(255,255,255,0.38)", textTransform: "none", fontWeight: 650, "&:hover": { background: "linear-gradient(105deg, #875EE0 0%, #4F76DE 60%, #2A9FD0 100%)", boxShadow: "0 10px 20px rgba(78,112,207,0.32)" } }}>
+      <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.75, borderTop: "1px solid #E5E9F1", background: "#FFFFFF", gap: 1 }}>
+        <Button onClick={() => { setAdsRows([]); onClose(); }} disabled={generating} sx={insightsSecondaryButtonSx}>Cancel</Button>
+        <Button variant="contained" onClick={generateReport} disabled={!exportComplete || !adsValid} sx={{ ...insightsPrimaryButtonSx, px: 2.25, py: 1 }}>
           {generating ? "Generating…" : "Generate Report"}
         </Button>
       </DialogActions>
@@ -331,27 +336,27 @@ export default function InsightsExportDialog({ open, mode, scope, organization, 
       maxWidth="xl"
       sx={{
         "& .MuiDialog-paper": {
-          width: "calc(100vw - 64px)",
-          height: "calc(100dvh - 64px)",
-          maxWidth: "min(1536px, calc(100vw - 64px))",
-          maxHeight: "calc(100dvh - 64px)",
+          width: { xs: "calc(100vw - 24px)", sm: "calc(100vw - 48px)" },
+          height: { xs: "calc(100dvh - 24px)", sm: "calc(100dvh - 48px)" },
+          maxWidth: "min(1536px, calc(100vw - 48px))",
+          maxHeight: "calc(100dvh - 24px)",
           display: "flex",
           flexDirection: "column",
           ...insightsGlassSurfaceSx,
-          borderRadius: 0,
-          boxShadow: "0 24px 56px rgba(43,72,124,0.24), inset 0 1px 0 #FFFFFF",
+          borderRadius: "20px",
+          boxShadow: "0 16px 36px rgba(31,41,80,.16)",
         },
       }}
     >
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: "#203765", background: "linear-gradient(120deg, rgba(237,229,255,0.96), rgba(231,242,255,0.98))", borderBottom: "1px solid rgba(190,211,242,0.72)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.96)" }}>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: "#172554", background: "#FFFFFF", borderBottom: "1px solid #E5E9F1" }}>
         Report Preview
-        <IconButton aria-label="Close report preview" onClick={() => setViewerOpen(false)} sx={{ width: 38, height: 38, border: "1px solid rgba(194,214,246,0.74)", background: "rgba(255,255,255,0.58)", "&:hover": { background: "rgba(219,235,255,0.86)" } }}><CloseIcon /></IconButton>
+        <IconButton aria-label="Close report preview" onClick={() => setViewerOpen(false)} sx={{ width: 38, height: 38, color: "#64748B", border: "1px solid #D8DEEA", borderRadius: "10px", background: "#FFFFFF", "&:hover": { background: "#F8FAFC" } }}><CloseIcon /></IconButton>
       </DialogTitle>
-      <DialogContent dividers sx={{ flex: "1 1 auto", minHeight: 0, display: "flex", overflow: "hidden", p: { xs: 1, sm: 2 }, borderColor: "rgba(190,211,242,0.72)", background: "linear-gradient(180deg, rgba(248,252,255,0.97), rgba(232,242,255,0.94))" }}><Box sx={{ width: "100%", height: "100%", minHeight: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(205,222,248,0.82)", borderRadius: 3, background: "linear-gradient(145deg, rgba(235,244,255,0.9), rgba(250,253,255,0.94))", boxShadow: "inset 0 3px 8px rgba(83,116,171,0.08)" }}>
+      <DialogContent dividers sx={{ flex: "1 1 auto", minHeight: 0, display: "flex", overflow: "hidden", p: { xs: 1, sm: 2 }, borderColor: "#E5E9F1", background: "#F8FAFC" }}><Box sx={{ width: "100%", height: "100%", minHeight: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #E1E6F0", borderRadius: "14px", background: "#FFFFFF", boxShadow: "none" }}>
         {imageUrl && <img src={imageUrl} alt="Generated Insights report" style={{ display: "block", width: "auto", height: "auto", maxWidth: "100%", maxHeight: "100%", objectFit: "contain", margin: "0 auto", boxShadow: "0 3px 16px #182b4a22" }} />}
       </Box></DialogContent>
-      <DialogActions sx={{ p: 2, borderTop: "1px solid rgba(190,211,242,0.72)", background: "linear-gradient(180deg, rgba(248,252,255,0.98), rgba(230,241,255,0.96))" }}>
-        <Button component="a" href={imageUrl || undefined} download="insights-report.png" startIcon={<DownloadOutlinedIcon />} variant="contained" disabled={!imageUrl} sx={{ ...insightsGlassControlSx, minHeight: 42, borderRadius: 999, px: 2.25, color: "#244366", textTransform: "none", "&:hover": { background: "linear-gradient(145deg, #FFFFFF 0%, #DFECFF 100%)", boxShadow: "0 8px 16px rgba(70,106,172,0.17)" } }}>Download PNG</Button>
+      <DialogActions sx={{ p: 2, borderTop: "1px solid #E5E9F1", background: "#FFFFFF" }}>
+        <Button component="a" href={imageUrl || undefined} download="insights-report.png" startIcon={<DownloadOutlinedIcon />} variant="contained" disabled={!imageUrl} sx={{ ...insightsPrimaryButtonSx, px: 2.25 }}>Download PNG</Button>
       </DialogActions>
     </Dialog>
   </>;

@@ -19,6 +19,7 @@ import { useState } from "react";
 
 import { PLATFORM_COLORS } from "../../../constants/platforms/platformColors";
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { postMenuPaperSx } from "./postUiSx";
 
 // ============================================================
 // PLATFORM ICONS
@@ -243,14 +244,12 @@ export default function PlatformContentTypeRow({
 
             border: "1px solid",
 
-            borderColor: invalidSelection ? "error.main" : "rgba(255,255,255,.94)",
+            borderColor: invalidSelection ? "error.main" : "#D8DEEA",
 
-            borderRadius: "14px",
+            borderRadius: "12px",
 
-            background:
-              "linear-gradient(145deg, rgba(250,252,255,.9), rgba(237,244,255,.78))",
-            boxShadow:
-              "0 3px 8px rgba(75,96,151,.07), inset 0 1px 0 rgba(255,255,255,.96)",
+            background: "#FFFFFF",
+            boxShadow: "none",
 
             textAlign: "left",
 
@@ -259,7 +258,7 @@ export default function PlatformContentTypeRow({
             "&:hover": {
               borderColor: invalidSelection ? "error.main" : "primary.main",
 
-              bgcolor: "rgba(232,241,255,.92)",
+              bgcolor: "#F8FAFC",
             },
 
             "&:focus-visible": {
@@ -338,19 +337,7 @@ export default function PlatformContentTypeRow({
           }}
           slotProps={{
             paper: {
-              sx: {
-                mt: 0.75,
-
-                minWidth: 260,
-
-                maxHeight: 320,
-
-                border: "1px solid rgba(255,255,255,.94)",
-                borderRadius: "15px",
-                background:
-                  "linear-gradient(145deg, rgba(250,252,255,.98), rgba(237,244,255,.96))",
-                boxShadow: "0 12px 24px rgba(75,96,151,.16)",
-              },
+              sx: { ...postMenuPaperSx, minWidth: 260, maxHeight: 320 },
             },
           }}
         >

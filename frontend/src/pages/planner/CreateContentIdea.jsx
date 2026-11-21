@@ -70,6 +70,7 @@
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Paper, Divider } from "@mui/material";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -77,10 +78,10 @@ import CreateContentIdeaHeader from "../../components/planner/create/CreateConte
 import IdeaDetailsForm from "../../components/planner/create/IdeaDetailsForm";
 import ContentDetailsForm from "../../components/planner/create/ContentDetailsForm";
 import CreateContentIdeaFooter from "../../components/planner/create/CreateContentIdeaFooter";
-import LoadingState from "../../components/ui/LoadingState";
-import ErrorState from "../../components/ui/ErrorState";
-import EmptyState from "../../components/ui/EmptyState";
-import { glassFormDividerSx, glassFormPaperSx } from "../../components/ui/form/glassFormSx";
+import PlannerLoadingState from "../../components/planner/PlannerLoadingState";
+import PlannerErrorState from "../../components/planner/PlannerErrorState";
+import PlannerEmptyState from "../../components/planner/PlannerEmptyState";
+import { plannerFormDividerSx, plannerFormPaperSx } from "../../components/planner/plannerUiSx";
 
 import { contentIdeaSchema } from "../../validation/contentIdea.schema";
 import { contentIdeaDefaultValues } from "../../constants/forms/contentIdeaDefaultValues";
@@ -188,16 +189,17 @@ export default function CreateContentIdea() {
   // ============================================================
 
   if (loadingOrganizations && !organizationsLoadedSuccessfully) {
-    return <LoadingState page="Create Content Idea" />;
+    return <PlannerLoadingState page="Create Content Idea" />;
   }
 
   if (organizationError && !organizationsLoadedSuccessfully) {
-    return <ErrorState message={organizationError} onRetry={loadOrganizations} variant="page" />;
+    return <PlannerErrorState message={organizationError} onRetry={loadOrganizations} variant="page" />;
   }
 
   if (!loadingOrganizations && !organizationError && organizationsLoadedSuccessfully && organizations.length === 0) {
     return (
-      <EmptyState
+      <PlannerEmptyState
+        icon={<BusinessOutlinedIcon />}
         title="No organizations available"
         description="Create an organization before adding a content idea."
         actionLabel="Create organization"
@@ -213,10 +215,10 @@ export default function CreateContentIdea() {
         <CreateContentIdeaHeader />
 
         {loadingOrganizations && (
-          <LoadingState label="UPDATING ORGANIZATIONS..." variant="inline" />
+          <PlannerLoadingState label="UPDATING ORGANIZATIONS..." variant="inline" />
         )}
         {organizationError && (
-          <ErrorState
+          <PlannerErrorState
             message={organizationError}
             onRetry={loadOrganizations}
             variant="inline"
@@ -229,6 +231,7 @@ export default function CreateContentIdea() {
             sx={{
               mb: 3,
               borderRadius: "12px",
+              border: "1px solid #FECACA",
             }}
           >
             {submitError}
@@ -238,13 +241,13 @@ export default function CreateContentIdea() {
         <Paper
           elevation={0}
           sx={{
-            ...glassFormPaperSx,
+            ...plannerFormPaperSx,
             maxWidth: "980px",
           }}
         >
           <IdeaDetailsForm organizations={organizations} />
 
-          <Divider sx={glassFormDividerSx} />
+          <Divider sx={plannerFormDividerSx} />
 
           <ContentDetailsForm />
 

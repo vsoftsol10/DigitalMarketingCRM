@@ -8,7 +8,7 @@ export default function SettingsHeader() {
       sx={{
         width: "100%",
         minWidth: 0,
-        maxWidth: 1200,
+        maxWidth: 960,
         mx: "auto",
       }}
     >
@@ -17,16 +17,16 @@ export default function SettingsHeader() {
         sx={{
           ...TYPOGRAPHY.pageTitle,
 
-          color: "#12264D",
+          color: "#102347",
 
           fontSize: {
             xs: "28px",
-            sm: "30px",
+            sm: "32px",
           },
 
           lineHeight: {
             xs: "36px",
-            sm: "38px",
+            sm: "40px",
           },
 
           fontWeight: 700,
@@ -42,7 +42,7 @@ export default function SettingsHeader() {
 
           mt: 0.5,
 
-          color: "#647A9B",
+          color: "#667792",
         }}
       >
         Manage account and application settings.

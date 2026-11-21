@@ -184,11 +184,11 @@ export default function SocialAccountEmptyState({
             boxShadow: "none",
 
             "&:hover": {
-              borderColor: "#2563EB",
+              borderColor: "#7B61E8",
 
-              color: "#2563EB",
+              color: "#6941D9",
 
-              bgcolor: "#F8FBFF",
+              bgcolor: "#F5F2FF",
 
               boxShadow: "none",
             },

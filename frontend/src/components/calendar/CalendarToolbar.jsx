@@ -31,7 +31,7 @@ export default function CalendarToolbar({
 
         ...calendarGlassSurfaceSx,
 
-        borderRadius: 4,
+        borderRadius: { xs: "16px", sm: "18px" },
 
         px: {
           xs: 1.5,
@@ -39,7 +39,7 @@ export default function CalendarToolbar({
           md: 2.5,
         },
 
-        py: 1.5,
+        py: { xs: 1.25, sm: 1.5 },
 
         boxSizing: "border-box",
 
@@ -130,7 +130,8 @@ export default function CalendarToolbar({
               md: "flex-end",
             },
 
-            gap: 1.25,
+            gap: 1,
+            flexWrap: { xs: "wrap", md: "nowrap" },
           }}
         >
           <CalendarSearch
@@ -149,26 +150,26 @@ export default function CalendarToolbar({
             }
             onClick={onFiltersChange}
             sx={{
-              height: 44,
+              height: 42,
 
-              minWidth: 112,
+              minWidth: { xs: 100, sm: 112 },
 
               px: 2,
 
               flexShrink: 0,
 
-              borderRadius: 999,
-              borderColor: "rgba(255,255,255,0.96)",
-              background: "linear-gradient(145deg, #FFFFFF 0%, #EAF3FF 100%)",
-              boxShadow: "0 5px 12px rgba(70,106,172,0.12), inset 0 1px 0 #FFFFFF",
-              color: "text.primary",
+              borderRadius: "12px",
+              borderColor: "#D7DFF0",
+              background: "#FFFFFF",
+              boxShadow: "0 2px 6px rgba(54,76,132,0.04)",
+              color: "#405778",
 
               ...TYPOGRAPHY.button,
 
               "&:hover": {
-                bgcolor: "rgba(220,235,255,0.9)",
-                borderColor: "rgba(174,198,237,0.9)",
-                boxShadow: "0 7px 16px rgba(70,106,172,0.16)",
+                bgcolor: "#F8FAFF",
+                borderColor: "#B8C7E7",
+                boxShadow: "0 4px 10px rgba(54,76,132,0.08)",
               },
             }}
           >

@@ -7,7 +7,7 @@ import { SOCIAL_PLATFORMS } from "../../../constants/social/socialPlatforms";
 import ConnectedAccountsList from "./ConnectedAccountsList";
 
 import ConnectSocialAccountCard from "./ConnectSocialAccountCard";
-import overviewGlassCardSx from "../overview/overviewGlassCardSx";
+import { organizationCardSx } from "../organizationUiSx";
 
 import useSocialAccounts from "../../../hooks/social/useSocialAccounts";
 
@@ -219,7 +219,7 @@ export default function SocialAccountsSection({
   // ============================================================
 
   const overviewSectionSx = {
-    ...overviewGlassCardSx,
+    ...organizationCardSx,
     p: { xs: 2, sm: 2.5 },
   };
 

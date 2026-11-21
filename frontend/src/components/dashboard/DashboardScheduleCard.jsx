@@ -70,18 +70,17 @@ export default function DashboardScheduleCard({ schedule = [], onCreatePost }) {
       sx={{
         position: "relative",
         overflow: "hidden",
-        border: "1px solid rgba(255,255,255,.9)",
-        borderRadius: "24px",
-        height: { xs: 440, lg: 390 },
-        background: "linear-gradient(145deg, rgba(250,252,255,.98) 0%, rgba(242,247,255,.96) 58%, rgba(237,244,255,.92) 100%)",
-        boxShadow: "0 16px 30px rgba(75,96,151,.14), 0 3px 8px rgba(79,99,154,.09), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 5px rgba(112,127,177,.08)",
-        backdropFilter: "blur(16px)",
+        border: "1px solid #DDE3F1",
+        borderRadius: "20px",
+        height: { xs: 440, lg: 450 },
+        background: "#FFFFFF",
+        boxShadow: "0 4px 12px rgba(41,55,103,.045)",
         "&::before": {
           content: "\"\"",
           position: "absolute",
           inset: 4,
           borderRadius: "20px",
-          border: "1px solid rgba(255,255,255,.78)",
+          border: "none",
           pointerEvents: "none",
         },
       }}
@@ -137,13 +136,13 @@ export default function DashboardScheduleCard({ schedule = [], onCreatePost }) {
             sx={{
               color: "#64748B",
               flexShrink: 0,
-              borderRadius: "999px",
-          background: "linear-gradient(145deg, rgba(247,250,255,.98), rgba(228,237,253,.94))",
-          border: "1px solid rgba(255,255,255,.96)",
+              borderRadius: "10px",
+              background: "#FFFFFF",
+              border: "1px solid #E2E8F0",
               px: 1.5,
               py: 1,
               cursor: "pointer",
-              boxShadow: "0 6px 13px rgba(75,96,151,.12), inset 0 2px 2px rgba(255,255,255,.98), inset 0 -1px 2px rgba(94,111,159,.06)",
+              boxShadow: "none",
             }}
           >
             <CalendarTodayOutlinedIcon
@@ -180,14 +179,14 @@ export default function DashboardScheduleCard({ schedule = [], onCreatePost }) {
         >
           <Box
             sx={{
-              width: 78,
-              height: 78,
+              width: 58,
+              height: 58,
 
               borderRadius: "50%",
 
-              background: "linear-gradient(145deg, rgba(238,245,255,.98), rgba(222,234,252,.95))",
-              border: "3px solid rgba(255,255,255,.96)",
-              boxShadow: "0 10px 20px rgba(83,105,160,.18), 0 2px 5px rgba(76,97,150,.1), inset 0 2px 3px rgba(255,255,255,.98), inset 0 -3px 5px rgba(105,123,176,.12)",
+              background: "#F1F5F9",
+              border: "none",
+              boxShadow: "none",
 
               display: "flex",
               justifyContent: "center",
@@ -198,9 +197,9 @@ export default function DashboardScheduleCard({ schedule = [], onCreatePost }) {
           >
             <CalendarTodayOutlinedIcon
               sx={{
-                fontSize: 30,
-                color: "#7184AD",
-                filter: "drop-shadow(0 1px 1px rgba(56,76,125,.16))",
+                fontSize: 24,
+                color: "#8292AE",
+                filter: "none",
               }}
             />
           </Box>
@@ -239,11 +238,11 @@ export default function DashboardScheduleCard({ schedule = [], onCreatePost }) {
               height: 36,
               px: 2,
               borderRadius: "999px",
-              color: "#5D6FC5",
-              borderColor: "rgba(93,111,197,.3)",
-              bgcolor: "rgba(255,255,255,.72)",
-              boxShadow: "0 4px 9px rgba(75,96,151,.08), inset 0 1px 1px rgba(255,255,255,.96)",
-              "&:hover": { bgcolor: "rgba(255,255,255,.96)", borderColor: "rgba(93,111,197,.45)" },
+              color: "#4F46E5",
+              borderColor: "#C7D2FE",
+              bgcolor: "#FFFFFF",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "#F8FAFF", borderColor: "#A5B4FC" },
 
               textTransform: "none",
 

@@ -21,7 +21,7 @@ import ErrorState from "../../components/ui/ErrorState";
 import OrganizationDetailsForm from "../../components/organization/create/OrganizationDetailsForm";
 
 import PrimaryContactForm from "../../components/organization/create/PrimaryContactForm";
-import { glassFormDividerSx, glassFormPaperSx } from "../../components/ui/form/glassFormSx";
+import { glassFormDividerSx, glassFormPaperSx } from "../../components/organization/organizationUiSx";
 
 // ============================================================
 // VALIDATION / CONSTANTS

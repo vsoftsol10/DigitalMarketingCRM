@@ -54,7 +54,7 @@ export default function CalendarNavigation({
       direction="row"
       alignItems="center"
       spacing={{
-        xs: 0.75,
+        xs: 0.5,
         sm: 1,
       }}
       sx={{
@@ -79,8 +79,8 @@ export default function CalendarNavigation({
         onClick={onPrevious}
         aria-label="Previous month"
         sx={{
-          width: 44,
-          height: 44,
+          width: { xs: 36, sm: 42 },
+          height: { xs: 36, sm: 42 },
 
           ...calendarGlassControlSx,
           borderRadius: "50%",
@@ -90,9 +90,9 @@ export default function CalendarNavigation({
           flexShrink: 0,
 
           "&:hover": {
-            bgcolor: "#E4F0FF",
-            borderColor: "#B5CEF4",
-            boxShadow: "0 7px 14px rgba(70,106,172,0.18)",
+            bgcolor: "#F5F2FF",
+            borderColor: "#C9BDF7",
+            color: "#6D45D9",
           },
         }}
       >
@@ -106,19 +106,19 @@ export default function CalendarNavigation({
       <Button
         onClick={onToday}
         sx={{
-          height: 44,
+          height: 42,
 
           minWidth: {
-            xs: 70,
+            xs: 60,
             sm: 78,
           },
 
           px: {
-            xs: 1.5,
+            xs: 1.25,
             sm: 2,
           },
 
-          borderRadius: 999,
+          borderRadius: "12px",
 
           color: "text.primary",
 
@@ -129,8 +129,8 @@ export default function CalendarNavigation({
           ...TYPOGRAPHY.button,
 
           "&:hover": {
-            bgcolor: "#E4F0FF",
-            boxShadow: "0 7px 14px rgba(70,106,172,0.16)",
+            bgcolor: "#F8FAFF",
+            borderColor: "#B8C7E7",
           },
         }}
       >
@@ -145,8 +145,8 @@ export default function CalendarNavigation({
         onClick={onNext}
         aria-label="Next month"
         sx={{
-          width: 44,
-          height: 44,
+          width: { xs: 36, sm: 42 },
+          height: { xs: 36, sm: 42 },
 
           ...calendarGlassControlSx,
           borderRadius: "50%",
@@ -156,9 +156,9 @@ export default function CalendarNavigation({
           flexShrink: 0,
 
           "&:hover": {
-            bgcolor: "#E4F0FF",
-            borderColor: "#B5CEF4",
-            boxShadow: "0 7px 14px rgba(70,106,172,0.18)",
+            bgcolor: "#F5F2FF",
+            borderColor: "#C9BDF7",
+            color: "#6D45D9",
           },
         }}
       >
@@ -198,15 +198,15 @@ export default function CalendarNavigation({
             />
           }
           sx={{
-            height: 44,
+            height: 42,
 
             minWidth: {
-              xs: 130,
+            xs: 118,
               sm: 148,
             },
 
             px: {
-              xs: 1.75,
+            xs: 1.25,
               sm: 2,
             },
 
@@ -214,11 +214,11 @@ export default function CalendarNavigation({
 
             border: "1px solid",
 
-            borderRadius: 999,
+            borderRadius: "12px",
 
             ...calendarGlassControlSx,
-            borderColor: monthPickerOpen ? "#7CAAF4" : "rgba(255,255,255,0.96)",
-            bgcolor: monthPickerOpen ? "#E5F0FF" : undefined,
+            borderColor: monthPickerOpen ? "#9B83EB" : undefined,
+            bgcolor: monthPickerOpen ? "#F5F2FF" : undefined,
 
             color: "text.primary",
 
@@ -227,8 +227,8 @@ export default function CalendarNavigation({
             ...TYPOGRAPHY.button,
 
             "&:hover": {
-              bgcolor: "#E4F0FF",
-              borderColor: "#B5CEF4",
+              bgcolor: "#F5F2FF",
+              borderColor: "#C9BDF7",
             },
           }}
         >
@@ -259,8 +259,8 @@ export default function CalendarNavigation({
               p: 2,
 
               ...calendarGlassSurfaceSx,
-              borderRadius: 3.5,
-              boxShadow: "0 18px 38px rgba(58,94,155,0.2), inset 0 1px 0 #FFFFFF",
+              borderRadius: "16px",
+              boxShadow: "0 16px 34px rgba(54,76,132,0.14)",
 
               boxSizing: "border-box",
             }}
@@ -278,7 +278,7 @@ export default function CalendarNavigation({
               }}
             >
               <Typography
-                sx={{ ...TYPOGRAPHY.cardTitle, color: "#203765", fontWeight: 750 }}
+                sx={{ ...TYPOGRAPHY.cardTitle, color: "#142D59", fontWeight: 700 }}
               >
                 {currentYear}
               </Typography>
@@ -316,18 +316,17 @@ export default function CalendarNavigation({
 
                         borderRadius: 2,
 
-                        color: selected ? "#1458C6" : "text.primary",
+                        color: selected ? "#6741D9" : "text.primary",
 
-                        bgcolor: selected ? "#DDEBFF" : "rgba(255,255,255,0.28)",
+                        bgcolor: selected ? "#F1EBFF" : "#FFFFFF",
                         border: "1px solid",
-                        borderColor: selected ? "#AFC9F3" : "transparent",
-                        boxShadow: selected ? "0 4px 10px rgba(64,107,178,0.14), inset 0 1px 0 #FFFFFF" : "none",
+                        borderColor: selected ? "#D8CCFF" : "#E7EAF3",
+                        boxShadow: selected ? "0 2px 6px rgba(92,65,190,0.08)" : "none",
 
                         ...TYPOGRAPHY.button,
 
                         "&:hover": {
-                          bgcolor:
-                            "rgba(221,235,255,0.82)",
+                          bgcolor: "#F8F7FF",
                         },
                       }}
                     >

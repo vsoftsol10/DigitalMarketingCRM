@@ -1,4 +1,4 @@
-import { Stack, Typography } from "@mui/material";
+import { Button, Stack, Typography } from "@mui/material";
 
 import { useFormContext } from "react-hook-form";
 
@@ -10,6 +10,7 @@ import MediaPreviewGrid from "./MediaPreviewGrid";
 import useMediaUpload from "../../../../hooks/post/useMediaUpload";
 
 import { TYPOGRAPHY } from "../../../../theme/typography";
+import { postDangerButtonSx, postSecondaryButtonSx } from "../postUiSx";
 
 export default function MediaUploadSection({
   config,
@@ -139,45 +140,23 @@ export default function MediaUploadSection({
               pt: 0.25,
             }}
           >
-            <button
+            <Button
               type="button"
-              // onClick={handleBrowse}
               onClick={() => handleBrowse("ALL")}
-              style={{
-                height: 40,
-                padding: "0 18px",
-                border: "1px solid rgba(255,255,255,.96)",
-                borderRadius: "13px",
-                background: "linear-gradient(145deg, #FFFFFF, #EFF5FF)",
-                boxShadow: "0 4px 9px rgba(75,96,151,.1), inset 0 1px 0 #FFFFFF",
-                color: "#526887",
-                fontFamily: "inherit",
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              variant="outlined"
+              sx={{ ...postSecondaryButtonSx, px: 2.25, fontSize: 13, minHeight: 40 }}
             >
               Add More
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
               onClick={clearMedia}
-              style={{
-                height: 40,
-                padding: "0 12px",
-                border: "1px solid rgba(255,255,255,.7)",
-                borderRadius: "13px",
-                background: "rgba(238,244,255,.55)",
-                color: "#647693",
-                fontFamily: "inherit",
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              variant="outlined"
+              sx={{ ...postDangerButtonSx, px: 1.75, fontSize: 13, minHeight: 40 }}
             >
               Clear All
-            </button>
+            </Button>
           </Stack>
         )}
       </Stack>

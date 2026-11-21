@@ -486,9 +486,9 @@ function PriceItem({ label, value, color }) {
       <Typography
         sx={{
           mt: 0.25,
-          fontSize: "20px",
+          fontSize: "18px",
           fontWeight: 700,
-          lineHeight: "28px",
+          lineHeight: "24px",
           color,
           whiteSpace: "nowrap",
         }}
@@ -503,7 +503,7 @@ export default function PlanCard({ plan, onSelect }) {
   const isActive = plan.status === "active";
 
   const limits = plan?.limits || {};
-  const tone = planTone(plan?.type);
+  const tone = planTone();
 
   return (
     <Paper
@@ -512,21 +512,20 @@ export default function PlanCard({ plan, onSelect }) {
       onClick={() => onSelect(plan)}
       sx={{
         width: "100%",
-        minHeight: 450,
+        minHeight: 350,
 
         position: "relative",
 
-        p: { xs: 2.25, sm: 2.75 },
+        p: { xs: 1.75, sm: 2.25 },
 
         display: "flex",
         flexDirection: "column",
 
         border: `1px solid ${tone.border}`,
-        borderRadius: "22px",
+        borderRadius: { xs: "16px", sm: "18px" },
 
         background: tone.surface,
-        backdropFilter: "blur(16px)",
-        boxShadow: "0 16px 30px rgba(73,95,157,0.14), inset 0 1px 0 rgba(255,255,255,0.98)",
+        boxShadow: "0 8px 20px rgba(54,76,132,0.07)",
 
         cursor: "pointer",
 
@@ -536,8 +535,8 @@ export default function PlanCard({ plan, onSelect }) {
           "border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease",
 
         "&:hover": {
-          borderColor: "rgba(255,255,255,1)",
-          boxShadow: "0 20px 38px rgba(73,95,157,0.2), inset 0 1px 0 #FFFFFF",
+          borderColor: "#C5D2EB",
+          boxShadow: "0 12px 24px rgba(54,76,132,0.13)",
           transform: "translateY(-2px)",
         },
       }}
@@ -564,8 +563,8 @@ export default function PlanCard({ plan, onSelect }) {
         >
           <Box
             sx={{
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
 
               flexShrink: 0,
 
@@ -576,8 +575,7 @@ export default function PlanCard({ plan, onSelect }) {
               borderRadius: "12px",
 
               background: tone.iconSurface,
-              border: "1px solid rgba(255,255,255,0.96)",
-              boxShadow: "0 6px 13px rgba(77,98,154,0.12), inset 0 1px 0 #FFFFFF",
+              border: "1px solid #E4E8F4",
             }}
           >
             <CreditCardOutlinedIcon
@@ -628,8 +626,8 @@ export default function PlanCard({ plan, onSelect }) {
           sx={{
             position: "absolute",
 
-            top: 20,
-            right: 22,
+            top: { xs: 16, sm: 20 },
+            right: { xs: 16, sm: 20 },
 
             height: 28,
 
@@ -657,7 +655,7 @@ export default function PlanCard({ plan, onSelect }) {
 
       <Typography
         sx={{
-          mt: 2,
+          mt: 1.25,
 
           fontSize: "14px",
           fontWeight: 400,
@@ -682,22 +680,21 @@ export default function PlanCard({ plan, onSelect }) {
 
       <Box
         sx={{
-          mt: 2.25,
+          mt: 1.25,
 
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
 
           gap: 2,
 
-          p: 1.75,
+          p: 1.25,
 
-          borderRadius: "14px",
+          borderRadius: "12px",
 
           background: tone.tint,
 
-          border: "1px solid rgba(255,255,255,0.88)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.94)",
-          "& > :nth-of-type(2)": { borderLeft: "1px solid rgba(145,166,202,0.24)", pl: 2 },
+          border: "1px solid #E6EAF4",
+          "& > :nth-of-type(2)": { borderLeft: "1px solid #E0E5F0", pl: 1.5 },
         }}
       >
         <PriceItem label="Monthly" value={plan.monthly_price} color={tone.accent} />
@@ -716,7 +713,7 @@ export default function PlanCard({ plan, onSelect }) {
 
           backgroundColor: "#E2E8F0",
 
-          my: 2,
+          my: 1.25,
         }}
       />
 
@@ -731,7 +728,7 @@ export default function PlanCard({ plan, onSelect }) {
           gridTemplateColumns: "1fr 1fr",
 
           columnGap: 2,
-          rowGap: 1.15,
+          rowGap: 0.75,
         }}
       >
         <LimitItem
@@ -797,7 +794,7 @@ export default function PlanCard({ plan, onSelect }) {
         spacing={0.75}
         sx={{
           mt: "auto",
-          pt: 2,
+          pt: 1.25,
         }}
       >
         <AutoAwesomeOutlinedIcon

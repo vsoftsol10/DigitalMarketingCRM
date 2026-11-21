@@ -99,11 +99,9 @@ export default function SubscriptionHistoryItem({
         sx={{
           p: 2,
           borderRadius: "18px",
-          border: "1px solid rgba(255,255,255,.88)",
-          background:
-            "linear-gradient(145deg, rgba(250,252,255,.92) 0%, rgba(242,247,255,.86) 100%)",
-          boxShadow:
-            "0 8px 18px rgba(75,96,151,.09), 0 2px 5px rgba(79,99,154,.05), inset 0 1px 0 rgba(255,255,255,.96)",
+          border: "1px solid #E5E9F1",
+          background: "#FFFFFF",
+          boxShadow: "0 2px 8px rgba(41,55,103,.04)",
         }}
       >
         <Stack direction="row" spacing={2} alignItems="flex-start">
@@ -114,13 +112,11 @@ export default function SubscriptionHistoryItem({
 
             borderRadius: "12px",
 
-            background:
-              "linear-gradient(145deg, rgba(238,245,255,.98), rgba(222,234,252,.9))",
+            background: "#F1F5FF",
 
-            border: "1px solid rgba(255,255,255,.9)",
+            border: "1px solid #E1E8FA",
 
-            boxShadow:
-              "0 4px 10px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.96)",
+            boxShadow: "none",
 
             display: "flex",
             alignItems: "center",
@@ -132,7 +128,7 @@ export default function SubscriptionHistoryItem({
           <CalendarTodayOutlinedIcon
             sx={{
               fontSize: 19,
-              color: "#17294F",
+              color: "#4E67D8",
             }}
           />
         </Box>

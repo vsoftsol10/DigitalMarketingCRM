@@ -27,9 +27,8 @@ export default function ProfileSettings({
           py: {
             xs: 2.5,
             sm: 3,
-            md: 3.5,
           },
-          px: { xs: 2, sm: 3.25, md: 4 },
+          px: { xs: 2, sm: 3 },
         }}
       >
         <ProfileForm

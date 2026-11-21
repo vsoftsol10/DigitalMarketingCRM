@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import { Box, Grid } from "@mui/material";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -34,12 +34,14 @@ import { buildCreatePostPayload } from "../../utils/post/createPostPayload";
 import { getPlatformStates } from "../../utils/post/platformCapability.utils";
 
 import { CREATE_POST } from "../../data/post";
-import LoadingState from "../../components/ui/LoadingState";
-import ErrorState from "../../components/ui/ErrorState";
+import PostLoadingState from "../../components/post/create/PostLoadingState";
+import PostErrorState from "../../components/post/create/PostErrorState";
+import CreatePostHeader from "../../components/post/create/CreatePostHeader";
 import OrganizationRequiredEmptyState from "../../components/organization/OrganizationRequiredEmptyState";
 
 export default function CreatePost() {
   const location = useLocation();
+  const navigate = useNavigate();
   const plannerPrefill = location.state?.plannerPrefill;
   const hasAppliedPlannerBasePrefill = useRef(false);
   const hasAppliedPlannerAccountsPrefill = useRef(false);
@@ -466,12 +468,12 @@ export default function CreatePost() {
   );
 
   if (isFetchingOrganizations) {
-    return <LoadingState page="Create Post" />;
+    return <PostLoadingState page="Create Post" />;
   }
 
   if (organizationLoadError && !hasValidOrganizationsResponse) {
     return (
-      <ErrorState
+      <PostErrorState
         title="Unable to load organizations"
         message={organizationLoadError}
         onRetry={isFetchingOrganizations ? undefined : refetchOrganizations}
@@ -482,7 +484,7 @@ export default function CreatePost() {
 
   if (!hasValidOrganizationsResponse) {
     return (
-      <ErrorState
+      <PostErrorState
         title="Unable to load organizations"
         message="Organization data was not returned."
         onRetry={isFetchingOrganizations ? undefined : refetchOrganizations}
@@ -494,7 +496,7 @@ export default function CreatePost() {
   if (organizations.length === 0) {
     if (organizationLoadError) {
       return (
-        <ErrorState
+        <PostErrorState
           title="Unable to load Create Post"
           message={organizationLoadError}
           onRetry={isFetchingOrganizations ? undefined : refetchOrganizations}
@@ -503,12 +505,12 @@ export default function CreatePost() {
       );
     }
 
-    return <OrganizationRequiredEmptyState />;
+    return <OrganizationRequiredEmptyState onAction={() => navigate("/organizations/new")} />;
   }
 
   if (uploadPolicyLoadError && !hasUploadPolicy) {
     return (
-      <ErrorState
+      <PostErrorState
         title="Unable to load upload settings"
         message={uploadPolicyLoadError}
         onRetry={isFetchingMediaUploadPolicy ? undefined : refetchMediaUploadPolicy}
@@ -518,7 +520,7 @@ export default function CreatePost() {
   }
 
   if (isLoadingMediaUploadPolicy && !hasUploadPolicy) {
-    return <LoadingState page="Create Post" />;
+    return <PostLoadingState page="Create Post" />;
   }
 
   // ============================================================
@@ -533,14 +535,14 @@ export default function CreatePost() {
         onSubmit={handleSubmit(handleCreatePost, handleValidationError)}
       >
         {organizationLoadError && hasValidOrganizationsResponse && (
-          <ErrorState
+          <PostErrorState
             message={organizationLoadError}
             onRetry={isFetchingOrganizations ? undefined : refetchOrganizations}
             variant="inline"
           />
         )}
         {uploadPolicyLoadError && hasUploadPolicy && (
-          <ErrorState
+          <PostErrorState
             title="Unable to refresh upload settings"
             message={uploadPolicyLoadError}
             onRetry={isFetchingMediaUploadPolicy ? undefined : refetchMediaUploadPolicy}
@@ -548,12 +550,13 @@ export default function CreatePost() {
           />
         )}
         {isFetchingOrganizations && hasValidOrganizationsResponse && !organizationLoadError && (
-          <LoadingState label="UPDATING ORGANIZATIONS..." variant="inline" />
+          <PostLoadingState label="UPDATING ORGANIZATIONS..." variant="inline" />
         )}
         {isFetchingMediaUploadPolicy && hasUploadPolicy && !uploadPolicyLoadError && (
-          <LoadingState label="UPDATING UPLOAD SETTINGS..." variant="inline" />
+          <PostLoadingState label="UPDATING UPLOAD SETTINGS..." variant="inline" />
         )}
-        <Grid container spacing={4} alignItems="flex-start">
+        <CreatePostHeader showBack={false} />
+        <Grid container spacing={{ xs: 2.5, md: 3 }} alignItems="flex-start">
           {/* ==================================================
               LEFT
           ================================================== */}
@@ -568,7 +571,7 @@ export default function CreatePost() {
               sx={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 4,
+                gap: { xs: 2.5, md: 3 },
               }}
             >
               {/* ==============================================
@@ -656,7 +659,7 @@ export default function CreatePost() {
 
                 flexDirection: "column",
 
-                gap: 3,
+                gap: 2.5,
               }}
             >
               {/* ==============================================

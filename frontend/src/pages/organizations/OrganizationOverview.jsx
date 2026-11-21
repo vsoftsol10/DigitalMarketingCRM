@@ -1286,7 +1286,7 @@ import instagramService from "../../services/social/instagram.service";
 
 import OverviewHeader from "../../components/organization/overview/OverviewHeader";
 import OverviewLayout from "../../components/organization/overview/OverviewLayout";
-import overviewGlassCardSx from "../../components/organization/overview/overviewGlassCardSx";
+import { organizationCardSx } from "../../components/organization/organizationUiSx";
 
 import OrganizationProfileCard from "../../components/organization/overview/cards/OrganizationProfileCard";
 import BrandInformationCard from "../../components/organization/overview/cards/BrandInformationCard";
@@ -2619,7 +2619,7 @@ export default function OrganizationOverview() {
       <Box
         sx={{
           "& .MuiCard-root, & .MuiPaper-root": {
-            ...overviewGlassCardSx,
+            ...organizationCardSx,
           },
           "& .MuiDivider-root": {
             borderColor: "rgba(146,168,201,.24)",
@@ -2704,7 +2704,7 @@ export default function OrganizationOverview() {
       />
 
       <ConfirmDialog
-        glass
+        crmStyle
         open={socialDisconnectOpen}
         title="Disconnect social account"
         message="Are you sure you want to disconnect"
@@ -2733,7 +2733,7 @@ export default function OrganizationOverview() {
       ====================================================== */}
 
       <ConfirmDialog
-        glass
+        crmStyle
         open={deleteOpen}
         title="Delete organization"
         message="Are you sure you want to delete"

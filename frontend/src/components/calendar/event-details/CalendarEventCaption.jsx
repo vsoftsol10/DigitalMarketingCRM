@@ -18,8 +18,8 @@ export default function CalendarEventCaption({
       sx={{
         width: "100%",
         minWidth: 0,
-        mt: 2.5,
-        pt: 2.5,
+        mt: 2,
+        pt: 2,
         borderTop: "1px solid",
         borderColor: "divider",
       }}
@@ -28,7 +28,7 @@ export default function CalendarEventCaption({
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        sx={{ mb: 1.5 }}
+        sx={{ mb: 1.25 }}
       >
         <Stack
           direction="row"
@@ -72,12 +72,12 @@ export default function CalendarEventCaption({
           pl: 2,
           pr: 1.5,
           py: 1.5,
-          borderRadius: 2,
-          background: "linear-gradient(145deg, rgba(229,240,255,0.86), rgba(248,252,255,0.88))",
-          border: "1px solid rgba(202,220,248,0.8)",
-          boxShadow: "inset 0 2px 5px rgba(83,116,171,0.07), 0 1px 0 rgba(255,255,255,0.94)",
+          borderRadius: "12px",
+          background: "#F8FAFF",
+          border: "1px solid #E3E8F2",
+          boxShadow: "none",
           borderLeft: "3px solid",
-          borderLeftColor: "#95B7EC",
+          borderLeftColor: "#8A72E6",
           boxSizing: "border-box",
         }}
       >

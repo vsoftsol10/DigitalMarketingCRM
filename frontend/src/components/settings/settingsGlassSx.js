@@ -1,45 +1,71 @@
 export const settingsGlassCardSx = {
   width: "100%",
   minWidth: 0,
-  border: "1px solid rgba(255,255,255,0.94)",
-  borderRadius: "24px",
-  background:
-    "linear-gradient(120deg, rgba(247,251,255,0.96) 0%, rgba(247,248,255,0.94) 58%, rgba(255,242,250,0.92) 100%)",
-  backdropFilter: "blur(16px)",
-  boxShadow:
-    "0 16px 32px rgba(75,96,151,0.13), 0 3px 8px rgba(79,99,154,0.07), inset 0 1px 0 rgba(255,255,255,0.98)",
+  border: "1px solid #DDE3F1",
+  borderRadius: "20px",
+  background: "#FFFFFF",
+  boxShadow: "0 4px 12px rgba(41,55,103,.045)",
   boxSizing: "border-box",
 };
 
 export const settingsFieldSx = {
   minWidth: 0,
   "& .MuiOutlinedInput-root": {
-    minHeight: 48,
+    minHeight: 52,
     borderRadius: "12px",
-    background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(247,250,255,0.92))",
-    "& fieldset": { borderColor: "rgba(175,192,221,0.58)" },
-    "&:hover fieldset": { borderColor: "rgba(123,157,218,0.72)" },
-    "&.Mui-focused fieldset": { borderColor: "#7D91F3" },
-    "&.Mui-disabled": { backgroundColor: "rgba(255,255,255,0.62)" },
+    background: "#FFFFFF",
+    "& fieldset": { borderColor: "#D8DEEA" },
+    "&:hover fieldset": { borderColor: "#B8C3D8" },
+    "&.Mui-focused fieldset": {
+      borderColor: "#7B61E8",
+      borderWidth: 1,
+      boxShadow: "0 0 0 3px rgba(123,97,232,.1)",
+    },
+    "&.Mui-disabled": { backgroundColor: "#F8FAFC" },
   },
   "& .MuiInputBase-input": {
-    color: "#34496D",
+    color: "#334155",
     minWidth: 0,
   },
-  "& .MuiInputLabel-root": { color: "#7183A1" },
-  "& .MuiFormHelperText-root": { ml: 0, color: "#8192AE" },
+  "& .MuiInputLabel-root": { color: "#64748B" },
+  "& .MuiFormHelperText-root": { ml: 0, color: "#7B8798" },
 };
 
 export const settingsPrimaryButtonSx = {
   minWidth: 136,
-  height: 44,
+  minHeight: 46,
   px: 2.5,
-  borderRadius: 999,
-  background: "linear-gradient(105deg, #9358F2 0%, #5578F5 58%, #2C9BEB 100%)",
-  boxShadow: "0 9px 18px rgba(106,91,224,0.2), inset 0 1px 0 rgba(255,255,255,0.42)",
+  borderRadius: "14px",
+  background: "linear-gradient(110deg, #8B4BF5 0%, #3977F6 100%)",
+  boxShadow: "0 5px 12px rgba(83,75,196,.18)",
   fontWeight: 600,
   textTransform: "none",
   "&:hover": {
-    background: "linear-gradient(105deg, #8549E9 0%, #496AEF 58%, #228CE1 100%)",
+    background: "linear-gradient(110deg, #7D3CEB 0%, #2F6EEA 100%)",
+    boxShadow: "0 7px 15px rgba(83,75,196,.23)",
   },
+  "&:focus-visible": { outline: "2px solid #7E8FE8", outlineOffset: 3 },
+  "&.Mui-disabled": { color: "#FFFFFF", background: "#A9A0DE", boxShadow: "none" },
+};
+
+export const settingsSecondaryButtonSx = {
+  minHeight: 40,
+  px: 1.75,
+  border: "1px solid #D8DEEA",
+  borderRadius: "12px",
+  background: "#FFFFFF",
+  color: "#475569",
+  boxShadow: "none",
+  textTransform: "none",
+  fontWeight: 600,
+  "&:hover": { borderColor: "#B9C4D8", background: "#F8FAFC", boxShadow: "none" },
+  "&:focus-visible": { outline: "2px solid #7E8FE8", outlineOffset: 2 },
+  "&.Mui-disabled": { color: "#94A3B8", borderColor: "#E5E9F1" },
+};
+
+export const settingsErrorAlertSx = {
+  border: "1px solid #FECACA",
+  borderRadius: "12px",
+  background: "#FEF2F2",
+  color: "#991B1B",
 };

@@ -49,14 +49,14 @@ export default function QuickActionIcon({
   return (
     <Box
       sx={{
-        width: 44,
-        height: 44,
+        width: 40,
+        height: 40,
 
         borderRadius: "12px",
 
-        background: `linear-gradient(145deg, ${config.background}, rgba(255,255,255,.76))`,
-        border: "1px solid rgba(255,255,255,.92)",
-        boxShadow: "0 5px 10px rgba(76,98,154,.12), inset 0 2px 2px rgba(255,255,255,.96), inset 0 -1px 2px rgba(93,112,162,.08)",
+        background: config.background,
+        border: "1px solid #F1F3F8",
+        boxShadow: "none",
 
         display: "flex",
         justifyContent: "center",

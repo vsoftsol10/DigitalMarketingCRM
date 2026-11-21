@@ -84,14 +84,12 @@ export default function SchedulePreview() {
         py: 1.25,
 
         border: "1px solid",
-        borderColor: "rgba(255,255,255,.9)",
+        borderColor: "#E1E6F0",
 
-        borderRadius: "14px",
+        borderRadius: "12px",
 
-        background:
-          "linear-gradient(145deg, rgba(248,251,255,.86), rgba(234,242,255,.72))",
-        boxShadow:
-          "inset 0 1px 0 rgba(255,255,255,.95), 0 3px 8px rgba(75,96,151,.07)",
+        background: "#F8FAFD",
+        boxShadow: "none",
       }}
     >
       <Stack direction="row" spacing={1.25} alignItems="center">
@@ -108,10 +106,9 @@ export default function SchedulePreview() {
 
             borderRadius: "11px",
 
-            background:
-              "linear-gradient(145deg, rgba(255,255,255,.96), rgba(220,233,255,.86))",
-            boxShadow:
-              "0 3px 7px rgba(80,101,164,.12), inset 0 1px 0 rgba(255,255,255,.98)",
+            background: "#F3F0FF",
+            color: "#6941D9",
+            border: "1px solid #E7E1FF",
 
             display: "flex",
             alignItems: "center",
@@ -121,7 +118,7 @@ export default function SchedulePreview() {
           <Icon
             sx={{
               fontSize: 18,
-              color: "primary.main",
+              color: "#6941D9",
             }}
           />
         </Box>

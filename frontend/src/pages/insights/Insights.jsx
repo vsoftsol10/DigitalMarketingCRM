@@ -10,7 +10,7 @@ import InsightsStats from "../../components/insights/InsightsStats";
 import PostPerformanceCard from "../../components/insights/PostPerformanceCard";
 import ContentPerformanceCard from "../../components/insights/ContentPerformanceCard";
 import InsightsExportDialog from "../../components/reports/InsightsExportDialog";
-import { insightsGlassSurfaceSx } from "../../components/insights/insightsGlassSx";
+import { insightsAlertSx, insightsEmptyCardSx, insightsGlassSurfaceSx, insightsPrimaryButtonSx } from "../../components/insights/insightsGlassSx";
 import LoadingState from "../../components/ui/LoadingState";
 import EmptyState from "../../components/ui/EmptyState";
 import OrganizationRequiredEmptyState from "../../components/organization/OrganizationRequiredEmptyState";
@@ -370,7 +370,7 @@ export default function Insights() {
   }
 
   if (authenticatedUserId == null || organizationsQuery.isFetching) {
-    return <LoadingState page="Insights" />;
+    return <LoadingState page="Insights" sx={{ "& p": { color: "#667792" } }} />;
   }
 
   if (
@@ -388,16 +388,29 @@ export default function Insights() {
         width: "100%",
         minWidth: 0,
         "& .MuiAlert-root": {
-          border: "1px solid rgba(255,255,255,0.92)",
-          borderRadius: 3,
-          backgroundImage: "linear-gradient(145deg, rgba(255,255,255,0.58), rgba(232,242,255,0.46))",
-          boxShadow: "0 6px 14px rgba(70,106,172,0.09), inset 0 1px 0 rgba(255,255,255,0.9)",
-          backdropFilter: "blur(12px)",
+          ...insightsAlertSx,
           "& .MuiAlert-action": { alignItems: "center" },
+          "& .MuiAlert-action .MuiButton-root": {
+            minHeight: 32,
+            px: 1.25,
+            borderRadius: "9px",
+            color: "#6941D9",
+            background: "#F5F2FF",
+            textTransform: "none",
+            fontWeight: 600,
+            "&:hover": { background: "#ECE7FF" },
+          },
         },
         "& .MuiLinearProgress-root": {
-          border: "1px solid rgba(255,255,255,0.82)",
-          boxShadow: "inset 0 1px 3px rgba(83,116,171,0.1)",
+          border: 0,
+          borderRadius: 99,
+          backgroundColor: "#E9EDF5",
+          boxShadow: "none",
+          overflow: "hidden",
+          "& .MuiLinearProgress-bar": {
+            borderRadius: 99,
+            background: "linear-gradient(90deg, #8B4BF5, #3977F6)",
+          },
         },
       }}
     >
@@ -473,6 +486,10 @@ export default function Insights() {
         <EmptyState
           title={`No ${platform[0].toUpperCase() + platform.slice(1)} accounts`}
           description={`No connected ${platform[0].toUpperCase() + platform.slice(1)} accounts are available for this organization.`}
+          sx={{
+            "& > .MuiPaper-root": insightsEmptyCardSx,
+            "& .MuiButton-contained": insightsPrimaryButtonSx,
+          }}
         />
       )}
       {selected && accountSnapshotQuery.isError && (
@@ -644,7 +661,7 @@ export default function Insights() {
       {selected && (accountSnapshotQuery.isFetching || contentSnapshotQuery.isFetching)
         && !accountSnapshotQuery.isLoading && !contentSnapshotQuery.isLoading
         && !isRefreshingInsights && (
-        <Box sx={{ position: "fixed", right: 22, bottom: 20, ...insightsGlassSurfaceSx, borderRadius: 999, px: 1.25, py: 0.8, display: "flex", alignItems: "center", gap: 1, boxShadow: "0 8px 18px rgba(70,106,172,0.16), inset 0 1px 0 #FFFFFF" }}>
+        <Box sx={{ position: "fixed", right: { xs: 12, sm: 22 }, bottom: { xs: 12, sm: 20 }, ...insightsGlassSurfaceSx, borderRadius: "12px", px: 1.25, py: 0.8, display: "flex", alignItems: "center", gap: 1 }}>
           <LoadingState label="UPDATING INSIGHTS..." variant="inline" />
         </Box>
       )}

@@ -123,6 +123,7 @@ import InsertEmoticonOutlinedIcon from "@mui/icons-material/InsertEmoticonOutlin
 import TagOutlinedIcon from "@mui/icons-material/TagOutlined";
 import AlternateEmailOutlinedIcon from "@mui/icons-material/AlternateEmailOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import { postMenuPaperSx } from "../postUiSx";
 
 const EMOJIS = [
   "😀",
@@ -201,12 +202,10 @@ export default function CaptionToolbar() {
           width: "fit-content",
           minHeight: 38,
           px: 0.5,
-          border: "1px solid rgba(255,255,255,.94)",
-          borderRadius: "13px",
-          background:
-            "linear-gradient(145deg, rgba(250,252,255,.9), rgba(237,244,255,.78))",
-          boxShadow:
-            "0 4px 9px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.98)",
+          border: "1px solid #DDE3F1",
+          borderRadius: "11px",
+          background: "#FFFFFF",
+          boxShadow: "none",
           color: "#607798",
         }}
       >
@@ -278,15 +277,7 @@ export default function CaptionToolbar() {
         onClose={handleEmojiClose}
         slotProps={{
           paper: {
-            sx: {
-              mt: 0.75,
-              p: 0.5,
-              border: "1px solid rgba(255,255,255,.94)",
-              borderRadius: "14px",
-              background:
-                "linear-gradient(145deg, rgba(250,252,255,.98), rgba(237,244,255,.96))",
-              boxShadow: "0 12px 24px rgba(75,96,151,.16)",
-            },
+            sx: { ...postMenuPaperSx, p: 0.5 },
           },
         }}
       >

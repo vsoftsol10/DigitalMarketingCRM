@@ -33,16 +33,16 @@ function OverviewCard({ icon, iconColor, label, value }) {
     <Box
       sx={{
         minWidth: 0,
-        p: 1.5,
-        borderRadius: 2,
+        p: { xs: 1.25, sm: 1.5 },
+        borderRadius: "12px",
         border: "1px solid",
-        borderColor: "rgba(202,220,248,0.84)",
-        background: "linear-gradient(145deg, rgba(255,255,255,0.94), rgba(236,245,255,0.84))",
-        boxShadow: "0 5px 12px rgba(70,106,172,0.09), inset 0 1px 0 #FFFFFF, inset 0 -1px 0 rgba(190,211,244,0.32)",
+        borderColor: "#E3E8F2",
+        background: "#FFFFFF",
+        boxShadow: "0 2px 6px rgba(54,76,132,0.04)",
         transition: "border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease",
         "&:hover": {
-          borderColor: "#AFC8F0",
-          boxShadow: "0 8px 16px rgba(70,106,172,0.14), inset 0 1px 0 #FFFFFF",
+          borderColor: "#C9BDF7",
+          boxShadow: "0 5px 12px rgba(54,76,132,0.08)",
           transform: "translateY(-1px)",
         },
       }}
@@ -122,8 +122,8 @@ export default function CalendarEventOverview({
       sx={{
         width: "100%",
         minWidth: 0,
-        mt: 2.5,
-        pt: 2.5,
+        mt: 2,
+        pt: 2,
         borderTop: "1px solid",
         borderColor: "divider",
       }}

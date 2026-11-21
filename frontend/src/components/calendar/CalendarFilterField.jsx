@@ -35,37 +35,37 @@ export default function CalendarFilterField({
             PaperProps: {
               sx: {
                 mt: 0.75,
-                border: "1px solid rgba(255,255,255,0.96)",
-                borderRadius: 2.5,
-                background: "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(233,243,255,0.98))",
-                boxShadow: "0 14px 30px rgba(58,94,155,0.18), inset 0 1px 0 #FFFFFF",
-                "& .MuiMenuItem-root.Mui-selected": { bgcolor: "rgba(205,224,255,0.78)" },
-                "& .MuiMenuItem-root:hover": { bgcolor: "rgba(221,235,255,0.8)" },
+                border: "1px solid #DCE3F1",
+                borderRadius: "12px",
+                background: "#FFFFFF",
+                boxShadow: "0 12px 28px rgba(54,76,132,0.14)",
+                "& .MuiMenuItem-root.Mui-selected": { bgcolor: "#F1EBFF", color: "#6741D9" },
+                "& .MuiMenuItem-root:hover": { bgcolor: "#F8F7FF" },
               },
             },
           }}
           sx={{
-            minHeight: 52,
+            minHeight: 46,
 
-            borderRadius: 2.5,
+            borderRadius: "12px",
 
-            background: "linear-gradient(145deg, rgba(255,255,255,0.97), rgba(232,242,255,0.9))",
-            boxShadow: "0 4px 10px rgba(70,106,172,0.09), inset 0 1px 0 #FFFFFF",
+            background: "#FFFFFF",
+            boxShadow: "none",
 
             "& .MuiOutlinedInput-notchedOutline": {
-              borderColor: "rgba(194,214,246,0.85)",
+              borderColor: "#D7DFF0",
             },
 
             "&:hover .MuiOutlinedInput-notchedOutline":
               {
-                borderColor: "#AFC8F0",
+                borderColor: "#B8C7E7",
               },
 
             "&.Mui-focused .MuiOutlinedInput-notchedOutline":
               {
-                borderColor: "#78A5F0",
+                borderColor: "#8A72E6",
                 borderWidth: 1,
-                boxShadow: "0 0 0 3px rgba(91,143,236,0.12)",
+                boxShadow: "0 0 0 3px rgba(111,93,236,0.11)",
               },
 
             "& .MuiSelect-select": {
@@ -75,13 +75,13 @@ export default function CalendarFilterField({
 
               alignItems: "center",
 
-              minHeight: "52px",
+              minHeight: "46px",
 
               boxSizing: "border-box",
 
               py: 0,
 
-              px: 2,
+              px: 1.75,
             },
           }}
           renderValue={(selected) => {

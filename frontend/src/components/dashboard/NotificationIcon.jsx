@@ -43,7 +43,7 @@ const CONFIG = {
   },
 };
 
-export default function NotificationIcon({ type, raised = false }) {
+export default function NotificationIcon({ type, raised = false, compact = false }) {
   const config = CONFIG[type] || CONFIG.DEFAULT;
 
   const Icon = config.icon;
@@ -51,16 +51,18 @@ export default function NotificationIcon({ type, raised = false }) {
   return (
     <Box
       sx={{
-        width: 44,
-        height: 44,
+        width: compact ? 24 : 40,
+        height: compact ? 24 : 40,
 
-        borderRadius: "12px",
+        borderRadius: compact ? 0 : "10px",
 
-        background: raised
-          ? `linear-gradient(145deg, ${config.background}, rgba(255,255,255,.78))`
-          : config.background,
-        border: raised ? "1px solid rgba(255,255,255,.92)" : "none",
-        boxShadow: raised
+        background: compact
+          ? "transparent"
+          : raised
+            ? `linear-gradient(145deg, ${config.background}, rgba(255,255,255,.78))`
+            : config.background,
+        border: !compact && raised ? "1px solid rgba(255,255,255,.92)" : "none",
+        boxShadow: !compact && raised
           ? "0 4px 9px rgba(76,98,154,.1), inset 0 1px 2px rgba(255,255,255,.92), inset 0 -1px 2px rgba(95,116,170,.08)"
           : "none",
 
@@ -73,7 +75,7 @@ export default function NotificationIcon({ type, raised = false }) {
     >
       <Icon
         sx={{
-          fontSize: 22,
+          fontSize: compact ? 20 : 22,
           color: config.color,
         }}
       />

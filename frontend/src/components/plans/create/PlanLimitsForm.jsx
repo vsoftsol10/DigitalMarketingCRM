@@ -221,7 +221,7 @@ import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import { planInputSx } from "../plansGlassSx";
 
-const FIELD_HEIGHT = 52;
+const FIELD_HEIGHT = 46;
 
 const fieldLabelSx = {
   display: "block",
@@ -352,9 +352,9 @@ export default function PlanLimitsForm() {
     <Box>
       <Typography
         sx={{
-          fontSize: "20px",
+          fontSize: "18px",
           fontWeight: 700,
-          lineHeight: "28px",
+          lineHeight: "24px",
           color: "#1E293B",
         }}
       >
@@ -364,10 +364,10 @@ export default function PlanLimitsForm() {
       <Typography
         sx={{
           mt: 0.25,
-          mb: 2.75,
-          fontSize: "16px",
+          mb: 2,
+          fontSize: "14px",
           fontWeight: 400,
-          lineHeight: "24px",
+          lineHeight: "21px",
           color: "#64748B",
         }}
       >
@@ -377,8 +377,8 @@ export default function PlanLimitsForm() {
 
       <Grid
         container
-        columnSpacing={2.5}
-        rowSpacing={2.25}
+        columnSpacing={2}
+        rowSpacing={1.75}
       >
         {fields.map(
           ({

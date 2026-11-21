@@ -6,6 +6,7 @@ import FormTimePicker from "../../../ui/form/FormTimePicker";
 import FormSelect from "../../../ui/form/FormSelect";
 
 import { TIMEZONE_OPTIONS } from "../../../../data/publishing";
+import { postMenuPaperSx } from "../postUiSx";
 
 export default function ScheduleFields() {
   const { watch } = useFormContext();
@@ -29,6 +30,7 @@ export default function ScheduleFields() {
           label="Publish Date"
           required
           compact
+          createPostStyle
         />
       </Grid>
 
@@ -43,6 +45,7 @@ export default function ScheduleFields() {
           label="Publish Time"
           required
           compact
+          createPostStyle
         />
       </Grid>
 
@@ -53,6 +56,7 @@ export default function ScheduleFields() {
           required
           compact
           options={TIMEZONE_OPTIONS}
+          MenuProps={{ PaperProps: { sx: postMenuPaperSx } }}
         />
       </Grid>
     </Grid>

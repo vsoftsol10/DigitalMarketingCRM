@@ -299,9 +299,9 @@ function FeatureItem({ children, color }) {
 
       <Typography
         sx={{
-          fontSize: "14px",
+          fontSize: "13px",
           fontWeight: 400,
-          lineHeight: "21px",
+          lineHeight: "20px",
           color: "#475569",
         }}
       >
@@ -338,9 +338,9 @@ function PriceBlock({ label, value, color }) {
         sx={{
           mt: 0.35,
 
-          fontSize: "24px",
+          fontSize: "20px",
           fontWeight: 700,
-          lineHeight: "32px",
+          lineHeight: "26px",
 
           color,
 
@@ -357,7 +357,7 @@ export default function PlanSummaryCard({ plan }) {
   const limits = plan?.limits || {};
 
   const isInactive = plan?.status === "inactive";
-  const tone = planTone(plan?.type);
+  const tone = planTone();
 
   return (
     <Box
@@ -378,15 +378,14 @@ export default function PlanSummaryCard({ plan }) {
           width: "100%",
 
           p: {
-            xs: 2.5,
-            sm: 2.75,
+            xs: 2,
+            sm: 2.25,
           },
 
-          borderRadius: "22px",
+          borderRadius: "18px",
           border: `1px solid ${tone.border}`,
           background: tone.surface,
-          backdropFilter: "blur(16px)",
-          boxShadow: "0 16px 30px rgba(73,95,157,0.14), inset 0 1px 0 rgba(255,255,255,0.98)",
+          boxShadow: "0 8px 20px rgba(54,76,132,0.07)",
 
           boxSizing: "border-box",
         }}
@@ -419,9 +418,9 @@ export default function PlanSummaryCard({ plan }) {
         <Typography
           align="center"
           sx={{
-            fontSize: "27px",
+            fontSize: "23px",
             fontWeight: 700,
-            lineHeight: "34px",
+            lineHeight: "30px",
 
             letterSpacing: "-0.02em",
 
@@ -452,10 +451,10 @@ export default function PlanSummaryCard({ plan }) {
 
             mt: 0.5,
 
-            minHeight: 63,
+            minHeight: 42,
 
             display: "-webkit-box",
-            WebkitLineClamp: 3,
+            WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}
@@ -471,14 +470,15 @@ export default function PlanSummaryCard({ plan }) {
           direction="row"
           spacing={1.5}
           sx={{
-            mt: 2,
+            mt: 1.5,
 
-            p: 1.5,
+            p: 1.25,
 
-            borderRadius: "14px",
+            borderRadius: "12px",
 
             backgroundColor: tone.tint,
-            border: "1px solid rgba(255,255,255,0.9)",
+            border: "1px solid #E6EAF4",
+            "& > :nth-of-type(2)": { borderLeft: "1px solid #E0E5F0", pl: 1.25 },
           }}
         >
           <PriceBlock label="Monthly" value={plan?.monthly_price} color={tone.accent} />
@@ -504,7 +504,7 @@ export default function PlanSummaryCard({ plan }) {
 
             backgroundColor: "#E2E8F0",
 
-            my: 2.25,
+          my: 1.5,
           }}
         />
 
@@ -513,7 +513,7 @@ export default function PlanSummaryCard({ plan }) {
         =================================================== */}
 
         <Stack
-          spacing={1.05}
+          spacing={0.75}
           sx={{
             textAlign: "left",
           }}
@@ -539,7 +539,7 @@ export default function PlanSummaryCard({ plan }) {
           label={isInactive ? "Inactive" : "Active"}
           size="small"
           sx={{
-            mt: 2.5,
+            mt: 1.5,
 
             height: 28,
 

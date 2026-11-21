@@ -6,9 +6,9 @@ export default function OrganizationFilter({ value, options = [], onChange }) {
   return (
     <FormControl
       sx={{
-        minWidth: 240,
+        minWidth: { xs: "100%", md: 220 },
         "& .MuiSelect-select": {
-          color: "#243957",
+          color: "#334155",
           ...TYPOGRAPHY.body,
         },
       }}
@@ -28,23 +28,21 @@ export default function OrganizationFilter({ value, options = [], onChange }) {
         }}
         sx={{
           height: 48,
-          borderRadius: "16px",
-          background:
-            "linear-gradient(145deg, rgba(229,238,252,.88), rgba(255,255,255,.9))",
-          boxShadow:
-            "inset 0 2px 5px rgba(77,102,145,.07), 0 4px 10px rgba(75,100,145,.07), inset 0 1px 0 rgba(255,255,255,.96)",
+          borderRadius: "12px",
+          background: "#FFFFFF",
+          boxShadow: "none",
 
           "& .MuiOutlinedInput-notchedOutline": {
-            borderColor: "rgba(255,255,255,.96)",
+            borderColor: "#DCE2EF",
             borderWidth: 1,
           },
 
           "&:hover .MuiOutlinedInput-notchedOutline": {
-            borderColor: "rgba(128,157,202,.5)",
+            borderColor: "#B8C3D8",
           },
 
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-            borderColor: "#8CA9E2",
+            borderColor: "#7B61E8",
             borderWidth: 1,
           },
 
@@ -54,24 +52,22 @@ export default function OrganizationFilter({ value, options = [], onChange }) {
           PaperProps: {
             sx: {
               mt: 1,
-              borderRadius: "16px",
-              border: "1px solid rgba(255,255,255,.92)",
-              background:
-                "linear-gradient(145deg, rgba(250,252,255,.98), rgba(235,243,255,.96))",
-              boxShadow:
-                "0 14px 30px rgba(75,96,151,.16), 0 3px 8px rgba(79,99,154,.08), inset 0 1px 0 rgba(255,255,255,.98)",
+              border: "1px solid #DDE3F1",
+              borderRadius: "12px",
+              background: "#FFFFFF",
+              boxShadow: "0 12px 28px rgba(31,41,80,.14)",
               "& .MuiMenuItem-root": {
                 minHeight: 42,
                 mx: 0.75,
                 my: 0.25,
                 borderRadius: "10px",
-                color: "#243957",
+                color: "#334155",
                 ...TYPOGRAPHY.body,
-                "&:hover": { background: "rgba(226,237,255,.68)" },
+                "&:hover": { background: "#F5F2FF" },
                 "&.Mui-selected": {
-                  background: "rgba(221,233,255,.74)",
-                  color: "#355FBC",
-                  "&:hover": { background: "rgba(213,228,255,.86)" },
+                  background: "#F5F2FF",
+                  color: "#6941D9",
+                  "&:hover": { background: "#F5F2FF" },
                 },
                 "&.Mui-focusVisible": {
                   outline: "2px solid rgba(111,145,211,.42)",

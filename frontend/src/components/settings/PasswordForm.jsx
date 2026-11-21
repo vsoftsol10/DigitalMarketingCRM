@@ -17,7 +17,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { TYPOGRAPHY } from "../../theme/typography";
-import { settingsFieldSx, settingsPrimaryButtonSx } from "./settingsGlassSx";
+import { settingsErrorAlertSx, settingsFieldSx, settingsPrimaryButtonSx } from "./settingsGlassSx";
 
 const DEFAULT_VALUES = {
   current_password: "",
@@ -114,13 +114,17 @@ export default function PasswordForm({
   const passwordFieldSx = {
     ...settingsFieldSx,
     "& .MuiOutlinedInput-root": {
-      minHeight: 48,
+      minHeight: 52,
 
       borderRadius: "12px",
-      background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(247,250,255,0.92))",
-      "& fieldset": { borderColor: "rgba(175,192,221,0.58)" },
-      "&:hover fieldset": { borderColor: "rgba(123,157,218,0.72)" },
-      "&.Mui-focused fieldset": { borderColor: "#7D91F3" },
+      background: "#FFFFFF",
+      "& fieldset": { borderColor: "#D8DEEA" },
+      "&:hover fieldset": { borderColor: "#B8C3D8" },
+      "&.Mui-focused fieldset": {
+        borderColor: "#7B61E8",
+        borderWidth: 1,
+        boxShadow: "0 0 0 3px rgba(123,97,232,.1)",
+      },
     },
 
     "& .MuiInputLabel-root": {
@@ -146,7 +150,7 @@ export default function PasswordForm({
           <Alert
             severity="error"
             sx={{
-              borderRadius: 2,
+              ...settingsErrorAlertSx,
             }}
           >
             {typeof error === "string" ? error : getGeneralError()}
@@ -358,7 +362,8 @@ export default function PasswordForm({
           sx={{
             display: "flex",
             justifyContent: "flex-end",
-            pt: 0.5,
+            pt: 2,
+            borderTop: "1px solid #E5E9F1",
           }}
         >
           <Button

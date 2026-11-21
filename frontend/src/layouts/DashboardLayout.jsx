@@ -10,8 +10,8 @@ export default function DashboardLayout() {
       sx={{
         display: "flex",
         minHeight: "100vh",
-        bgcolor: "#F2F5FF",
-        backgroundImage: "linear-gradient(135deg, #F7F9FF 0%, #F1F5FF 58%, #F7F2FF 100%)",
+        bgcolor: "#EDF1FF",
+        backgroundImage: "linear-gradient(110deg, #EDF1FF 0%, #F1EDFF 55%, #EFE8FF 100%)",
       }}
     >
       <Sidebar />

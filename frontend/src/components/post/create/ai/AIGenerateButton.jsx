@@ -8,6 +8,7 @@ import PrimaryButton from "../../../ui/button/PrimaryButton";
 
 import { useGenerateAICaption } from "../../../../hooks/mutations/useGenerateAICaption";
 import formatApiErrorMessage from "../../../../utils/apiErrorMessage";
+import { postAlertSx, postPrimaryButtonSx } from "../postUiSx";
 
 export default function AIGenerateButton({
   setSuggestions,
@@ -50,7 +51,7 @@ export default function AIGenerateButton({
   return (
     <>
       {error && (
-        <Alert severity="error" sx={{ mb: 1.5 }}>
+        <Alert severity="error" sx={{ ...postAlertSx, mb: 1.5 }}>
           {formatApiErrorMessage(error, {
             fallback: "Unable to generate captions. Please try again.",
           })}
@@ -68,31 +69,7 @@ export default function AIGenerateButton({
           startIcon={hasSuggestion ? <RefreshRounded /> : <AutoAwesomeRounded />}
           loading={isPending}
           onClick={handleGenerate}
-          sx={{
-            width: "auto",
-            minWidth: 0,
-            height: 40,
-            px: 2.25,
-            borderRadius: "14px",
-            fontSize: 13.5,
-            fontWeight: 600,
-            textTransform: "none",
-            border: "1px solid rgba(255,255,255,.7)",
-            background:
-              "linear-gradient(115deg, #A96BEA 0%, #7074ED 54%, #4A91ED 100%)",
-            boxShadow:
-              "0 7px 15px rgba(100,92,203,.25), 0 2px 5px rgba(65,101,210,.14), inset 0 1px 0 rgba(255,255,255,.46), inset 0 -2px 3px rgba(67,71,163,.16)",
-            "&:hover": {
-              background:
-                "linear-gradient(115deg, #9D60E3 0%, #5E70E8 56%, #3D8FEA 100%)",
-              boxShadow:
-                "0 9px 17px rgba(100,92,203,.3), 0 3px 6px rgba(65,101,210,.18), inset 0 1px 0 rgba(255,255,255,.42)",
-            },
-            "&.Mui-disabled": {
-              color: "rgba(255,255,255,.78)",
-              background: "linear-gradient(115deg, #B993DD, #929BE1)",
-            },
-          }}
+          sx={{ ...postPrimaryButtonSx, width: "auto", minWidth: 0, minHeight: 40, px: 2.25, fontSize: 13.5 }}
         >
           {isPending
             ? "Generating..."

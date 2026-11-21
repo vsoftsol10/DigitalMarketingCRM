@@ -56,6 +56,7 @@ export default function SocialAccountCard({
   disabled = false,
   statusText = "",
   onChange,
+  plannerStyle = false,
 }) {
   // ==========================================================
   // ACCOUNT VALIDATION
@@ -129,16 +130,22 @@ export default function SocialAccountCard({
 
         border: "1px solid",
 
-        borderColor: selected ? "rgba(131,145,226,.78)" : "rgba(255,255,255,.92)",
+        borderColor: plannerStyle
+          ? selected ? "#BFB2F4" : "#DDE3F1"
+          : selected ? "rgba(131,145,226,.78)" : "rgba(255,255,255,.92)",
 
         borderRadius: "14px",
 
-        background: selected
-          ? "linear-gradient(145deg, rgba(235,239,255,.96), rgba(220,232,255,.82))"
-          : "linear-gradient(145deg, rgba(250,252,255,.88), rgba(239,245,255,.78))",
-        boxShadow: selected
-          ? "0 5px 12px rgba(91,105,174,.13), inset 0 2px 0 rgba(255,255,255,.96)"
-          : "0 3px 8px rgba(75,96,151,.07), inset 0 1px 0 rgba(255,255,255,.96)",
+        background: plannerStyle
+          ? selected ? "#F5F2FF" : "#FFFFFF"
+          : selected
+            ? "linear-gradient(145deg, rgba(235,239,255,.96), rgba(220,232,255,.82))"
+            : "linear-gradient(145deg, rgba(250,252,255,.88), rgba(239,245,255,.78))",
+        boxShadow: plannerStyle
+          ? "none"
+          : selected
+            ? "0 5px 12px rgba(91,105,174,.13), inset 0 2px 0 rgba(255,255,255,.96)"
+            : "0 3px 8px rgba(75,96,151,.07), inset 0 1px 0 rgba(255,255,255,.96)",
 
         textAlign: "left",
 
@@ -154,16 +161,16 @@ export default function SocialAccountCard({
         "&:hover": disabled
           ? {}
           : {
-              borderColor: "primary.main",
+              borderColor: plannerStyle ? "#BFB2F4" : "primary.main",
 
-              bgcolor: "rgba(232,241,255,.92)",
-              boxShadow: "0 5px 12px rgba(75,96,151,.12)",
+              bgcolor: plannerStyle ? "#F5F2FF" : "rgba(232,241,255,.92)",
+              boxShadow: plannerStyle ? "none" : "0 5px 12px rgba(75,96,151,.12)",
             },
 
         "&:focus-visible": {
           outline: "2px solid",
 
-          outlineColor: "primary.main",
+          outlineColor: plannerStyle ? "#7B61E8" : "primary.main",
 
           outlineOffset: 2,
         },
@@ -326,7 +333,7 @@ export default function SocialAccountCard({
 
                 borderRadius: "5px",
 
-                bgcolor: "primary.main",
+                bgcolor: plannerStyle ? "#6941D9" : "primary.main",
 
                 color: "primary.contrastText",
 

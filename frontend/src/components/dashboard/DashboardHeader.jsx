@@ -27,9 +27,9 @@ export default function DashboardHeader({
         <Typography
           sx={{
             ...TYPOGRAPHY.pageTitle,
-            fontSize: { xs: 30, md: 38 },
+            fontSize: { xs: 30, md: 32 },
             lineHeight: 1.15,
-            color: "#17284D",
+            color: "#172554",
           }}
         >
           {title}
@@ -39,7 +39,7 @@ export default function DashboardHeader({
           sx={{
             ...TYPOGRAPHY.pageDescription,
             mt: 0.8,
-            color: "#71809F",
+            color: "#64748B",
           }}
         >
           {description}
@@ -54,20 +54,20 @@ export default function DashboardHeader({
         onClick={onButtonClick}
         sx={{
           height: 48,
-          px: 2.8,
-          borderRadius: "17px",
+          px: 2.5,
+          borderRadius: "14px",
 
           textTransform: "none",
 
-          border: "1px solid rgba(255,255,255,.7)",
-          background: "linear-gradient(115deg, #A96BEA 0%, #7074ED 54%, #4A91ED 100%)",
-          boxShadow: "0 11px 22px rgba(100,92,203,.3), 0 3px 7px rgba(65,101,210,.17), inset 0 1px 0 rgba(255,255,255,.46), inset 0 -2px 3px rgba(67,71,163,.16)",
+          border: "1px solid transparent",
+          background: "linear-gradient(110deg, #8B4BF5 0%, #3977F6 100%)",
+          boxShadow: "0 5px 12px rgba(83,75,196,.18)",
 
           ...TYPOGRAPHY.formButton,
 
           "&:hover": {
-            background: "linear-gradient(115deg, #9D60E3 0%, #5E70E8 56%, #3D8FEA 100%)",
-            boxShadow: "0 13px 24px rgba(100,92,203,.34), 0 3px 8px rgba(65,101,210,.2), inset 0 1px 0 rgba(255,255,255,.42)",
+            background: "linear-gradient(110deg, #7D3CEB 0%, #2F6EEA 100%)",
+            boxShadow: "0 7px 15px rgba(83,75,196,.23)",
           },
         }}
       >

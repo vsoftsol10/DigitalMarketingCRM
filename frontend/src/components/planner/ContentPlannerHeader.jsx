@@ -1,11 +1,11 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
 
-import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import { plannerPrimaryButtonSx } from "./plannerUiSx";
 
-export default function ContentPlannerHeader({ onMonthlyPlan, onCreateIdea }) {
+export default function ContentPlannerHeader({ onCreateIdea }) {
   return (
     <Box
       sx={{
@@ -14,12 +14,12 @@ export default function ContentPlannerHeader({ onMonthlyPlan, onCreateIdea }) {
         alignItems: "flex-start",
         flexWrap: "wrap",
         gap: 2,
-        mb: 5,
+        mb: 4,
       }}
     >
       {/* Left */}
 
-      <Box>
+      <Box sx={{ minWidth: 0 }}>
         <Typography sx={TYPOGRAPHY.pageTitle}>Content Planner</Typography>
 
         <Typography
@@ -34,7 +34,7 @@ export default function ContentPlannerHeader({ onMonthlyPlan, onCreateIdea }) {
 
       {/* Right */}
 
-      <Stack direction="row" spacing={2}>
+      <Stack direction="row" spacing={2} sx={{ width: { xs: "100%", sm: "auto" } }}>
         {/* <Button
           variant="outlined"
           startIcon={<CalendarMonthOutlinedIcon />}
@@ -69,38 +69,9 @@ export default function ContentPlannerHeader({ onMonthlyPlan, onCreateIdea }) {
           sx={{
             height: 48,
             px: 2.8,
-            borderRadius: "17px",
-            border: "1px solid rgba(255,255,255,.7)",
-            background:
-              "linear-gradient(115deg, #A96BEA 0%, #7074ED 54%, #4A91ED 100%)",
-            boxShadow:
-              "0 11px 22px rgba(100,92,203,.3), 0 3px 7px rgba(65,101,210,.17), inset 0 1px 0 rgba(255,255,255,.46), inset 0 -2px 3px rgba(67,71,163,.16)",
             ...TYPOGRAPHY.formButton,
-
-            "&:hover": {
-              background:
-                "linear-gradient(115deg, #9D60E3 0%, #5E70E8 56%, #3D8FEA 100%)",
-              boxShadow:
-                "0 13px 24px rgba(100,92,203,.34), 0 3px 8px rgba(65,101,210,.2), inset 0 1px 0 rgba(255,255,255,.42)",
-            },
-
-            "&:focus-visible": {
-              outline: "3px solid rgba(109,139,218,.42)",
-              outlineOffset: 3,
-            },
-
-            "&:active": {
-              transform: "translateY(1px)",
-              boxShadow:
-                "0 6px 13px rgba(100,92,203,.24), inset 0 2px 4px rgba(67,71,163,.18)",
-            },
-
-            "&.Mui-disabled": {
-              color: "rgba(255,255,255,.8)",
-              background: "linear-gradient(115deg, #B995DD, #8E9BE0)",
-              borderColor: "rgba(255,255,255,.58)",
-              boxShadow: "0 4px 9px rgba(100,92,203,.12)",
-            },
+            ...plannerPrimaryButtonSx,
+            width: { xs: "100%", sm: "auto" },
           }}
         >
           New Idea

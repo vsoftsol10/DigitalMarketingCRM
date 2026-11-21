@@ -8,7 +8,7 @@ import EditNoteOutlinedIcon from "@mui/icons-material/EditNoteOutlined";
 import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
-import overviewGlassCardSx from "../../organization/overview/overviewGlassCardSx";
+import { postCardSx, postFormFieldSx } from "./postUiSx";
 
 const sectionIcons = {
   Organization: BusinessOutlinedIcon,
@@ -32,23 +32,10 @@ export default function SectionCard({
     <Paper
       elevation={0}
       sx={{
-        ...overviewGlassCardSx,
-        p: compact ? 2.5 : 3,
+        ...postCardSx,
+        p: { xs: 2, sm: compact ? 2.25 : 2.5 },
         color: "#17284D",
-        "& .MuiOutlinedInput-root": {
-          minHeight: 50,
-          borderRadius: "15px",
-          background:
-            "linear-gradient(145deg, rgba(255,255,255,.88), rgba(239,245,255,.82))",
-          boxShadow:
-            "inset 0 2px 5px rgba(101,122,169,.08), 0 3px 9px rgba(75,96,151,.08), inset 0 1px 0 rgba(255,255,255,.95)",
-          "& fieldset": { borderColor: "rgba(255,255,255,.92)" },
-          "&:hover fieldset": { borderColor: "rgba(153,174,220,.72)" },
-          "&.Mui-focused fieldset": {
-            borderColor: "#8C9EEB",
-            borderWidth: "1px",
-          },
-        },
+        ...postFormFieldSx,
       }}
     >
       <Box
@@ -56,32 +43,29 @@ export default function SectionCard({
           display: "flex",
           alignItems: "center",
           gap: 1.5,
-          mb: compact ? 2 : 3,
+          mb: compact ? 1.75 : 2.25,
         }}
       >
         {SectionIcon && (
           <Box
             aria-hidden="true"
             sx={{
-              width: 46,
-              height: 46,
+              width: 38,
+              height: 38,
               flexShrink: 0,
-              borderRadius: "50%",
+              borderRadius: "11px",
               display: "grid",
               placeItems: "center",
-              color: "#557FE1",
-              background:
-                "linear-gradient(145deg, rgba(255,255,255,.96), rgba(220,232,255,.86))",
-              border: "1px solid rgba(255,255,255,.95)",
-              boxShadow:
-                "0 6px 12px rgba(80,101,164,.15), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 4px rgba(104,124,175,.1)",
+              color: "#6941D9",
+              background: "#F3F0FF",
+              border: "1px solid #E7E1FF",
             }}
           >
-            <SectionIcon sx={{ fontSize: 23 }} />
+            <SectionIcon sx={{ fontSize: 20 }} />
           </Box>
         )}
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ ...TYPOGRAPHY.sectionTitle, color: "#17284D" }}>
+          <Typography sx={{ ...TYPOGRAPHY.sectionTitle, color: "#17284D", fontSize: 17 }}>
             {title}
           </Typography>
 

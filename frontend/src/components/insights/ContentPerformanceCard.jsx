@@ -13,7 +13,7 @@ export default function ContentPerformanceCard(props) {
     : "";
 
   return (
-    <Card elevation={0} sx={{ width: "100%", minWidth: 0, ...insightsGlassSurfaceSx, borderRadius: "22px" }}>
+    <Card elevation={0} sx={{ width: "100%", minWidth: 0, ...insightsGlassSurfaceSx, borderRadius: "20px" }}>
       <CardContent sx={{ p: { xs: 2, sm: 3 }, "&:last-child": { pb: { xs: 2, sm: 3 } } }}>
         <Box sx={{ pb: 2.1 }}>
           <Typography sx={{ color: "#1D3157", fontSize: 20, lineHeight: 1.3, fontWeight: 750 }}>Content Performance</Typography>

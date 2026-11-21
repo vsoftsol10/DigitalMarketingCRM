@@ -104,6 +104,7 @@ export default function CreatePlan() {
       sx={{
         width: "100%",
         minWidth: 0,
+        maxWidth: 1340,
         boxSizing: "border-box",
 
         pb: 2,

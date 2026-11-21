@@ -63,12 +63,12 @@ function MediaFrame({
       sx={{
         position: "relative",
         width: "100%",
-        height: aspectRatio === "16 / 10" ? "clamp(180px, 32vh, 280px)" : 88,
+        height: aspectRatio === "16 / 10" ? "clamp(160px, 30vh, 260px)" : 88,
         overflow: "hidden",
         borderRadius: rounded,
-        bgcolor: "rgba(235,244,255,0.86)",
-        border: "1px solid rgba(255,255,255,0.96)",
-        boxShadow: "0 7px 18px rgba(70,106,172,0.14), inset 0 1px 0 #FFFFFF",
+        bgcolor: "#F8FAFF",
+        border: "1px solid #E3E8F2",
+        boxShadow: "0 4px 12px rgba(54,76,132,0.08)",
         flexShrink: 0,
         ...(hoverZoom && {
           "&:hover img": {
@@ -200,13 +200,13 @@ export default function CalendarEventMedia({ event }) {
       sx={{
         width: "100%",
         minWidth: 0,
-        mt: 2.5,
-        pt: 2.5,
+        mt: 2,
+        pt: 2,
         borderTop: "1px solid",
         borderColor: "divider",
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.25 }}>
         <PermMediaRoundedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
 
         <Typography
@@ -268,7 +268,7 @@ export default function CalendarEventMedia({ event }) {
               aria-label="Previous media"
               onClick={() => showMedia(currentIndex - 1)}
               size="small"
-              sx={{ border: "1px solid rgba(194,214,246,0.86)", background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)", boxShadow: "0 3px 8px rgba(70,106,172,0.1)" }}
+            sx={{ border: "1px solid #D7DFF0", background: "#FFFFFF", color: "#526781", "&:hover": { borderColor: "#C9BDF7", background: "#F8F7FF", color: "#6741D9" } }}
             >
               <ChevronLeftRoundedIcon />
             </IconButton>
@@ -282,7 +282,7 @@ export default function CalendarEventMedia({ event }) {
               aria-label="Next media"
               onClick={() => showMedia(currentIndex + 1)}
               size="small"
-              sx={{ border: "1px solid rgba(194,214,246,0.86)", background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)", boxShadow: "0 3px 8px rgba(70,106,172,0.1)" }}
+              sx={{ border: "1px solid #D7DFF0", background: "#FFFFFF", color: "#526781", "&:hover": { borderColor: "#C9BDF7", background: "#F8F7FF", color: "#6741D9" } }}
             >
               <ChevronRightRoundedIcon />
             </IconButton>

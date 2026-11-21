@@ -112,19 +112,12 @@ export default function PlanDetails() {
       sx={{
         width: "100%",
         minWidth: 0,
-
-        /*
-         * Original UI content width.
-         * Header + cards same alignment.
-         */
         maxWidth: 1120,
-
         mx: "auto",
-
         px: {
           xs: 2,
-          sm: 2,
-          md: 0,
+          sm: 2.5,
+          lg: 0,
         },
       }}
     >
@@ -171,6 +164,7 @@ export default function PlanDetails() {
       </Box>
 
       <ConfirmDialog
+        crmStyle
         open={deleteDialogOpen}
         title="Delete Plan"
         message={`Are you sure you want to delete "${plan.name}"?`}

@@ -17,8 +17,10 @@ export default function Header({
       sx={{
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "flex-start",
-        mb: 3.5,
+        alignItems: { xs: "stretch", sm: "center" },
+        gap: 2,
+        mb: 3,
+        flexDirection: { xs: "column", sm: "row" },
       }}
     >
       <Box>
@@ -27,7 +29,8 @@ export default function Header({
         <Typography
           sx={{
             ...TYPOGRAPHY.pageDescription,
-            mt: 1,
+            mt: 0.75,
+            color: "#64748B",
           }}
         >
           {description}
@@ -40,20 +43,19 @@ export default function Header({
         onClick={() => navigate(buttonPath)}
         sx={{
           height: 48,
-          px: 3,
+          px: 2.5,
           borderRadius: "14px",
           textTransform: "none",
 
           ...TYPOGRAPHY.button,
 
-          bgcolor: "#2563EB",
-          background: "linear-gradient(115deg, #9B72EE 0%, #4B8DEB 100%)",
-          border: "1px solid rgba(255,255,255,.72)",
-          boxShadow: "0 8px 18px rgba(83, 105, 196, .24), inset 0 1px 0 rgba(255,255,255,.42)",
+          color: "#FFFFFF",
+          background: "linear-gradient(110deg, #8B4BF5 0%, #3977F6 100%)",
+          boxShadow: "0 5px 12px rgba(83,75,196,.18)",
 
           "&:hover": {
-            background: "linear-gradient(115deg, #8C63E1 0%, #397DE0 100%)",
-            boxShadow: "0 10px 22px rgba(83, 105, 196, .28), inset 0 1px 0 rgba(255,255,255,.46)",
+            background: "linear-gradient(110deg, #7D3CEB 0%, #2F6EEA 100%)",
+            boxShadow: "0 7px 15px rgba(83,75,196,.23)",
           },
         }}
       >

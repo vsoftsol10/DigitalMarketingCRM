@@ -206,16 +206,16 @@ import {
 } from "@mui/material";
 
 import { useEffect, useState } from "react";
-import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 import {
-  glassDialogActionsSx,
-  glassDialogCardSx,
-  glassDialogContentSx,
-  glassDialogPaperSx,
-  glassDialogSecondaryButtonSx,
-  glassDialogTitleSx,
-  glassDialogToggleGroupSx,
-} from "../../ui/dialog/glassDialogSx";
+  subscriptionDialogActionsSx,
+  subscriptionDialogCardSx,
+  subscriptionDialogContentSx,
+  subscriptionDialogPaperSx,
+  subscriptionDialogPrimaryButtonSx,
+  subscriptionDialogSecondaryButtonSx,
+  subscriptionDialogTitleSx,
+  subscriptionDialogToggleGroupSx,
+} from "../organizationUiSx";
 
 export default function RenewSubscriptionDialog({
   open,
@@ -263,13 +263,13 @@ export default function RenewSubscriptionDialog({
       onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="sm"
-      PaperProps={{ sx: glassDialogPaperSx }}
+      PaperProps={{ sx: subscriptionDialogPaperSx }}
     >
-      <DialogTitle sx={glassDialogTitleSx}>
+      <DialogTitle sx={subscriptionDialogTitleSx}>
         Renew Subscription
       </DialogTitle>
 
-      <DialogContent dividers sx={glassDialogContentSx}>
+      <DialogContent dividers sx={subscriptionDialogContentSx}>
         <Typography
           sx={{
             fontSize: 14,
@@ -284,7 +284,7 @@ export default function RenewSubscriptionDialog({
           sx={{
             mb: 2.5,
             p: 2,
-            ...glassDialogCardSx,
+            ...subscriptionDialogCardSx,
           }}
         >
           <Typography
@@ -304,7 +304,7 @@ export default function RenewSubscriptionDialog({
               mt: 0.5,
               fontSize: 17,
               fontWeight: 700,
-              color: "#0F172A",
+              color: "#6941D9",
             }}
           >
             {currentPlan}
@@ -332,7 +332,7 @@ export default function RenewSubscriptionDialog({
             }
           }}
           disabled={loading}
-          sx={glassDialogToggleGroupSx}
+          sx={subscriptionDialogToggleGroupSx}
         >
           <ToggleButton value="monthly">Monthly</ToggleButton>
 
@@ -352,12 +352,12 @@ export default function RenewSubscriptionDialog({
         )}
       </DialogContent>
 
-      <DialogActions sx={glassDialogActionsSx}>
+      <DialogActions sx={subscriptionDialogActionsSx}>
         <Button
           onClick={onClose}
           disabled={loading}
           color="inherit"
-          sx={glassDialogSecondaryButtonSx}
+          sx={subscriptionDialogSecondaryButtonSx}
         >
           Cancel
         </Button>
@@ -366,7 +366,7 @@ export default function RenewSubscriptionDialog({
           variant="contained"
           onClick={handleSubmit}
           disabled={loading}
-          sx={glassPrimaryButtonSx}
+          sx={subscriptionDialogPrimaryButtonSx}
         >
           {loading ? "Renewing..." : "Renew Subscription"}
         </Button>

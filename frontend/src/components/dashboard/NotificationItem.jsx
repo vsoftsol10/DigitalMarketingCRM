@@ -39,14 +39,14 @@ export default function NotificationItem({ notification, onClick }) {
   }
 
   return (
-    <Box onClick={handleClick} sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, px: 2, py: 1.5, borderRadius: "16px", cursor: isClickable ? "pointer" : "default", transition: "0.2s", "&:hover": isClickable ? { bgcolor: "#F8FAFC" } : {} }}>
+    <Box onClick={handleClick} sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, px: 1.5, py: 1.35, borderRadius: "14px", border: "1px solid #F1F3F8", cursor: isClickable ? "pointer" : "default", transition: "0.2s", "&:hover": isClickable ? { bgcolor: "#F8FAFC", borderColor: "#E2E8F0" } : {} }}>
       <NotificationIcon type={notification.type} />
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography sx={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3, color: "#1E293B" }}>{notification.title}</Typography>
-        <Typography sx={{ mt: 0.3, fontSize: 13, color: "#64748B", lineHeight: 1.45 }}>{organizationName}</Typography>
-        {isFailedPostNotification && postSummary && <Typography sx={{ mt: 0.4, fontSize: 13, color: "#475569", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{postSummary}</Typography>}
+        <Typography sx={{ mt: 0.3, fontSize: 13, color: "#64748B", lineHeight: 1.45, overflowWrap: "anywhere" }}>{organizationName}</Typography>
+        {isFailedPostNotification && postSummary && <Typography sx={{ mt: 0.4, fontSize: 13, color: "#475569", lineHeight: 1.45, overflowWrap: "anywhere" }}>{postSummary}</Typography>}
         {isFailedPostNotification && targetSummary && <Typography sx={{ mt: 0.35, fontSize: 12, color: "#94A3B8", lineHeight: 1.4 }}>{targetSummary}</Typography>}
-        {isFailedPostNotification && notification.failure_reason && <Typography sx={{ mt: 0.35, fontSize: 12, color: "#64748B", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{notification.failure_reason}</Typography>}
+        {isFailedPostNotification && notification.failure_reason && <Typography sx={{ mt: 0.35, fontSize: 12, color: "#64748B", lineHeight: 1.4, overflowWrap: "anywhere" }}>{notification.failure_reason}</Typography>}
         {isSubscriptionNotification && subscriptionSummary && <Typography sx={{ mt: 0.4, fontSize: 12, color: "#64748B", lineHeight: 1.4 }}>{subscriptionSummary}</Typography>}
       </Box>
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5, flexShrink: 0 }}>

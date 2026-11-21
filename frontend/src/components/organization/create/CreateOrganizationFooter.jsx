@@ -1,7 +1,7 @@
 import { Box, Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import PrimaryButton from "../../ui/button/PrimaryButton";
-import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
+import { glassPrimaryButtonSx, organizationSecondaryButtonSx } from "../organizationUiSx";
 
 export default function CreateOrganizationFooter({
   loading = false,
@@ -32,14 +32,12 @@ export default function CreateOrganizationFooter({
           textTransform: "none",
           fontSize: "15px",
           fontWeight: 600,
-          borderColor: "rgba(133, 157, 194, .5)",
+          ...organizationSecondaryButtonSx,
           color: "#536A8A",
-          background: "linear-gradient(145deg, rgba(255,255,255,.8), rgba(238,245,255,.72))",
-          boxShadow: "0 3px 9px rgba(75, 101, 145, .08), inset 0 1px 0 #fff",
 
           "&:hover": {
-            borderColor: "#94A3B8",
-            bgcolor: "#EEF4FF",
+            borderColor: "#B9C4D8",
+            bgcolor: "#F8FAFC",
           },
         }}
       >

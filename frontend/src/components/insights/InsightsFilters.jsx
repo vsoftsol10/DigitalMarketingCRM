@@ -8,19 +8,19 @@ import {
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
-import { insightsGlassControlSx } from "./insightsGlassSx";
+import { insightsGlassControlSx, insightsMenuPaperSx } from "./insightsGlassSx";
 
 const CONTROL_SX = {
   width: "100%",
   minWidth: 0,
-  height: 40,
+  height: 42,
   ...insightsGlassControlSx,
-  borderRadius: 999,
-  color: "#203965",
+  borderRadius: "12px",
+  color: "#334155",
   fontSize: 13,
   "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" },
-  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#AFC8F0" },
-  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#79A8F6", borderWidth: 1 },
+  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#B8C3D8" },
+  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#7B61E8", borderWidth: 1, boxShadow: "0 0 0 3px rgba(123,97,232,.1)" },
   "& .MuiSelect-select": {
     display: "flex",
     alignItems: "center",
@@ -35,13 +35,7 @@ const CONTROL_SX = {
 const MENU_PROPS = {
   PaperProps: {
     sx: {
-      mt: 0.7,
-      border: "1px solid rgba(255,255,255,0.96)",
-      borderRadius: 2.5,
-      background: "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(233,243,255,0.98))",
-      boxShadow: "0 14px 30px rgba(58,94,155,0.18), inset 0 1px 0 #FFFFFF",
-      "& .MuiMenuItem-root.Mui-selected": { bgcolor: "rgba(205,224,255,0.76)" },
-      "& .MuiMenuItem-root:hover": { bgcolor: "rgba(221,235,255,0.8)" },
+      ...insightsMenuPaperSx,
     },
   },
 };
@@ -86,7 +80,7 @@ export default function InsightsFilters({
         alignItems: "center",
         justifyContent: { xs: "stretch", xl: "flex-end" },
         flexWrap: { xs: "wrap", xl: "nowrap" },
-        gap: { xs: 1, xl: 0.5 },
+        gap: { xs: 1, xl: 0.75 },
         width: { xs: "100%", xl: "auto" },
         flex: { xs: "1 1 100%", xl: "0 0 auto" },
         minWidth: 0,

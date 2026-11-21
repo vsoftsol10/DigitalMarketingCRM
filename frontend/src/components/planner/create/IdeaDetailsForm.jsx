@@ -1,17 +1,13 @@
 import { Box, Grid } from "@mui/material";
 
 import FormSection from "../../ui/form/FormSection";
-import { glassFormSectionSx } from "../../ui/form/glassFormSx";
-import {
-  glassFieldErrorInputSx,
-  glassFieldErrorMessageSx,
-} from "../../ui/form/glassFormSx";
+import { plannerFieldErrorInputSx, plannerFieldErrorMessageSx, plannerFormSectionSx, plannerSelectMenuSx } from "../plannerUiSx";
 import FormSelect from "../../ui/form/FormSelect";
 import PublishAccountsField from "./PublishAccountsField";
 
 export default function IdeaDetailsForm({ organizations = [] }) {
   return (
-    <Box sx={glassFormSectionSx}>
+    <Box sx={plannerFormSectionSx}>
       <FormSection
         title="Idea Details"
         description="Basic information about this content idea."
@@ -30,8 +26,9 @@ export default function IdeaDetailsForm({ organizations = [] }) {
               value: organization.id,
               label: organization.name,
             }))}
-            errorInputSx={glassFieldErrorInputSx}
-            errorMessageSx={glassFieldErrorMessageSx}
+            errorInputSx={plannerFieldErrorInputSx}
+            errorMessageSx={plannerFieldErrorMessageSx}
+            MenuProps={{ PaperProps: { sx: plannerSelectMenuSx } }}
           />
         </Grid>
 

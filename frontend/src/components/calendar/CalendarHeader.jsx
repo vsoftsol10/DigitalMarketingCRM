@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import PrimaryButton from "../ui/button/PrimaryButton";
 
 import { TYPOGRAPHY } from "../../theme/typography";
+import { calendarPrimaryButtonSx } from "./calendarGlassSx";
 
 export default function CalendarHeader() {
   const theme = useTheme();
@@ -78,17 +79,10 @@ export default function CalendarHeader() {
       >
         <PrimaryButton
           fullWidth={false}
-          height={50}
+          height={44}
           sx={{
-            minWidth: 190,
-            borderRadius: 999,
-            background: "linear-gradient(105deg, #A46AF5 0%, #5B83F4 58%, #35B5E8 100%)",
-            boxShadow: "0 9px 20px rgba(91,116,228,0.28), inset 0 1px 0 rgba(255,255,255,0.45)",
-            border: "1px solid rgba(255,255,255,0.74)",
-            "&:hover": {
-              background: "linear-gradient(105deg, #9658EB 0%, #4D75E9 58%, #27A9DD 100%)",
-              boxShadow: "0 12px 24px rgba(91,116,228,0.34)",
-            },
+            minWidth: { xs: 0, sm: 154 },
+            ...calendarPrimaryButtonSx,
           }}
           startIcon={<AddRoundedIcon />}
           onClick={handleCreatePost}

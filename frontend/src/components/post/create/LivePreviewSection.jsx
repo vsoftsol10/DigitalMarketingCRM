@@ -170,7 +170,7 @@ import { TYPOGRAPHY } from "../../../theme/typography";
 import PreviewPlatformTabs from "./preview/PreviewPlatformTabs";
 import PreviewPostCard from "./preview/PreviewPostCard";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import overviewGlassCardSx from "../../organization/overview/overviewGlassCardSx";
+import { postCardSx } from "./postUiSx";
 
 export default function LivePreviewSection({
   organizations = [],
@@ -274,7 +274,7 @@ export default function LivePreviewSection({
     <Paper
       elevation={0}
       sx={{
-        ...overviewGlassCardSx,
+        ...postCardSx,
         overflow: "hidden",
       }}
     >
@@ -287,29 +287,26 @@ export default function LivePreviewSection({
           display: "flex",
           alignItems: "center",
           gap: 1.5,
-          px: 3,
-          pt: 3,
+          px: { xs: 2, sm: 2.5 },
+          pt: 2.5,
           pb: 2,
         }}
       >
         <Box
           aria-hidden="true"
           sx={{
-            width: 46,
-            height: 46,
+            width: 38,
+            height: 38,
             flexShrink: 0,
-            borderRadius: "50%",
+            borderRadius: "11px",
             display: "grid",
             placeItems: "center",
-            color: "#557FE1",
-            background:
-              "linear-gradient(145deg, rgba(255,255,255,.96), rgba(220,232,255,.86))",
-            border: "1px solid rgba(255,255,255,.95)",
-            boxShadow:
-              "0 6px 12px rgba(80,101,164,.15), inset 0 2px 0 rgba(255,255,255,.98), inset 0 -2px 4px rgba(104,124,175,.1)",
+            color: "#6941D9",
+            background: "#F3F0FF",
+            border: "1px solid #E7E1FF",
           }}
         >
-          <VisibilityOutlinedIcon sx={{ fontSize: 23 }} />
+          <VisibilityOutlinedIcon sx={{ fontSize: 20 }} />
         </Box>
         <Box>
           <Typography sx={{ ...TYPOGRAPHY.sectionTitle, color: "#17284D" }}>
@@ -346,12 +343,9 @@ export default function LivePreviewSection({
 
       <Box
         sx={{
-          p: 3,
-
-          minHeight: 500,
-
-          background:
-            "linear-gradient(145deg, rgba(249,252,255,.72), rgba(235,243,255,.54))",
+          p: { xs: 1.5, sm: 2 },
+          minHeight: { xs: 360, lg: 420 },
+          background: "#F8FAFD",
         }}
       >
         <PreviewPostCard

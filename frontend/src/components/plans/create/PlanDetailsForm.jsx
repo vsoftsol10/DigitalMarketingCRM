@@ -518,7 +518,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { useEffect } from "react";
 import { planInputSx } from "../plansGlassSx";
 
-const FIELD_HEIGHT = 52;
+const FIELD_HEIGHT = 46;
 
 // ============================================================
 // COMMON FIELD STYLES
@@ -736,9 +736,9 @@ export default function PlanDetailsForm({ customPlan = false }) {
         sx={{
           margin: 0,
 
-          fontSize: "20px",
+          fontSize: "18px",
           fontWeight: 700,
-          lineHeight: "28px",
+          lineHeight: "24px",
 
           color: "#1E293B",
         }}
@@ -751,12 +751,12 @@ export default function PlanDetailsForm({ customPlan = false }) {
         sx={{
           margin: 0,
 
-          mt: 0.5,
-          mb: 2.75,
+          mt: 0.35,
+          mb: 2,
 
-          fontSize: "16px",
+          fontSize: "14px",
           fontWeight: 400,
-          lineHeight: "24px",
+          lineHeight: "21px",
 
           color: "#64748B",
         }}
@@ -768,7 +768,7 @@ export default function PlanDetailsForm({ customPlan = false }) {
           FORM
       ===================================================== */}
 
-      <Grid container columnSpacing={2.5} rowSpacing={2.25}>
+      <Grid container columnSpacing={2} rowSpacing={1.75}>
         {/* ===================================================
             PLAN NAME
         =================================================== */}

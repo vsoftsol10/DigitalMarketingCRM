@@ -47,15 +47,15 @@ export default function CalendarFilters({
           flexDirection: "column",
 
           ...calendarGlassSurfaceSx,
-          background: "linear-gradient(155deg, rgba(250,253,255,0.99) 0%, rgba(231,241,255,0.98) 100%)",
-          boxShadow: "-18px 0 48px rgba(56,89,147,0.2), inset 1px 0 0 rgba(255,255,255,0.96)",
+          borderLeft: "1px solid #DCE3F1",
+          background: "#FFFFFF",
+          boxShadow: "-12px 0 32px rgba(54,76,132,0.12)",
         },
       }}
       slotProps={{
         backdrop: {
           sx: {
-            bgcolor: "rgba(58, 81, 119, 0.28)",
-            backdropFilter: "blur(4px)",
+            bgcolor: "rgba(24,38,70,0.24)",
           },
         },
       }}
@@ -69,16 +69,16 @@ export default function CalendarFilters({
           position: "relative",
 
           px: {
-            xs: 3,
-            sm: 3.5,
+            xs: 2.25,
+            sm: 2.75,
           },
 
           pt: {
-            xs: 3,
-            sm: 3.5,
+            xs: 2.25,
+            sm: 2.75,
           },
 
-          pb: 3,
+          pb: 2.25,
 
           flexShrink: 0,
         }}
@@ -101,25 +101,25 @@ export default function CalendarFilters({
               sm: 20,
             },
 
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
 
-            borderRadius: "50%",
+            borderRadius: "11px",
 
             color: "text.secondary",
 
-            bgcolor: "rgba(255,255,255,0.52)",
+            bgcolor: "#F8FAFF",
 
-            border: "1px solid transparent",
+            border: "1px solid #E3E8F2",
 
             transition:
               "background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease",
 
             "&:hover": {
-              bgcolor: "rgba(220,235,255,0.92)",
-              borderColor: "rgba(186,207,242,0.9)",
+              bgcolor: "#F1EBFF",
+              borderColor: "#D8CCFF",
 
-              color: "text.primary",
+              color: "#6741D9",
             },
 
             "&:active": {
@@ -183,7 +183,7 @@ export default function CalendarFilters({
         </Typography>
       </Box>
 
-      <Divider sx={{ borderColor: "rgba(190,211,242,0.68)" }} />
+      <Divider sx={{ borderColor: "#E7EAF2" }} />
 
       {/* ========================================= */}
       {/* FILTER CONTENT */}
@@ -196,18 +196,18 @@ export default function CalendarFilters({
           overflowY: "auto",
 
           px: {
-            xs: 3,
-            sm: 3.5,
+            xs: 2.25,
+            sm: 2.75,
           },
 
-          py: 3.5,
+          py: 2.5,
 
           "&::-webkit-scrollbar": {
             width: 6,
           },
 
           "&::-webkit-scrollbar-thumb": {
-            bgcolor: "rgba(142,170,211,0.45)",
+            bgcolor: "#CCD5E5",
 
             borderRadius: 10,
           },
@@ -217,7 +217,7 @@ export default function CalendarFilters({
           },
         }}
       >
-        <Stack spacing={3}>
+        <Stack spacing={2.25}>
           {/* Organization */}
 
           <CalendarFilterField
@@ -272,25 +272,25 @@ export default function CalendarFilters({
       {/* FOOTER */}
       {/* ========================================= */}
 
-      <Divider sx={{ borderColor: "rgba(190,211,242,0.68)" }} />
+      <Divider sx={{ borderColor: "#E7EAF2" }} />
 
       <Box
         sx={{
           px: {
-            xs: 3,
-            sm: 3.5,
+            xs: 2.25,
+            sm: 2.75,
           },
 
-          py: 2.5,
+          py: 2,
 
           flexShrink: 0,
 
-          background: "linear-gradient(180deg, rgba(247,251,255,0.98), rgba(231,241,255,0.97))",
+          background: "#FFFFFF",
         }}
       >
         <Stack
           direction="row"
-          spacing={1.5}
+          spacing={1}
           justifyContent="space-between"
         >
           {/* Clear */}
@@ -300,20 +300,20 @@ export default function CalendarFilters({
             type="button"
             onClick={onClear}
             sx={{
-              minWidth: 110,
+              minWidth: { xs: 96, sm: 110 },
 
-              height: 44,
+              height: 42,
 
               px: 2.5,
 
-              borderRadius: 2,
+              borderRadius: "11px",
 
               border: "1px solid",
 
-              borderColor: "rgba(194,214,246,0.86)",
+              borderColor: "#D7DFF0",
 
-              background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(232,242,255,0.9))",
-              boxShadow: "0 4px 10px rgba(70,106,172,0.09), inset 0 1px 0 #FFFFFF",
+              background: "#FFFFFF",
+              boxShadow: "none",
 
               color: "text.secondary",
 
@@ -325,8 +325,8 @@ export default function CalendarFilters({
                 "background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease",
 
               "&:hover": {
-                bgcolor: "rgba(220,235,255,0.92)",
-                borderColor: "#AFC8F0",
+                bgcolor: "#F8FAFF",
+                borderColor: "#B8C7E7",
 
                 color: "text.primary",
               },
@@ -344,16 +344,16 @@ export default function CalendarFilters({
             sx={{
               flex: 1,
 
-              height: 44,
+              height: 42,
 
               px: 2.5,
 
-              border: "1px solid rgba(255,255,255,0.8)",
+              border: "1px solid transparent",
 
-              borderRadius: 999,
+              borderRadius: "11px",
 
-              background: "linear-gradient(105deg, #9872ED 0%, #5D86EA 60%, #39AFE0 100%)",
-              boxShadow: "0 7px 16px rgba(78,112,207,0.25), inset 0 1px 0 rgba(255,255,255,0.38)",
+              background: "linear-gradient(105deg, #8757F3 0%, #625FF1 55%, #3689EC 100%)",
+              boxShadow: "0 7px 16px rgba(92,91,219,0.18)",
 
               color: "primary.contrastText",
 
@@ -365,8 +365,8 @@ export default function CalendarFilters({
                 "background-color 0.2s ease, transform 0.15s ease",
 
               "&:hover": {
-                background: "linear-gradient(105deg, #875EE0 0%, #4F76DE 60%, #2A9FD0 100%)",
-                boxShadow: "0 10px 20px rgba(78,112,207,0.32)",
+                background: "linear-gradient(105deg, #7948EA 0%, #5452E8 55%, #2879DF 100%)",
+                boxShadow: "0 9px 20px rgba(92,91,219,0.24)",
               },
 
               "&:active": {

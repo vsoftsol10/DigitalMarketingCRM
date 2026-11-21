@@ -3,6 +3,7 @@ import { Box, Button, Stack, Typography } from "@mui/material";
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import { planSecondaryButtonSx } from "../plansGlassSx";
 
 export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
   return (
@@ -14,8 +15,9 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
       }}
     >
       <Stack
-        direction="row"
-        alignItems="flex-start"
+        direction={{ xs: "column", md: "row" }}
+        alignItems={{ xs: "stretch", md: "center" }}
+        spacing={{ xs: 1.5, md: 0 }}
         sx={{
           width: "100%",
           minWidth: 0,
@@ -28,6 +30,7 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
         <Box
           sx={{
             minWidth: 0,
+            flex: 1,
           }}
         >
           <Typography
@@ -74,8 +77,11 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
           alignItems="center"
           spacing={1}
           sx={{
-            ml: "auto",
+            ml: { xs: 0, md: "auto" },
             flexShrink: 0,
+            width: { xs: "100%", md: "auto" },
+            flexWrap: { xs: "wrap", sm: "nowrap" },
+            "& > .MuiButton-root": { flex: { xs: "1 1 105px", md: "0 0 auto" } },
           }}
         >
           {/* BACK */}
@@ -92,31 +98,10 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
             }
             onClick={onBack}
             sx={{
-              minWidth: 114,
-              height: 46,
-
-              px: 2,
-
-              borderRadius: 999,
-
-              border: "1px solid rgba(255,255,255,0.96)",
-
-              background: "linear-gradient(145deg, rgba(255,255,255,0.92), rgba(234,243,255,0.84))",
-
-              color: "#30466A",
-
-              fontSize: "14px",
-              fontWeight: 500,
-              lineHeight: "20px",
-
-              textTransform: "none",
-
+              ...planSecondaryButtonSx,
+              minWidth: 104,
+              minHeight: 44,
               whiteSpace: "nowrap",
-
-              "&:hover": {
-                borderColor: "#B9CEF0",
-                background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)",
-              },
             }}
           >
             Back
@@ -136,31 +121,10 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
             }
             onClick={onEdit}
             sx={{
+              ...planSecondaryButtonSx,
               minWidth: 100,
-              height: 46,
-
-              px: 2,
-
-              borderRadius: 999,
-
-              border: "1px solid rgba(255,255,255,0.96)",
-
-              background: "linear-gradient(145deg, rgba(255,255,255,0.92), rgba(234,243,255,0.84))",
-
-              color: "#30466A",
-
-              fontSize: "14px",
-              fontWeight: 500,
-              lineHeight: "20px",
-
-              textTransform: "none",
-
+              minHeight: 44,
               whiteSpace: "nowrap",
-
-              "&:hover": {
-                borderColor: "#B9CEF0",
-                background: "linear-gradient(145deg, #FFFFFF, #EAF3FF)",
-              },
             }}
           >
             Edit
@@ -221,12 +185,10 @@ export default function PlanDetailsHeader({ plan, onBack, onEdit, onDelete }) {
               }
               onClick={onDelete}
               sx={{
-                minWidth: 120,
-                height: 46,
-
+                minWidth: 110,
+                minHeight: 44,
                 px: 2,
-
-                borderRadius: "14px",
+                borderRadius: "13px",
 
                 backgroundColor: "#DC2626",
 

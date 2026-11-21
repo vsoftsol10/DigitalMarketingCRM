@@ -55,6 +55,7 @@ import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import { useFormContext } from "react-hook-form";
 
 import AISuggestionCard from "./AISuggestionCard";
+import { postAlertSx } from "../postUiSx";
 
 export default function AISuggestions({ suggestions = [] }) {
   const { setValue } = useFormContext();
@@ -75,12 +76,7 @@ export default function AISuggestions({ suggestions = [] }) {
       <Alert
         icon={<AutoAwesomeRoundedIcon />}
         severity="info"
-        sx={{
-          mt: 1.5,
-          borderRadius: "12px",
-          py: 0.75,
-          fontSize: 13,
-        }}
+        sx={{ ...postAlertSx, mt: 1.5, py: 0.75 }}
       >
         Generate an AI caption to see your suggestion.
       </Alert>

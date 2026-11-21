@@ -1,7 +1,7 @@
 import { Box, Button } from "@mui/material";
 import { TYPOGRAPHY } from "../../../theme/typography";
 import PrimaryButton from "../../ui/button/PrimaryButton";
-import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
+import { plannerPrimaryButtonSx, plannerSecondaryButtonSx } from "../plannerUiSx";
 
 export default function CreateContentIdeaFooter({ loading = false, onCancel }) {
   return (
@@ -15,6 +15,7 @@ export default function CreateContentIdeaFooter({ loading = false, onCancel }) {
         display: "flex",
         justifyContent: "flex-end",
         gap: 2,
+        flexDirection: { xs: "column-reverse", sm: "row" },
       }}
     >
       {/* Cancel */}
@@ -23,19 +24,14 @@ export default function CreateContentIdeaFooter({ loading = false, onCancel }) {
         variant="outlined"
         onClick={onCancel}
         sx={{
-          minWidth: 140,
+          ...plannerSecondaryButtonSx,
+          minWidth: { xs: "100%", sm: 140 },
           height: 48,
-
-          borderRadius: "14px",
-
-          borderColor: "#CBD5E1",
-
-          color: "#475569",
 
           ...TYPOGRAPHY.formButton,
 
           "&:hover": {
-            borderColor: "#94A3B8",
+            borderColor: "#B9C4D8",
             bgcolor: "#F8FAFC",
           },
         }}
@@ -51,9 +47,9 @@ export default function CreateContentIdeaFooter({ loading = false, onCancel }) {
         fullWidth={false}
         height={48}
         sx={{
-          minWidth: 180,
           ...TYPOGRAPHY.formButton,
-          ...glassPrimaryButtonSx,
+          ...plannerPrimaryButtonSx,
+          minWidth: { xs: "100%", sm: 180 },
         }}
       >
         {loading ? "Creating..." : "Create Idea"}

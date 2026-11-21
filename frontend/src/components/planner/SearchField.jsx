@@ -20,8 +20,8 @@ export default function SearchField({
           <InputAdornment position="start">
             <SearchRoundedIcon
               sx={{
-                color: "#647D9F",
-                fontSize: 22,
+                color: "#94A3B8",
+                fontSize: 20,
               }}
             />
           </InputAdornment>
@@ -30,23 +30,21 @@ export default function SearchField({
       sx={{
         "& .MuiOutlinedInput-root": {
           height: 48,
-          borderRadius: "999px",
-          background:
-            "linear-gradient(145deg, rgba(229,238,252,.82), rgba(255,255,255,.9))",
-          boxShadow:
-            "inset 0 2px 6px rgba(77,102,145,.09), 0 3px 8px rgba(75,100,145,.06), inset 0 1px 0 rgba(255,255,255,.96)",
+          borderRadius: "12px",
+          background: "#FFFFFF",
+          boxShadow: "none",
 
           "& fieldset": {
-            borderColor: "rgba(255,255,255,.96)",
+            borderColor: "#DCE2EF",
             borderWidth: 1,
           },
 
           "&:hover fieldset": {
-            borderColor: "rgba(128,157,202,.48)",
+            borderColor: "#B8C3D8",
           },
 
           "&.Mui-focused fieldset": {
-            borderColor: "#8CA9E2",
+            borderColor: "#7B61E8",
             borderWidth: 1,
           },
         },
@@ -54,9 +52,9 @@ export default function SearchField({
         "& .MuiInputAdornment-root": { mr: 0.5 },
         "& input": {
           ...TYPOGRAPHY.body,
-          color: "#243957",
+          color: "#334155",
           py: 0,
-          "&::placeholder": { color: "#7185A2", opacity: 0.78 },
+          "&::placeholder": { color: "#94A3B8", opacity: 1 },
         },
       }}
     />

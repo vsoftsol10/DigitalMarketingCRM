@@ -6,6 +6,7 @@ import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import { useNavigate } from "react-router-dom";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { organizationPrimaryButtonSx, organizationSecondaryButtonSx } from "../organizationUiSx";
 
 export default function OverviewHeader({
   organization,
@@ -21,7 +22,9 @@ export default function OverviewHeader({
         display: "flex",
         justifyContent: "space-between",
         alignItems: "flex-start",
+        gap: 2,
         mb: 4,
+        flexDirection: { xs: "column", md: "row" },
       }}
     >
       <Box>
@@ -37,10 +40,10 @@ export default function OverviewHeader({
             color: "#64748B",
             px: 1.25,
             py: 0.7,
-            borderRadius: "999px",
-            background: "linear-gradient(145deg, rgba(255,255,255,.8), rgba(232,241,255,.68))",
-            border: "1px solid rgba(255,255,255,.9)",
-            boxShadow: "0 3px 9px rgba(76,102,148,.08), inset 0 1px 0 #fff",
+            borderRadius: "12px",
+            background: "#FFFFFF",
+            border: "1px solid #DDE3F1",
+            boxShadow: "none",
             transition: "0.2s",
 
             "&:hover": {
@@ -84,29 +87,29 @@ export default function OverviewHeader({
       </Box>
 
       <Stack
-        direction="row"
+        direction={{ xs: "column", sm: "row" }}
         spacing={2}
+        sx={{ width: { xs: "100%", md: "auto" }, flexWrap: "wrap" }}
       >
         <Button
           variant="contained"
           startIcon={<EditOutlinedIcon />}
           onClick={onEdit}
           sx={{
+            width: { xs: "100%", sm: "auto" },
             height: 48,
             px: 2.8,
-            borderRadius: "17px",
+            borderRadius: "14px",
             textTransform: "none",
 
             ...TYPOGRAPHY.formButton,
 
-            border: "1px solid rgba(255,255,255,.7)",
             color: "#FFFFFF",
-            background: "linear-gradient(115deg, #A96BEA 0%, #7074ED 54%, #4A91ED 100%)",
-            boxShadow: "0 11px 22px rgba(100,92,203,.3), 0 3px 7px rgba(65,101,210,.17), inset 0 1px 0 rgba(255,255,255,.46), inset 0 -2px 3px rgba(67,71,163,.16)",
+            ...organizationPrimaryButtonSx,
 
             "&:hover": {
-              background: "linear-gradient(115deg, #9D60E3 0%, #5E70E8 56%, #3D8FEA 100%)",
-              boxShadow: "0 13px 24px rgba(100,92,203,.34), 0 3px 8px rgba(65,101,210,.2), inset 0 1px 0 rgba(255,255,255,.42)",
+              background: "linear-gradient(110deg, #7D3CEB 0%, #2F6EEA 100%)",
+              boxShadow: "0 7px 15px rgba(83,75,196,.23)",
             },
           }}
         >
@@ -118,18 +121,18 @@ export default function OverviewHeader({
           startIcon={<PersonAddAlt1RoundedIcon />}
           onClick={onInvite}
           sx={{
+            width: { xs: "100%", sm: "auto" },
             height: 48,
             px: 2.4,
-            borderRadius: "17px",
+            borderRadius: "12px",
             textTransform: "none",
             ...TYPOGRAPHY.formButton,
             color: "#52698B",
-            borderColor: "rgba(146,168,201,.45)",
-            background: "linear-gradient(145deg, rgba(255,255,255,.92), rgba(232,241,255,.72))",
-            boxShadow: "0 5px 12px rgba(73,99,153,.08), inset 0 1px 0 #fff",
+            ...organizationSecondaryButtonSx,
+            minHeight: 48,
             "&:hover": {
-              borderColor: "rgba(112,116,237,.55)",
-              background: "linear-gradient(145deg, #fff, rgba(232,241,255,.94))",
+              borderColor: "#B9C4D8",
+              background: "#F8FAFC",
             },
           }}
         >
@@ -142,20 +145,20 @@ export default function OverviewHeader({
           startIcon={<DeleteOutlineRoundedIcon />}
           onClick={onDelete}
           sx={{
+            width: { xs: "100%", sm: "auto" },
             height: 48,
             px: 2.8,
-            borderRadius: "17px",
+            borderRadius: "14px",
             textTransform: "none",
 
             ...TYPOGRAPHY.formButton,
 
-            border: "1px solid rgba(255,255,255,.58)",
-            background: "linear-gradient(115deg, #E65D78 0%, #D94A63 100%)",
-            boxShadow: "0 10px 20px rgba(157,54,83,.22), 0 3px 7px rgba(130,42,68,.12), inset 0 1px 0 rgba(255,255,255,.48), inset 0 -2px 3px rgba(128,35,60,.12)",
+            background: "#DC3F54",
+            boxShadow: "0 4px 10px rgba(220,63,84,.18)",
 
             "&:hover": {
-              background: "linear-gradient(115deg, #DC4D68 0%, #CB3B56 100%)",
-              boxShadow: "0 12px 22px rgba(157,54,83,.27), 0 3px 8px rgba(130,42,68,.15), inset 0 1px 0 rgba(255,255,255,.48), inset 0 -2px 3px rgba(128,35,60,.14)",
+              background: "#C93248",
+              boxShadow: "0 5px 12px rgba(220,63,84,.22)",
             },
           }}
         >

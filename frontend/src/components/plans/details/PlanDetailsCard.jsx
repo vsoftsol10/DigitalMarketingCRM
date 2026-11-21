@@ -349,8 +349,8 @@ function DetailItem({ icon, label, value }) {
     >
       <Box
         sx={{
-          width: 34,
-          height: 34,
+          width: 30,
+          height: 30,
 
           flexShrink: 0,
 
@@ -358,7 +358,7 @@ function DetailItem({ icon, label, value }) {
           alignItems: "center",
           justifyContent: "center",
 
-          borderRadius: "9px",
+          borderRadius: "8px",
 
           backgroundColor: "#F8FAFC",
 
@@ -386,9 +386,9 @@ function DetailItem({ icon, label, value }) {
 
         <Typography
           sx={{
-            fontSize: "14px",
+          fontSize: "13px",
             fontWeight: 500,
-            lineHeight: "20px",
+          lineHeight: "19px",
             color: "#334155",
             mt: 0.2,
 
@@ -419,8 +419,8 @@ export default function PlanDetailsCard({ plan }) {
         minWidth: 0,
 
         p: {
-          xs: 2.5,
-          sm: 2.75,
+          xs: 2,
+          sm: 2.25,
         },
 
         ...plansGlassSurfaceSx,
@@ -459,7 +459,7 @@ export default function PlanDetailsCard({ plan }) {
 
           color: "#475569",
 
-          mt: 2,
+          mt: 1.5,
         }}
       >
         {plan?.description || "—"}
@@ -476,7 +476,7 @@ export default function PlanDetailsCard({ plan }) {
 
           backgroundColor: "#E2E8F0",
 
-          my: 2.25,
+          my: 1.5,
         }}
       />
 
@@ -493,8 +493,8 @@ export default function PlanDetailsCard({ plan }) {
             sm: "1fr 1fr",
           },
 
-          columnGap: 4,
-          rowGap: 2,
+          columnGap: { xs: 2, sm: 3 },
+          rowGap: 1.25,
         }}
       >
         {/* PLAN TYPE */}
@@ -649,7 +649,7 @@ export default function PlanDetailsCard({ plan }) {
 
           backgroundColor: "#E2E8F0",
 
-          my: 2.25,
+          my: 1.5,
         }}
       />
 

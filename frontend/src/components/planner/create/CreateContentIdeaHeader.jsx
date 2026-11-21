@@ -3,6 +3,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { useNavigate } from "react-router-dom";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
+import { plannerSecondaryButtonSx } from "../plannerUiSx";
 
 export default function CreateContentIdeaHeader() {
   const navigate = useNavigate();
@@ -18,11 +19,15 @@ export default function CreateContentIdeaHeader() {
           alignItems: "center",
           gap: 0.5,
           cursor: "pointer",
+          ...plannerSecondaryButtonSx,
+          minHeight: 36,
+          px: 1.25,
+          py: 0.5,
           color: "#64748B",
           transition: "0.2s",
 
           "&:hover": {
-            color: "#2563EB",
+            color: "#6941D9",
           },
         }}
       >

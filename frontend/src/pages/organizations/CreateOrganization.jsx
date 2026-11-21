@@ -21,7 +21,7 @@ import {
   glassFormDividerSx,
   glassFormPaperSx,
   glassFormSectionSx,
-} from "../../components/ui/form/glassFormSx";
+} from "../../components/organization/organizationUiSx";
 
 import { organizationSchema } from "../../validation/organization.schema";
 import { organizationDefaultValues } from "../../constants/forms/organizationDefaultValues";

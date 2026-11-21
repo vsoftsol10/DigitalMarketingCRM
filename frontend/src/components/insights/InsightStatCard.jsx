@@ -37,6 +37,7 @@ export default function InsightStatCard({ title, metric, metricKey, loading, sel
           compact
         />
       ) : null}
+      variant="dashboard"
     />
   );
 }

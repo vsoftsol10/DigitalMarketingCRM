@@ -89,20 +89,20 @@ export default function SubscriptionForm({ plans = [] }) {
                       minWidth: 0,
                       height: 52,
                       borderRadius: "12px !important",
-                      border: "1px solid rgba(255,255,255,.94)",
-                      background: "linear-gradient(145deg, rgba(255,255,255,.88), rgba(232,241,255,.8))",
-                      boxShadow: "0 4px 10px rgba(76,101,145,.09), inset 0 1px 0 #fff, inset 0 -1px 2px rgba(104,126,169,.06)",
+                      border: "1px solid #DCE2EF",
+                      background: "#FFFFFF",
+                      boxShadow: "none",
                       textTransform: "none",
                       fontSize: 14,
                       fontWeight: 600,
                       color: "#475569",
                       "&.Mui-selected": {
-                        color: "#385FC0",
-                        borderColor: "rgba(112,137,204,.58)",
-                        background: "linear-gradient(145deg, #F0EAFF, #E4F0FF)",
-                        boxShadow: "0 5px 12px rgba(93,107,180,.15), inset 0 1px 0 #fff, inset 0 -1px 2px rgba(113,128,190,.08)",
+                        color: "#6941D9",
+                        borderColor: "#DAD1F8",
+                        background: "#F5F2FF",
+                        boxShadow: "none",
                         "&:hover": {
-                          background: "linear-gradient(145deg, #F0EAFF, #E4F0FF)",
+                          background: "#F5F2FF",
                         },
                       },
                     },
@@ -122,10 +122,10 @@ export default function SubscriptionForm({ plans = [] }) {
             sx={{
               minWidth: 0,
               p: { xs: 1.75, sm: 2 },
-              borderRadius: "16px",
-              border: "1px solid rgba(255,255,255,.96)",
-              background: "linear-gradient(125deg, rgba(236,244,255,.88), rgba(249,242,255,.78) 62%, rgba(255,255,255,.82))",
-              boxShadow: "0 7px 17px rgba(79,102,153,.10), inset 0 1px 0 rgba(255,255,255,.98), inset 0 -1px 0 rgba(129,151,193,.08)",
+              borderRadius: "14px",
+              border: "1px solid #E5E9F1",
+              background: "#F8FAFC",
+              boxShadow: "none",
             }}
           >
             <Stack

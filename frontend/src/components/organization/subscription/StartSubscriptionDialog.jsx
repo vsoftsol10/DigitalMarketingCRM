@@ -16,16 +16,17 @@ import {
 } from "@mui/material";
 
 import { useEffect, useMemo, useState } from "react";
-import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 import {
-  glassDialogActionsSx,
-  glassDialogCardSx,
-  glassDialogContentSx,
-  glassDialogPaperSx,
-  glassDialogSecondaryButtonSx,
-  glassDialogTitleSx,
-  glassDialogToggleGroupSx,
-} from "../../ui/dialog/glassDialogSx";
+  subscriptionDialogActionsSx,
+  subscriptionDialogCardSx,
+  subscriptionDialogContentSx,
+  subscriptionDialogPaperSx,
+  subscriptionDialogPrimaryButtonSx,
+  subscriptionDialogSecondaryButtonSx,
+  subscriptionDialogSelectSx,
+  subscriptionDialogTitleSx,
+  subscriptionDialogToggleGroupSx,
+} from "../organizationUiSx";
 
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN").format(Number(value) || 0);
@@ -81,13 +82,13 @@ export default function StartSubscriptionDialog({
       onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="sm"
-      PaperProps={{ sx: glassDialogPaperSx }}
+      PaperProps={{ sx: subscriptionDialogPaperSx }}
     >
-      <DialogTitle sx={glassDialogTitleSx}>
+      <DialogTitle sx={subscriptionDialogTitleSx}>
         Start Subscription
       </DialogTitle>
 
-      <DialogContent dividers sx={glassDialogContentSx}>
+      <DialogContent dividers sx={subscriptionDialogContentSx}>
         <Typography
           sx={{
             mb: 3,
@@ -115,12 +116,12 @@ export default function StartSubscriptionDialog({
             label="Plan"
             onChange={(event) => setPlanId(event.target.value)}
             sx={{
-              minHeight: 52,
-              borderRadius: "14px",
-              background: "linear-gradient(145deg, rgba(232,241,255,.78), rgba(255,255,255,.94))",
+              ...subscriptionDialogSelectSx,
               "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(142,164,204,.38)",
+                borderColor: "#DCE2EF",
               },
+              "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#B8C3D8" },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#7B61E8" },
             }}
           >
             {plans.map((plan) => (
@@ -163,7 +164,7 @@ export default function StartSubscriptionDialog({
               }
             }}
             disabled={loading}
-            sx={glassDialogToggleGroupSx}
+            sx={subscriptionDialogToggleGroupSx}
           >
             <ToggleButton value="monthly">Monthly</ToggleButton>
 
@@ -183,7 +184,7 @@ export default function StartSubscriptionDialog({
 
               borderRadius: "12px",
 
-              ...glassDialogCardSx,
+              ...subscriptionDialogCardSx,
             }}
           >
             <Typography
@@ -209,7 +210,7 @@ export default function StartSubscriptionDialog({
                 lineHeight: "30px",
                 fontWeight: 700,
 
-                color: "#0F172A",
+                color: "#6941D9",
               }}
             >
               ₹{formatPrice(selectedPrice)}
@@ -267,12 +268,12 @@ export default function StartSubscriptionDialog({
           ACTIONS
       ======================================================= */}
 
-      <DialogActions sx={glassDialogActionsSx}>
+      <DialogActions sx={subscriptionDialogActionsSx}>
         <Button
           onClick={onClose}
           disabled={loading}
           color="inherit"
-          sx={glassDialogSecondaryButtonSx}
+          sx={subscriptionDialogSecondaryButtonSx}
         >
           Cancel
         </Button>
@@ -281,7 +282,7 @@ export default function StartSubscriptionDialog({
           variant="contained"
           onClick={handleSubmit}
           disabled={loading || !planId || plans.length === 0}
-          sx={{ minWidth: 150, ...glassPrimaryButtonSx }}
+          sx={{ minWidth: { sm: 150 }, ...subscriptionDialogPrimaryButtonSx }}
         >
           {loading ? "Starting..." : "Start Subscription"}
         </Button>

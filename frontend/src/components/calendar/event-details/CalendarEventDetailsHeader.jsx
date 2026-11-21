@@ -32,7 +32,7 @@ export default function CalendarEventDetailsHeader({
       sx={{
         width: "100%",
         minWidth: 0,
-        mt: 2.5,
+        mt: 2,
       }}
     >
       {/* ==========================================
@@ -59,12 +59,12 @@ export default function CalendarEventDetailsHeader({
             label={statusMeta.label}
             size="small"
             sx={{
-              height: 28,
+              height: 26,
               px: 0.25,
               borderRadius: 1.5,
-              bgcolor: "rgba(255,255,255,0.76)",
-              border: "1px solid rgba(205,221,247,0.8)",
-              boxShadow: "0 3px 8px rgba(70,106,172,0.08), inset 0 1px 0 #FFFFFF",
+              bgcolor: "#F8FAFF",
+              border: "1px solid #E3E8F2",
+              boxShadow: "none",
               color: statusMeta.palette,
               ...TYPOGRAPHY.caption,
               fontWeight: 700,
@@ -78,9 +78,9 @@ export default function CalendarEventDetailsHeader({
         {platformMeta && (
           <Box
             sx={{
-              height: 28,
-              border: "1px solid rgba(255,255,255,0.92)",
-              boxShadow: "0 3px 8px rgba(70,106,172,0.08), inset 0 1px 0 #FFFFFF",
+              height: 26,
+              border: "1px solid #E3E8F2",
+              boxShadow: "none",
               display: "flex",
               alignItems: "center",
               gap: 0.75,
@@ -139,8 +139,8 @@ export default function CalendarEventDetailsHeader({
           ...TYPOGRAPHY.sectionTitle,
           mt: 1.5,
           color: "text.primary",
-          fontSize: { xs: "20px", sm: "22px" },
-          lineHeight: { xs: "27px", sm: "29px" },
+          fontSize: { xs: "19px", sm: "21px" },
+          lineHeight: { xs: "26px", sm: "29px" },
           fontWeight: 700,
           letterSpacing: "-0.015em",
           wordBreak: "break-word",
@@ -185,7 +185,7 @@ export default function CalendarEventDetailsHeader({
           LIFECYCLE TRACK
       ========================================== */}
 
-      <Box sx={{ mt: 2.5, px: 0.5 }}>
+      <Box sx={{ mt: 2, px: 0.25 }}>
         <CalendarEventStatusTrack
           status={event.status}
         />

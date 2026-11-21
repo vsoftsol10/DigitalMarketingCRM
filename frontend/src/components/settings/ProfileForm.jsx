@@ -28,7 +28,9 @@ import {
 import { TYPOGRAPHY } from "../../theme/typography";
 import {
   settingsFieldSx,
+  settingsErrorAlertSx,
   settingsPrimaryButtonSx,
+  settingsSecondaryButtonSx,
 } from "./settingsGlassSx";
 
 const DEFAULT_VALUES = {
@@ -278,7 +280,7 @@ export default function ProfileForm({
         alignItems="center"
         spacing={2.5}
         sx={{
-          mt: 2.5,
+          mt: 2.25,
           flexWrap: "wrap",
         }}
       >
@@ -297,9 +299,9 @@ export default function ProfileForm({
             sx={{
               width: "100%",
               height: "100%",
-              border: "3px solid rgba(255,255,255,0.98)",
-              boxShadow: "0 8px 20px rgba(58,83,145,0.2)",
-              background: "linear-gradient(145deg, #8A62E8, #4E8BEF)",
+              border: "3px solid #FFFFFF",
+              boxShadow: "0 5px 12px rgba(41,55,103,.12)",
+              background: "linear-gradient(110deg, #8B4BF5, #3977F6)",
               color: "#FFFFFF",
               fontSize: { xs: 24, sm: 28 },
               fontWeight: 700,
@@ -322,9 +324,9 @@ export default function ProfileForm({
               border: "2px solid #FFFFFF",
               borderRadius: "50%",
               color: "#FFFFFF",
-              background: "linear-gradient(135deg, #9B58ED, #5578F5)",
-              boxShadow: "0 4px 10px rgba(91,83,195,0.25)",
-              "&:hover": { background: "linear-gradient(135deg, #8C49E0, #486AE8)" },
+              background: "linear-gradient(110deg, #8B4BF5, #3977F6)",
+              boxShadow: "0 3px 8px rgba(83,75,196,.18)",
+              "&:hover": { background: "linear-gradient(110deg, #7D3CEB, #2F6EEA)" },
             }}
           >
             <PhotoCameraOutlinedIcon sx={{ fontSize: 17 }} />
@@ -383,13 +385,11 @@ export default function ProfileForm({
 
               gap: 0.75,
 
-              border: "1px solid rgba(255,255,255,0.95)",
-              borderRadius: 999,
+              ...settingsSecondaryButtonSx,
+              minHeight: 38,
               px: 1.5,
-              py: 0.75,
-              background: "linear-gradient(145deg, rgba(255,255,255,0.94), rgba(238,243,255,0.88))",
-              boxShadow: "0 5px 12px rgba(76,99,161,0.1), inset 0 1px 0 #FFFFFF",
-              color: "#5F65D9",
+              py: 0.5,
+              color: "#6941D9",
 
               cursor: loading
                 ? "default"
@@ -401,7 +401,8 @@ export default function ProfileForm({
 
               "&:hover": {
                 textDecoration: "none",
-                background: "linear-gradient(145deg, #FFFFFF, #E9EFFF)",
+                background: "#F5F2FF",
+                borderColor: "#C8BDF5",
                 cursor: loading ? "default" : "pointer",
               },
             }}
@@ -429,7 +430,7 @@ export default function ProfileForm({
           DIVIDER
       ===================================== */}
 
-      <Divider sx={{ my: 2.5, borderColor: "rgba(159,177,211,0.28)" }} />
+      <Divider sx={{ my: 2.25, borderColor: "#E5E9F1" }} />
 
       {/* =====================================
           DETAILS
@@ -437,11 +438,7 @@ export default function ProfileForm({
 
       <Box
         sx={{
-          p: { xs: 1.75, sm: 2.25 },
-          borderRadius: "20px",
-          border: "1px solid rgba(255,255,255,0.92)",
-          background: "linear-gradient(120deg, rgba(255,255,255,0.56), rgba(241,247,255,0.62) 55%, rgba(255,248,252,0.55))",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.94)",
+          p: 0,
         }}
       >
       <Typography
@@ -466,7 +463,7 @@ export default function ProfileForm({
             severity="error"
             sx={{
               mb: 2.5,
-              borderRadius: 2,
+              ...settingsErrorAlertSx,
             }}
           >
             {error}
@@ -579,16 +576,16 @@ export default function ProfileForm({
           gap: 1,
 
           borderRadius: "14px",
-          border: "1px solid rgba(255,255,255,0.9)",
-          background: "linear-gradient(100deg, rgba(229,242,255,0.88), rgba(238,243,255,0.72))",
-          color: "#647A9B",
+          border: "1px solid #E5E9F1",
+          background: "#F8FAFC",
+          color: "#667792",
         }}
       >
         <ShieldOutlinedIcon
           sx={{
             fontSize: 18,
 
-            color: "#647A9B",
+            color: "#71809A",
 
             flexShrink: 0,
           }}
@@ -620,7 +617,7 @@ export default function ProfileForm({
 
           borderTop: "1px solid",
 
-          borderColor: "rgba(159,177,211,0.28)",
+          borderColor: "#E5E9F1",
 
           display: "flex",
 
@@ -633,9 +630,9 @@ export default function ProfileForm({
           disableElevation
           disabled={loading}
           sx={{
-            minWidth: 130,
+            minWidth: 144,
 
-            height: 44,
+            height: 46,
 
             px: 2.5,
 

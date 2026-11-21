@@ -45,23 +45,23 @@ export default function CalendarDayCell({
     <Box
       sx={{
         minHeight: {
-          xs: 110,
-          sm: 135,
-          md: 150,
+          xs: 96,
+          sm: 118,
+          md: 136,
         },
 
-        p: 1,
+        p: { xs: 0.5, sm: 0.75, md: 1 },
 
         borderRight: "1px solid",
         borderBottom: "1px solid",
-        borderColor: "rgba(201,219,247,0.62)",
+        borderColor: "#E7EAF2",
 
         background: isCurrentMonth
-          ? "linear-gradient(145deg, rgba(255,255,255,0.84) 0%, rgba(243,248,255,0.76) 100%)"
-          : "linear-gradient(145deg, rgba(222,234,251,0.76) 0%, rgba(232,241,253,0.7) 100%)",
+          ? "#FFFFFF"
+          : "#F8FAFF",
         ...(isCurrentMonth ? {} : calendarGlassInsetSx),
-        transition: "background 160ms ease",
-        "&:hover": { background: "linear-gradient(145deg, rgba(255,255,255,0.96) 0%, rgba(232,242,255,0.9) 100%)" },
+        transition: "background-color 160ms ease",
+        "&:hover": { background: "#FCFBFF" },
 
         "&:nth-of-type(7n)": {
           borderRight: "none",
@@ -74,13 +74,13 @@ export default function CalendarDayCell({
         sx={{
           display: "flex",
           justifyContent: "flex-start",
-          mb: 1,
+          mb: { xs: 0.5, sm: 0.75 },
         }}
       >
         <Box
           sx={{
-            width: 30,
-            height: 30,
+            width: { xs: 26, sm: 28 },
+            height: { xs: 26, sm: 28 },
 
             display: "flex",
             alignItems: "center",
@@ -88,8 +88,8 @@ export default function CalendarDayCell({
 
             borderRadius: "50%",
 
-            bgcolor: isToday ? "#3478E5" : "transparent",
-            boxShadow: isToday ? "0 4px 10px rgba(52,120,229,0.3), inset 0 1px 0 rgba(255,255,255,0.4)" : "none",
+            bgcolor: isToday ? "#7046E8" : "transparent",
+            boxShadow: isToday ? "0 3px 8px rgba(112,70,232,0.22)" : "none",
 
             color: isToday
               ? "primary.contrastText"

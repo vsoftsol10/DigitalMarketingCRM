@@ -13,7 +13,6 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import NotificationIcon from "../dashboard/NotificationIcon";
-import LoadingState from "../ui/LoadingState";
 import LoadingSpinner from "../ui/LoadingSpinner";
 import ErrorState from "../ui/ErrorState";
 import EmptyState from "../ui/EmptyState";
@@ -154,10 +153,10 @@ export default function HeaderNotificationCenter() {
           width: 44,
           height: 44,
           color: "#52627F",
-          border: "1px solid rgba(255,255,255,.92)",
-          background: "linear-gradient(145deg, rgba(247,250,255,.94), rgba(232,239,252,.86))",
-          boxShadow: "0 6px 14px rgba(88, 106, 160, .12), inset 0 2px 2px rgba(255,255,255,.95), inset 0 -1px 2px rgba(94,111,159,.06)",
-          "&:hover": { background: "linear-gradient(145deg, rgba(240,246,255,.98), rgba(224,235,253,.94))" },
+          border: "1px solid #E1E5F0",
+          background: "#FFFFFF",
+          boxShadow: "0 3px 8px rgba(31,41,80,.06)",
+          "&:hover": { background: "#F8FAFC" },
           "&:focus-visible": { outline: "2px solid rgba(89,116,220,.5)", outlineOffset: 2 },
         }}
       >
@@ -179,36 +178,32 @@ export default function HeaderNotificationCenter() {
         slotProps={{
           paper: {
             sx: {
-              width: "min(380px, calc(100vw - 24px))",
-              minWidth: "min(380px, calc(100vw - 24px))",
-              maxWidth: "min(380px, calc(100vw - 24px))",
-              height: "min(514px, calc(100vh - 24px))",
-              minHeight: "min(514px, calc(100vh - 24px))",
-              maxHeight: "min(514px, calc(100vh - 24px))",
+              width: "min(360px, calc(100vw - 24px))",
+              minWidth: 0,
+              maxWidth: "min(360px, calc(100vw - 24px))",
+              maxHeight: "min(560px, calc(100vh - 96px))",
               boxSizing: "border-box",
               mt: 1,
-              border: "1px solid rgba(255,255,255,.94)",
+              border: "1px solid #E2E8F0",
               borderRadius: "18px",
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
-              background: "linear-gradient(145deg, rgba(249,252,255,.99), rgba(236,243,255,.97))",
-              boxShadow: "0 18px 38px rgba(62,82,140,.2), 0 5px 12px rgba(62,82,140,.09), inset 0 1px 0 rgba(255,255,255,.98)",
-              backdropFilter: "blur(18px)",
+              background: "#FFFFFF",
+              boxShadow: "0 8px 22px rgba(31,41,80,.10)",
             },
           },
         }}
       >
         <Box
           sx={{
-            height: 74,
+            minHeight: 74,
             boxSizing: "border-box",
             flexShrink: 0,
-            px: 2.25,
-            py: 1.75,
-            borderBottom: "1px solid rgba(126,146,190,.2)",
-            background: "linear-gradient(145deg, rgba(242,247,255,.98), rgba(235,242,255,.94))",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,.98)",
+            px: { xs: 1.75, sm: 2.25 },
+            py: 1.5,
+            borderBottom: "1px solid #E5E7EB",
+            background: "#FFFFFF",
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
@@ -217,7 +212,7 @@ export default function HeaderNotificationCenter() {
           }}
         >
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#1E293B" }}>
+            <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#172554" }}>
               Notifications
             </Typography>
             <Typography
@@ -227,7 +222,7 @@ export default function HeaderNotificationCenter() {
                 height: 18,
                 fontSize: 12,
                 lineHeight: "18px",
-                color: "#64748B",
+                color: "#7B89A2",
                 visibility: unreadCount > 0 ? "visible" : "hidden",
               }}
             >
@@ -255,14 +250,15 @@ export default function HeaderNotificationCenter() {
               flexShrink: 0,
               minWidth: 0,
               px: 1,
-              color: "#5269B4",
-              fontSize: 12,
+              color: "#6941D9",
+              fontSize: 13,
               fontWeight: 600,
               textTransform: "none",
               whiteSpace: "nowrap",
-              borderRadius: 1.5,
-              "&:hover": { background: "rgba(89,116,220,.08)" },
+              borderRadius: "10px",
+              "&:hover": { background: "#F5F2FF" },
               "&.Mui-disabled": { color: "#94A3B8" },
+              "&:focus-visible": { outline: "2px solid rgba(111,145,211,.48)", outlineOffset: 2 },
             }}
           >
             {isClearing ? "Clearing…" : "Clear all"}
@@ -275,24 +271,44 @@ export default function HeaderNotificationCenter() {
             overflowY: "auto",
             overscrollBehavior: "contain",
             scrollbarWidth: "thin",
-            scrollbarColor: "rgba(122,143,190,.42) transparent",
+            scrollbarColor: "rgba(122,143,190,.38) transparent",
             "&::-webkit-scrollbar": { width: 7 },
-            "&::-webkit-scrollbar-thumb": { borderRadius: 8, background: "rgba(122,143,190,.36)" },
+            "&::-webkit-scrollbar-thumb": { borderRadius: 8, background: "rgba(122,143,190,.34)" },
           }}
         >
           {loading ? (
-            <LoadingState
-              label="LOADING NOTIFICATIONS..."
-              variant="container"
-              minHeight={220}
-            />
+            <Box
+              role="status"
+              aria-label="Loading notifications"
+              sx={{ minHeight: 104, display: "grid", placeItems: "center", py: 2 }}
+            >
+              <LoadingSpinner size={20} decorative />
+            </Box>
           ) : !hasNotificationData && isError ? (
             <ErrorState
               title="Unable to load notifications"
               message={isError ? notificationQueryError : null}
               onRetry={isFetching ? undefined : () => refetch()}
               variant="container"
-              sx={{ minHeight: 220 }}
+              sx={{
+                minHeight: 132,
+                py: 1.25,
+                "& > .MuiPaper-root": {
+                  p: 2,
+                  borderColor: "#E5E7EB",
+                  borderRadius: "14px",
+                  boxShadow: "none",
+                  "& .MuiStack-root > .MuiBox-root:first-of-type": {
+                    width: 34,
+                    height: 34,
+                    bgcolor: "#F8FAFC",
+                    color: "#64748B",
+                  },
+                  "& .MuiStack-root > .MuiBox-root:first-of-type svg": { fontSize: 20 },
+                  "& h2": { fontSize: 15 },
+                  "& p": { fontSize: 12.5, lineHeight: 1.45 },
+                },
+              }}
             />
           ) : !hasNotificationData ? (
             <ErrorState
@@ -302,7 +318,25 @@ export default function HeaderNotificationCenter() {
                 : "Sign in to view notifications."}
               onRetry={user && !isFetching ? () => refetch() : undefined}
               variant="container"
-              sx={{ minHeight: 220 }}
+              sx={{
+                minHeight: 132,
+                py: 1.25,
+                "& > .MuiPaper-root": {
+                  p: 2,
+                  borderColor: "#E5E7EB",
+                  borderRadius: "14px",
+                  boxShadow: "none",
+                  "& .MuiStack-root > .MuiBox-root:first-of-type": {
+                    width: 34,
+                    height: 34,
+                    bgcolor: "#F8FAFC",
+                    color: "#64748B",
+                  },
+                  "& .MuiStack-root > .MuiBox-root:first-of-type svg": { fontSize: 20 },
+                  "& h2": { fontSize: 15 },
+                  "& p": { fontSize: 12.5, lineHeight: 1.45 },
+                },
+              }}
             />
           ) : (
             <>
@@ -312,13 +346,37 @@ export default function HeaderNotificationCenter() {
                   message={notificationQueryError}
                   onRetry={isFetching ? undefined : () => refetch()}
                   variant="inline"
+                  sx={{
+                    px: 1.5,
+                    py: 1.5,
+                    "& > .MuiPaper-root": { p: 1.75, borderColor: "#E5E7EB", borderRadius: "14px", boxShadow: "none" },
+                  }}
                 />
               )}
               {!isError && notifications.length === 0 && (
                 <EmptyState
+                  icon={<NotificationsNoneOutlinedIcon />}
                   title="No new notifications"
-                  description="You're all caught up. New notifications will appear here."
-                  sx={{ minHeight: 220 }}
+                  description="You're all caught up."
+                  sx={{
+                    minHeight: 132,
+                    py: 1.25,
+                    "& > .MuiPaper-root": {
+                      p: 2,
+                      borderColor: "#E5E7EB",
+                      borderRadius: "14px",
+                      boxShadow: "none",
+                      "& .MuiStack-root > .MuiBox-root:first-of-type": {
+                        width: 34,
+                        height: 34,
+                        bgcolor: "#F8FAFC",
+                        color: "#64748B",
+                      },
+                      "& .MuiStack-root > .MuiBox-root:first-of-type svg": { fontSize: 20 },
+                      "& h2": { fontSize: 15 },
+                      "& p": { fontSize: 12.5, lineHeight: 1.45 },
+                    },
+                  }}
                 />
               )}
               {notifications.map((notification) => (
@@ -330,44 +388,49 @@ export default function HeaderNotificationCenter() {
               sx={{
                 display: "flex",
                 alignItems: "flex-start",
-                gap: 1.25,
+                gap: 1,
                 width: "100%",
-                px: 1.75,
-                py: 1.5,
+                px: 1.5,
+                py: 1.25,
                 border: 0,
-                borderBottom: "1px solid rgba(126,146,190,.16)",
+                borderBottom: "1px solid #E5E7EB",
                 textAlign: "left",
                 color: "#263754",
-                background: notification.is_read
-                  ? "rgba(250,252,255,.72)"
-                  : "rgba(231,239,255,.82)",
+                background: "#FFFFFF",
                 cursor: "pointer",
                 font: "inherit",
-                "&:hover": { background: "rgba(222,234,255,.92)" },
+                "&:hover": { background: "#F8FAFC" },
                 "&:focus-visible": {
-                  outline: "2px solid rgba(89,116,220,.48)",
+                  outline: "2px solid rgba(111,145,211,.48)",
                   outlineOffset: -2,
-                  background: "rgba(222,234,255,.92)",
+                  background: "#F8FAFC",
                 },
               }}
             >
-              <NotificationIcon type={notification.type} raised />
+              <NotificationIcon type={notification.type} compact />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography sx={{ fontSize: 13, fontWeight: notification.is_read ? 500 : 700, color: "#1E293B" }}>
+                <Typography sx={{ fontSize: 14, lineHeight: 1.35, fontWeight: notification.is_read ? 500 : 600, color: "#172554", overflowWrap: "anywhere" }}>
                   {notification.title}
                 </Typography>
-                <Typography sx={{ mt: 0.25, fontSize: 12, color: "#64748B" }}>
+                <Typography sx={{ mt: 0.3, fontSize: 12.5, lineHeight: 1.4, color: "#64748B", overflowWrap: "anywhere" }}>
                   {notification.organization_name}
                 </Typography>
-                <Typography sx={{ mt: 0.25, fontSize: 12, color: "#475569", lineHeight: 1.4 }}>
+                <Typography sx={{ mt: 0.3, fontSize: 12.5, color: "#475569", lineHeight: 1.45, overflowWrap: "anywhere" }}>
                   {notification.post_title || notification.message}
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5, flexShrink: 0 }}>
-                <Typography sx={{ fontSize: 11, color: "#94A3B8", whiteSpace: "nowrap" }}>
+                <Typography sx={{ fontSize: 11, color: "#8491A8", whiteSpace: "nowrap" }}>
                   {formatActivityDate(notification.created_at)}
                 </Typography>
-                {!notification.is_read && <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#EF4444" }} />}
+                {!notification.is_read && (
+                  <Box
+                    component="span"
+                    role="img"
+                    aria-label="Unread"
+                    sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#8050EF" }}
+                  />
+                )}
               </Box>
             </Box>
               ))}

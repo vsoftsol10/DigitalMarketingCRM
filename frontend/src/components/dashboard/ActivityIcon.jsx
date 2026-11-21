@@ -77,11 +77,11 @@ export default function ActivityIcon({ type }) {
         width: 40,
         height: 40,
 
-        borderRadius: "12px",
+        borderRadius: "10px",
 
-        background: `linear-gradient(145deg, ${config.background}, rgba(255,255,255,.74))`,
-        border: "1px solid rgba(255,255,255,.9)",
-        boxShadow: "0 4px 9px rgba(76,98,154,.1), inset 0 1px 2px rgba(255,255,255,.92), inset 0 -1px 2px rgba(95,116,170,.08)",
+        background: config.background,
+        border: "1px solid #F1F3F8",
+        boxShadow: "none",
 
         display: "flex",
         justifyContent: "center",

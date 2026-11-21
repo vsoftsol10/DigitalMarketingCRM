@@ -10,7 +10,7 @@ import {
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 
 import { TYPOGRAPHY } from "../../../theme/typography";
-import overviewGlassCardSx from "../overview/overviewGlassCardSx";
+import { organizationCardSx } from "../organizationUiSx";
 
 export default function SearchTabs({
   search = "",
@@ -43,7 +43,7 @@ export default function SearchTabs({
     <Paper
       elevation={0}
       sx={{
-        ...overviewGlassCardSx,
+        ...organizationCardSx,
         mt: 0,
       }}
     >
@@ -54,7 +54,7 @@ export default function SearchTabs({
           justifyContent: "space-between",
           px: { xs: 2, md: 3 },
           py: { xs: 1.75, md: 2 },
-          borderBottom: "1px solid rgba(162,181,210,.26)",
+          borderBottom: "1px solid #E5E9F1",
           gap: { xs: 1.5, md: 3 },
           flexWrap: { xs: "wrap", md: "nowrap" },
         }}
@@ -82,21 +82,21 @@ export default function SearchTabs({
 
             "& .MuiOutlinedInput-root": {
               height: 50,
-              borderRadius: "999px",
-              background: "linear-gradient(145deg, rgba(229,238,252,.82), rgba(255,255,255,.9))",
-              boxShadow: "inset 0 2px 6px rgba(77,102,145,.09), 0 3px 8px rgba(75,100,145,.06), inset 0 1px 0 rgba(255,255,255,.96)",
-              "& fieldset": { borderColor: "rgba(255,255,255,.96)" },
-              "&:hover fieldset": { borderColor: "rgba(128,157,202,.48)" },
-              "&.Mui-focused fieldset": { borderColor: "#8CA9E2", borderWidth: 1 },
+              borderRadius: "12px",
+              background: "#F8FAFC",
+              boxShadow: "none",
+              "& fieldset": { borderColor: "#DCE2EF" },
+              "&:hover fieldset": { borderColor: "#B8C3D8" },
+              "&.Mui-focused fieldset": { borderColor: "#7B61E8", borderWidth: 1 },
             },
             "& .MuiInputAdornment-root": { mr: 0.5 },
             "& .MuiInputAdornment-root svg": { color: "#647D9F", fontSize: 22 },
 
             "& input": {
               ...TYPOGRAPHY.body,
-              color: "#243957",
+              color: "#1E293B",
               py: 0,
-              "&::placeholder": { color: "#7185A2", opacity: 0.78 },
+              "&::placeholder": { color: "#8491AC", opacity: 1 },
             },
           }}
         />
@@ -134,8 +134,8 @@ export default function SearchTabs({
                 ...TYPOGRAPHY.body,
 
                 "&:hover": {
-                  background: "rgba(226,237,255,.62)",
-                  color: "#405F91",
+                  background: "#F8FAFC",
+                  color: "#475569",
                 },
                 "&.Mui-focusVisible": {
                   outline: "2px solid rgba(111,145,211,.55)",
@@ -143,13 +143,13 @@ export default function SearchTabs({
                 },
 
                 "&.Mui-selected": {
-                  color: "#355FBC",
+                  color: "#6941D9",
                   fontWeight: 600,
-                  background: "linear-gradient(145deg, #EEE8FF, #F7F8FF)",
-                  border: "1px solid rgba(255,255,255,.96)",
-                  boxShadow: "0 5px 11px rgba(95,91,164,.14), 0 2px 5px rgba(78,107,165,.08), inset 0 1px 0 #fff, inset 0 -1px 2px rgba(125,136,184,.08)",
+                  background: "#F5F2FF",
+                  border: "1px solid #DAD1F8",
+                  boxShadow: "none",
                   "&:hover": {
-                    background: "linear-gradient(145deg, #E9E1FF, #F5F7FF)",
+                    background: "#F5F2FF",
                   },
                 },
               }}
@@ -162,7 +162,7 @@ export default function SearchTabs({
       <Box
         sx={{
           p: { xs: 2, md: 3 },
-          background: "linear-gradient(180deg, rgba(241,247,255,.58), rgba(255,255,255,.3))",
+          background: "#FFFFFF",
         }}
       >
         {children}

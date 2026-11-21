@@ -34,16 +34,16 @@ export default function ActivityItem({ activity, onClick }) {
   const subscriptionSummary = [activity.plan_name, activity.expiry_date ? `Expires ${formatDate(activity.expiry_date)}` : ""].filter(Boolean).join(" • ");
 
   return (
-    <Box onClick={() => onClick?.(activity)} sx={{ display: "flex", alignItems: "flex-start", gap: 2, px: 2, py: 1.5, minHeight: { xs: 132, sm: 116 }, borderRadius: "16px", border: "1px solid rgba(255,255,255,.86)", background: "linear-gradient(115deg, rgba(238,244,255,.68), rgba(255,255,255,.46))", boxShadow: "inset 0 1px 0 rgba(255,255,255,.94)", cursor: onClick ? "pointer" : "default", transition: "background-color 0.2s ease", "&:hover": onClick ? { bgcolor: "rgba(232,240,255,.86)" } : {} }}>
+    <Box onClick={() => onClick?.(activity)} sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, px: 1.5, py: 1.25, minHeight: { xs: 92, sm: 78 }, borderRadius: "14px", border: "1px solid #E7EBF3", background: "#FFFFFF", boxShadow: "none", cursor: onClick ? "pointer" : "default", transition: "background-color 0.2s ease", "&:hover": onClick ? { bgcolor: "#F8FAFC", borderColor: "#D5DCEB" } : {} }}>
       <ActivityIcon type={eventType} />
       <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <Typography sx={{ fontSize: 15, fontWeight: 600, color: "#1E293B", lineHeight: 1.35 }}>{ACTIVITY_MESSAGES[eventType] || "Activity updated"}</Typography>
-        <Typography sx={{ mt: 0.3, fontSize: 13, color: "#64748B", lineHeight: 1.45 }}>{actor ? `${organizationName} • ${actor}` : organizationName}</Typography>
+        <Typography sx={{ mt: 0.3, fontSize: 13, color: "#64748B", lineHeight: 1.45, overflowWrap: "anywhere" }}>{actor ? `${organizationName} • ${actor}` : organizationName}</Typography>
         {isPostEvent && postSummary && <Typography sx={{ mt: 0.45, fontSize: 13, color: "#475569", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{postSummary}</Typography>}
         {isPostEvent && (targetSummary || eventTime) && <Typography sx={{ mt: 0.35, fontSize: 12, color: "#94A3B8", lineHeight: 1.4 }}>{[targetSummary, eventTime].filter(Boolean).join(" • ")}</Typography>}
         {isSubscriptionEvent && subscriptionSummary && <Typography sx={{ mt: 0.45, fontSize: 12, color: "#94A3B8", lineHeight: 1.4 }}>{subscriptionSummary}</Typography>}
       </Box>
-      <Typography sx={{ flexShrink: 0, ml: 1, fontSize: 12, fontWeight: 500, color: "#94A3B8", whiteSpace: "nowrap" }}>{formatActivityDate(activity.occurred_at)}</Typography>
+      <Typography sx={{ flexShrink: 0, ml: 1, maxWidth: { xs: 82, sm: "none" }, textAlign: "right", fontSize: 12, fontWeight: 500, color: "#94A3B8", whiteSpace: "nowrap" }}>{formatActivityDate(activity.occurred_at)}</Typography>
     </Box>
   );
 }

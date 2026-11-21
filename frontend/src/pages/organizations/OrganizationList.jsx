@@ -1041,14 +1041,14 @@ export default function OrganizationList() {
               "& .MuiPaginationItem-root": {
                 color: "#536A8A",
                 borderRadius: "11px",
-                border: "1px solid rgba(255,255,255,.85)",
-                background: "linear-gradient(145deg, rgba(255,255,255,.82), rgba(235,243,255,.75))",
-                boxShadow: "0 2px 7px rgba(74, 100, 145, .07), inset 0 1px 0 #fff",
+                border: "1px solid #DDE3F1",
+                background: "#FFFFFF",
+                boxShadow: "none",
               },
               "& .MuiPaginationItem-root.Mui-selected": {
-                color: "#355FBC",
-                background: "linear-gradient(145deg, #E4EDFF, #F6F8FF)",
-                borderColor: "rgba(123, 153, 211, .42)",
+                color: "#6941D9",
+                background: "#F5F2FF",
+                borderColor: "#CFC5F8",
               },
             }}
           />

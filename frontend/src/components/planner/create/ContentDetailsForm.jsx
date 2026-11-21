@@ -55,11 +55,7 @@
 import { Box, Grid } from "@mui/material";
 
 import FormSection from "../../ui/form/FormSection";
-import { glassFormSectionSx } from "../../ui/form/glassFormSx";
-import {
-  glassFieldErrorInputSx,
-  glassFieldErrorMessageSx,
-} from "../../ui/form/glassFormSx";
+import { plannerFieldErrorInputSx, plannerFieldErrorMessageSx, plannerFormSectionSx, plannerSelectMenuSx } from "../plannerUiSx";
 import FormSelect from "../../ui/form/FormSelect";
 import FormTextArea from "../../ui/form/FormTextArea";
 
@@ -73,7 +69,7 @@ const CONTENT_TYPE_OPTIONS = [
 
 export default function ContentDetailsForm() {
   return (
-    <Box sx={glassFormSectionSx}>
+    <Box sx={plannerFormSectionSx}>
       <FormSection
         title="Content Details"
         description="Describe the content idea and its objective."
@@ -87,8 +83,9 @@ export default function ContentDetailsForm() {
             required
             placeholder="Select Content Type"
             options={CONTENT_TYPE_OPTIONS}
-            errorInputSx={glassFieldErrorInputSx}
-            errorMessageSx={glassFieldErrorMessageSx}
+            errorInputSx={plannerFieldErrorInputSx}
+            errorMessageSx={plannerFieldErrorMessageSx}
+            MenuProps={{ PaperProps: { sx: plannerSelectMenuSx } }}
           />
         </Grid>
 

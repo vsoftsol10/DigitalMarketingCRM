@@ -16,16 +16,17 @@ import {
 } from "@mui/material";
 
 import { useEffect, useMemo, useState } from "react";
-import { glassPrimaryButtonSx } from "../../ui/form/glassFormSx";
 import {
-  glassDialogActionsSx,
-  glassDialogCardSx,
-  glassDialogContentSx,
-  glassDialogPaperSx,
-  glassDialogSecondaryButtonSx,
-  glassDialogTitleSx,
-  glassDialogToggleGroupSx,
-} from "../../ui/dialog/glassDialogSx";
+  subscriptionDialogActionsSx,
+  subscriptionDialogCardSx,
+  subscriptionDialogContentSx,
+  subscriptionDialogPaperSx,
+  subscriptionDialogPrimaryButtonSx,
+  subscriptionDialogSecondaryButtonSx,
+  subscriptionDialogSelectSx,
+  subscriptionDialogTitleSx,
+  subscriptionDialogToggleGroupSx,
+} from "../organizationUiSx";
 
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN").format(Number(value) || 0);
@@ -95,13 +96,13 @@ export default function ChangePlanDialog({
       onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="sm"
-      PaperProps={{ sx: glassDialogPaperSx }}
+      PaperProps={{ sx: subscriptionDialogPaperSx }}
     >
-      <DialogTitle sx={glassDialogTitleSx}>
+      <DialogTitle sx={subscriptionDialogTitleSx}>
         Change Subscription Plan
       </DialogTitle>
 
-      <DialogContent dividers sx={glassDialogContentSx}>
+      <DialogContent dividers sx={subscriptionDialogContentSx}>
         <Typography
           sx={{
             mb: 3,
@@ -123,7 +124,7 @@ export default function ChangePlanDialog({
             mb: 3,
             p: 2,
 
-            ...glassDialogCardSx,
+            ...subscriptionDialogCardSx,
           }}
         >
           <Typography
@@ -148,7 +149,7 @@ export default function ChangePlanDialog({
               fontSize: 16,
               fontWeight: 700,
 
-              color: "#0F172A",
+              color: "#172554",
             }}
           >
             {organization?.subscription_plan || "-"}
@@ -180,12 +181,12 @@ export default function ChangePlanDialog({
             label="New Plan"
             onChange={(event) => setPlanId(event.target.value)}
             sx={{
-              minHeight: 52,
-              borderRadius: "14px",
-              background: "linear-gradient(145deg, rgba(232,241,255,.78), rgba(255,255,255,.94))",
+              ...subscriptionDialogSelectSx,
               "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(142,164,204,.38)",
+                borderColor: "#DCE2EF",
               },
+              "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#B8C3D8" },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#7B61E8" },
             }}
           >
             {plans.map((plan) => (
@@ -228,7 +229,7 @@ export default function ChangePlanDialog({
               }
             }}
             disabled={loading}
-            sx={glassDialogToggleGroupSx}
+            sx={subscriptionDialogToggleGroupSx}
           >
             <ToggleButton value="monthly">Monthly</ToggleButton>
 
@@ -246,7 +247,7 @@ export default function ChangePlanDialog({
               mt: 3,
               p: 2,
 
-              ...glassDialogCardSx,
+              ...subscriptionDialogCardSx,
             }}
           >
             <Typography
@@ -272,7 +273,7 @@ export default function ChangePlanDialog({
                 lineHeight: "30px",
                 fontWeight: 700,
 
-                color: "#0F172A",
+                color: "#6941D9",
               }}
             >
               ₹{formatPrice(selectedPrice)}
@@ -314,12 +315,12 @@ export default function ChangePlanDialog({
           ACTIONS
       ===================================================== */}
 
-      <DialogActions sx={glassDialogActionsSx}>
+      <DialogActions sx={subscriptionDialogActionsSx}>
         <Button
           onClick={onClose}
           disabled={loading}
           color="inherit"
-          sx={glassDialogSecondaryButtonSx}
+          sx={subscriptionDialogSecondaryButtonSx}
         >
           Cancel
         </Button>
@@ -328,7 +329,7 @@ export default function ChangePlanDialog({
           variant="contained"
           onClick={handleSubmit}
           disabled={loading || !planId}
-          sx={{ minWidth: 130, ...glassPrimaryButtonSx }}
+          sx={{ minWidth: { sm: 130 }, ...subscriptionDialogPrimaryButtonSx }}
         >
           {loading ? "Changing..." : "Change Plan"}
         </Button>
